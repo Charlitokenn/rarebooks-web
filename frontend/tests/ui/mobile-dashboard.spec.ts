@@ -110,6 +110,30 @@ test('top expenses shows the full total spending under its title', async ({
   ).toContainText('Total spending: ₹ 12,34,567.89');
 });
 
+test('account balances sits full width on its own card', async ({ page }) => {
+  await page.route(/reports\.dashboard\.get_cash_balances/, (route) =>
+    route.fulfill({
+      json: {
+        message: {
+          accounts: [{ account: 'Cash', balance: 100 }],
+          total: 100,
+          as_of: '2031-12-15',
+        },
+      },
+    })
+  );
+  await page.reload();
+
+  const balances = page.locator('[data-slot="chart-container"]', {
+    hasText: 'Account balances',
+  });
+  await balances.scrollIntoViewIfNeeded();
+  await expect(balances.getByRole('link', { name: 'Cash' })).toBeVisible();
+  const cardBox = await balances.locator('xpath=..').boundingBox();
+  expect(cardBox!.width).toBeGreaterThan(390 - 2 * 16 - 2);
+  await expect(balances.locator('xpath=..')).toHaveClass(/rounded-6 border/);
+});
+
 test('invoice cards name their totals in sentence case', async ({ page }) => {
   for (const title of [
     'Paid sales',

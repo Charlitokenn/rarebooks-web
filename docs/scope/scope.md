@@ -35,11 +35,12 @@ version-16 has no `AGENTS.md`, so `/architect` and `/develop` have no project ru
 A dashboard card that lists each leaf cash and bank account's balance as of today, with the total. Each account links to the General Ledger for that account. Ported from develop's spec 0001.
 **Done when:** a ledger reader sees each cash and bank balance as of today and the total, the balances don't reload on a period change, a user without ledger read gets a permission error from the server and sees no card, and the card works on a phone.
 spec [0001](../specs/0001-account-balances-card/index.md)
+code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/AccountBalances.vue`
 - [x] Design it (spec): `/architect account balances card` (port develop's spec 0001 to the v16 names: `Books Ledger Entry`, `reverted`)
 - [ ] Build it: `/develop account balances card`
-  - [ ] Server method `get_cash_balances` with its happy path, cut off and permission tests (AC-1, AC-2, AC-4, AC-8)
-  - [ ] Thin card end to end: client call, minimal card, the new dashboard row and its gate, mobile mock (AC-1, AC-3, AC-4, AC-8, AC-11, AC-12)
-  - [ ] Card complete: colors, ledger links, scrolling with sticky header and Total, loading, empty and error states, stale load guard, zero and negative tests (AC-5, AC-6, AC-7, AC-9, AC-10, AC-12)
+  - [x] Server method `get_cash_balances` with its happy path, cut off and permission tests (AC-1, AC-2, AC-4, AC-8)
+  - [x] Thin card end to end: client call, minimal card, the new dashboard row and its gate, mobile mock (AC-1, AC-3, AC-4, AC-8, AC-11, AC-12)
+  - [x] Card complete: colors, ledger links, scrolling with sticky header and Total, loading, empty and error states, stale load guard, zero and negative tests (AC-5, AC-6, AC-7, AC-9, AC-10, AC-12)
   - [ ] Layout polish and Playwright tests, desktop and phone (AC-2, AC-3, AC-6, AC-7, AC-9, AC-10, AC-11, AC-12)
 - [ ] Verify it: `/check verify account balances card`
 - [ ] Test it: `/test account balances card`

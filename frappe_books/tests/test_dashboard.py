@@ -5,6 +5,7 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate
 
 from frappe_books.reports.dashboard import (
+	get_cash_balances,
 	get_cashflow,
 	get_invoice_summary,
 	get_period_dates,
@@ -164,7 +165,59 @@ class IntegrationTestAccountBalances(IntegrationTestCase):
 		self.assertEqual(result["credit_root_types"], ["Equity", "Income", "Liability"])
 
 
-def _post(account, debit, credit, date="2031-01-10"):
+class IntegrationTestCashBalances(IntegrationTestCase):
+	def test_leaf_cash_and_bank_accounts_are_listed_in_chart_order_with_their_total(self):
+		cash = make_account("Balances Cash", account_type="Cash")
+		bank = make_account("Balances Bank", account_type="Bank")
+		group = make_account("Balances Bank Group", account_type="Bank", is_group=1)
+		rent = make_account("Balances Rent", root_type="Expense")
+		_post(cash, 80, 0)
+		_post(cash, 0, 30)
+		_post(bank, 120, 0)
+		_post(rent, 40, 0)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		balances = {row["account"]: row["balance"] for row in result["accounts"]}
+		self.assertEqual((balances[cash.name], balances[bank.name]), (Decimal("50.00"), Decimal("120.00")))
+		self.assertNotIn(group.name, balances)
+		self.assertNotIn(rent.name, balances)
+		names = [row["account"] for row in result["accounts"]]
+		lft = {name: frappe.db.get_value("Books Account", name, "lft") for name in names}
+		self.assertEqual(names, sorted(names, key=lft.get))
+		self.assertEqual(result["total"], sum(balances.values()))
+
+	def test_entries_after_today_and_reverted_entries_are_left_out(self):
+		cash = make_account("Cut Off Cash", account_type="Cash")
+		_post(cash, 100, 0, TODAY)
+		_post(cash, 70, 0, "2031-12-16")
+		_post(cash, 25, 0, reverted=1)
+		_post(cash, 0, 25, reverted=1)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		self.assertIn({"account": cash.name, "balance": Decimal("100.00")}, result["accounts"])
+		self.assertEqual(result["as_of"], getdate(TODAY))
+
+	def test_an_empty_account_shows_zero_and_an_overdrawn_one_lowers_the_total(self):
+		empty = make_account("Empty Bank", account_type="Bank")
+		overdrawn = make_account("Overdrawn Bank", account_type="Bank")
+		_post(overdrawn, 0, 60)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		balances = {row["account"]: row["balance"] for row in result["accounts"]}
+		self.assertEqual(
+			(balances[empty.name], balances[overdrawn.name]), (Decimal("0.00"), Decimal("-60.00"))
+		)
+		others = sum(balance for name, balance in balances.items() if name != overdrawn.name)
+		self.assertEqual(result["total"], others - 60)
+
+
+def _post(account, debit, credit, date="2031-01-10", **values):
 	frappe.get_doc(
 		{
 			"doctype": "Books Ledger Entry",
@@ -172,6 +225,7 @@ def _post(account, debit, credit, date="2031-01-10"):
 			"account": account.name,
 			"debit": debit,
 			"credit": credit,
+			**values,
 		}
 	).insert()
 

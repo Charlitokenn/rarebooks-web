@@ -23,6 +23,17 @@ export interface InvoiceSummary {
   before_date: string;
 }
 
+export interface AccountBalance {
+  account: string;
+  balance: number;
+}
+
+export interface CashBalances {
+  accounts: AccountBalance[];
+  total: number;
+  as_of: string;
+}
+
 /** Dashboard figures are computed on the server for a period that ends today. */
 export function getDashboardData<T>(
   method: 'get_cashflow' | 'get_profit_and_loss' | 'get_top_expenses',
@@ -39,6 +50,11 @@ export function getInvoiceSummary(
     'frappe_books.reports.dashboard.get_invoice_summary',
     { doctype, period }
   );
+}
+
+/** Balances are as of the server's today, so they take no period. */
+export function getCashBalances(): Promise<CashBalances> {
+  return call<CashBalances>('frappe_books.reports.dashboard.get_cash_balances');
 }
 
 /** List filters for the submitted invoices the dashboard counts as paid or unpaid. */

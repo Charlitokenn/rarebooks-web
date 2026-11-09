@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, add_months, get_first_day, getdate, month_diff
 
-from frappe_books.accounting.money import as_decimal, rounded
+from frappe_books.accounting.money import as_decimal, rounded, sum_decimal
 from frappe_books.reports.filters import datetime_conditions
 from frappe_books.reports.periods import get_fiscal_year
 
@@ -79,6 +79,28 @@ def get_top_expenses(period: str) -> list[dict]:
 
 
 @frappe.whitelist()
+def get_cash_balances() -> dict:
+	"""Return each cash and bank account's balance as of today, and their total."""
+	frappe.has_permission(LEDGER, "read", throw=True)
+	as_of = getdate()
+	names = _dashboard_accounts()
+	sums = {}
+	if names:
+		rows = frappe.get_list(
+			LEDGER,
+			filters={"reverted": 0, "posting_date": ["<=", as_of], "account": ["in", names]},
+			fields=["account", DEBIT_MINUS_CREDIT],
+			group_by="account",
+			order_by="account",
+			limit_page_length=0,
+		)
+		sums = {row.account: row.balance for row in rows}
+	accounts = [{"account": name, "balance": rounded(sums.get(name, 0))} for name in names]
+	total = rounded(sum_decimal(row["balance"] for row in accounts))
+	return {"accounts": accounts, "total": total, "as_of": as_of}
+
+
+@frappe.whitelist()
 def get_invoice_summary(doctype: str, period: str) -> dict:
 	"""Return the paid and unpaid amounts and counts of the period's submitted invoices.
 
@@ -102,6 +124,17 @@ def get_invoice_summary(doctype: str, period: str) -> dict:
 		"from_date": from_date,
 		"before_date": add_days(to_date, 1),
 	}
+
+
+def _dashboard_accounts() -> list[str]:
+	"""Return the leaf cash and bank accounts the balances card lists, in chart order."""
+	return frappe.get_list(
+		"Books Account",
+		filters={"account_type": ["in", ["Cash", "Bank"]], "is_group": 0},
+		order_by="lft",
+		pluck="name",
+		limit_page_length=0,
+	)
 
 
 def _monthly_totals(from_date, to_date, filters, fields) -> dict:

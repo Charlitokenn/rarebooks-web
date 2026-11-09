@@ -10,6 +10,7 @@ from frappe.tests import IntegrationTestCase
 
 from frappe_books.linked_entries import get_linked_entries
 from frappe_books.reports.dashboard import (
+	get_cash_balances,
 	get_cashflow,
 	get_invoice_summary,
 	get_profit_and_loss,
@@ -70,6 +71,7 @@ STOCK_REPORTS = ("Books Stock Ledger", "Books Stock Balance")
 BOOKS_USER = "books-user-permissions@example.com"
 MANAGER = "books-manager-permissions@example.com"
 SYSTEM_MANAGER = "books-system-manager-permissions@example.com"
+CASHIER = "books-cashier-permissions@example.com"
 
 
 class IntegrationTestPermissions(IntegrationTestCase):
@@ -80,6 +82,7 @@ class IntegrationTestPermissions(IntegrationTestCase):
 			(BOOKS_USER, "Books User"),
 			(MANAGER, "Books Manager"),
 			(SYSTEM_MANAGER, "System Manager"),
+			(CASHIER, "Books Cashier"),
 		):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc(
@@ -141,6 +144,13 @@ class IntegrationTestPermissions(IntegrationTestCase):
 				with self.subTest(method=method.__name__):
 					self.assertRaises(frappe.PermissionError, method, "This Month")
 			self.assertRaises(frappe.PermissionError, get_account_balances)
+			self.assertRaises(frappe.PermissionError, get_cash_balances)
+
+	def test_only_ledger_readers_get_cash_balances(self):
+		with self.set_user(CASHIER):
+			self.assertRaises(frappe.PermissionError, get_cash_balances)
+		with self.set_user(MANAGER):
+			self.assertIn("total", get_cash_balances())
 
 	def test_books_user_keeps_the_accounts_the_server_chooses(self):
 		income = make_account("Rights Income", root_type="Income", account_type="Income Account")
