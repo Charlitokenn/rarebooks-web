@@ -57,20 +57,24 @@ class IntegrationTestSettingsAccounts(IntegrationTestCase):
 
 class IntegrationTestDashboardAccountRules(IntegrationTestCase):
 	def setUp(self):
+		"""Make a leaf bank and a leaf loan account, and empty the table after each test."""
 		self.bank = make_account("Dashboard Rule Bank", account_type="Bank").name
 		self.loan = make_account("Dashboard Rule Loan", root_type="Liability").name
 		self.addCleanup(frappe.db.delete, "Books Dashboard Account", {"parenttype": SETTINGS})
 
 	def test_leaf_asset_and_liability_accounts_can_be_picked(self):
+		"""AC-3: leaf Asset and Liability accounts save."""
 		settings = self.save_picks([self.bank, self.loan])
 		self.assertEqual([row.account for row in settings.dashboard_accounts], [self.bank, self.loan])
 
 	def test_an_account_is_picked_only_once(self):
+		"""AC-3: the same account on two rows is refused."""
 		self.assertRaisesRegex(
 			frappe.ValidationError, "more than once", self.save_picks, [self.bank, self.loan, self.bank]
 		)
 
 	def test_group_and_other_root_type_accounts_cannot_be_picked(self):
+		"""AC-3: a group account or an Income account is refused."""
 		group = make_account("Dashboard Rule Group", is_group=1).name
 		income = make_account("Dashboard Rule Income", root_type="Income").name
 		for account, message in ((group, "group account"), (income, "must be of type")):
@@ -78,6 +82,7 @@ class IntegrationTestDashboardAccountRules(IntegrationTestCase):
 				self.assertRaisesRegex(frappe.ValidationError, message, self.save_picks, [account])
 
 	def test_a_saved_pick_that_stopped_qualifying_does_not_block_other_settings(self):
+		"""AC-3: a stale saved row lets other settings save, but an edited row is checked."""
 		settings = self.save_picks([self.bank])
 		frappe.db.set_value("Books Account", self.bank, "is_group", 1)
 
@@ -89,6 +94,7 @@ class IntegrationTestDashboardAccountRules(IntegrationTestCase):
 		self.assertRaisesRegex(frappe.ValidationError, "must be of type", self.save_settings, settings)
 
 	def test_a_row_moved_onto_a_stale_account_is_checked(self):
+		"""AC-3: rows are matched by name, so a row edited onto a stale account is checked."""
 		settings = self.save_picks([self.bank, self.loan])
 		frappe.db.set_value("Books Account", self.bank, "is_group", 1)
 
@@ -98,6 +104,7 @@ class IntegrationTestDashboardAccountRules(IntegrationTestCase):
 		self.assertRaisesRegex(frappe.ValidationError, "group account", self.save_settings, settings)
 
 	def test_the_picker_filters_mirror_the_allowed_root_types(self):
+		"""AC-2: the picker's link_filters match DASHBOARD_ROOT_TYPES and the leaf rule."""
 		field = frappe.get_meta("Books Dashboard Account").get_field("account")
 		filters = {
 			(fieldname, operator): value for _, fieldname, operator, value in json.loads(field.link_filters)
@@ -105,11 +112,13 @@ class IntegrationTestDashboardAccountRules(IntegrationTestCase):
 		self.assertEqual(filters, {("is_group", "="): 0, ("root_type", "in"): list(DASHBOARD_ROOT_TYPES)})
 
 	def save_picks(self, accounts):
+		"""Save `accounts` as the dashboard table and return the settings."""
 		settings = frappe.get_single(SETTINGS)
 		settings.set("dashboard_accounts", [{"account": account} for account in accounts])
 		return self.save_settings(settings)
 
 	def save_settings(self, settings):
+		"""Save the settings without the company fields a test site lacks."""
 		# A test site skips the setup wizard that fills the company details.
 		settings.flags.ignore_mandatory = True
 		settings.save()

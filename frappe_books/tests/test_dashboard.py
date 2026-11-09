@@ -220,6 +220,7 @@ class IntegrationTestCashBalances(IntegrationTestCase):
 
 class IntegrationTestDashboardAccounts(IntegrationTestCase):
 	def test_picked_accounts_are_listed_alone_in_chart_order(self):
+		"""AC-4: only the picked accounts, in chart order; a liability lowers the Total."""
 		bank = make_account("Picked Bank", account_type="Bank")
 		loan = make_account("Picked Loan", root_type="Liability")
 		make_account("Unpicked Cash", account_type="Cash")
@@ -236,12 +237,14 @@ class IntegrationTestDashboardAccounts(IntegrationTestCase):
 		self.assertEqual(result["total"], Decimal("200.00"))
 
 	def test_an_empty_table_lists_the_cash_and_bank_leaves(self):
+		"""AC-5: with nothing picked the card keeps spec 0001's Cash and Bank list."""
 		cash = make_account("Fallback Cash", account_type="Cash")
 
 		self.assertEqual(_listed(), _cash_and_bank())
 		self.assertIn(cash.name, _listed())
 
 	def test_picks_that_stopped_qualifying_are_skipped(self):
+		"""AC-4: a pick that became a group is left off while valid picks stay."""
 		stale = make_account("Stale Bank", account_type="Bank")
 		valid = make_account("Still Valid Bank", account_type="Bank")
 		self.pick(stale, valid)
@@ -250,6 +253,7 @@ class IntegrationTestDashboardAccounts(IntegrationTestCase):
 		self.assertEqual(_listed(), [valid.name])
 
 	def test_the_card_falls_back_when_no_pick_qualifies(self):
+		"""AC-5: when no pick still qualifies the card falls back to Cash and Bank."""
 		stale = make_account("Only Stale Bank", account_type="Bank")
 		self.pick(stale)
 		frappe.db.set_value("Books Account", stale.name, "is_group", 1)
@@ -257,6 +261,7 @@ class IntegrationTestDashboardAccounts(IntegrationTestCase):
 		self.assertEqual(_listed(), _cash_and_bank())
 
 	def test_a_picked_account_cannot_be_deleted(self):
+		"""AC-8: Frappe's link check blocks deleting a picked account."""
 		bank = make_account("Undeletable Bank", account_type="Bank")
 		self.pick(bank)
 
@@ -265,6 +270,7 @@ class IntegrationTestDashboardAccounts(IntegrationTestCase):
 		self.assertEqual(_listed(), [bank.name])
 
 	def test_a_ledger_reader_sees_the_picks_without_reading_the_settings(self):
+		"""AC-9: the picks need only ledger read, and no ledger read is still refused."""
 		bank = make_account("Reader Bank", account_type="Bank")
 		self.pick(bank)
 		role = frappe.get_doc({"doctype": "Role", "role_name": unique_name("Books Ledger Reader")}).insert()
@@ -278,6 +284,7 @@ class IntegrationTestDashboardAccounts(IntegrationTestCase):
 			self.assertRaises(frappe.PermissionError, get_cash_balances)
 
 	def pick(self, *accounts):
+		"""Save `accounts` as the dashboard table and clear it after the test."""
 		settings = frappe.get_single("Books Accounting Settings")
 		settings.set("dashboard_accounts", [{"account": account.name} for account in accounts])
 		# A test site skips the setup wizard that fills the company details.
@@ -435,15 +442,18 @@ def _post(account, debit, credit, date="2031-01-10", **values):
 
 
 def _listed():
+	"""The account names the card lists today."""
 	return [row["account"] for row in get_cash_balances()["accounts"]]
 
 
 def _cash_and_bank():
+	"""The leaf Cash and Bank account names in chart order, the card's fallback."""
 	filters = {"account_type": ["in", ["Cash", "Bank"]], "is_group": 0}
 	return frappe.get_all("Books Account", filters=filters, pluck="name", order_by="lft")
 
 
 def _chart_order(*accounts):
+	"""The names of `accounts` sorted in chart of accounts order."""
 	names = [account.name for account in accounts]
 	return frappe.get_all("Books Account", filters={"name": ["in", names]}, pluck="name", order_by="lft")
 
