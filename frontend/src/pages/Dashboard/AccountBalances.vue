@@ -87,6 +87,7 @@
 <script lang="ts">
 import { t } from 'fyo';
 import { ChartContainer as FrappeChartContainer } from 'frappe-ui/charts';
+import { DateTime } from 'luxon';
 import { fyo } from 'src/initFyo';
 import { getCashBalances, type AccountBalance } from 'src/utils/dashboard';
 import { defineComponent } from 'vue';
@@ -112,7 +113,9 @@ export default defineComponent({
     /** Names the date the server used, so a card left open past midnight does not claim today. */
     subtitle(): string {
       return this.asOf
-        ? t`As of ${fyo.format(this.asOf, 'Date')}`
+        ? t`As of ${DateTime.fromISO(this.asOf).toLocaleString(
+            DateTime.DATE_MED
+          )}`
         : t`As of today`;
     },
   },
