@@ -51,7 +51,7 @@ const skipWithoutIndex = () =>
   test.skip(!bench || !site, 'Indexing the record requires a test bench and site');
 
 const searchbox = (page: Page) =>
-  page.getByRole('searchbox', { name: 'Search Frappe Books' });
+  page.getByRole('searchbox', { name: 'Search RareBooks' });
 const results = (page: Page) => page.getByRole('list', { name: 'Results' });
 const result = (page: Page, text: string | RegExp) =>
   results(page).getByRole('listitem').filter({ hasText: text });
