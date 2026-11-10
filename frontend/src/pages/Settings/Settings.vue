@@ -37,7 +37,7 @@
         class="w-full"
         size="lg"
         icon-left="lucide-download"
-        :label="t`Install Read RareBooks`"
+        :label="t`Install RareBooks`"
         @click="isInstallSheetOpen = true"
       />
     </div>

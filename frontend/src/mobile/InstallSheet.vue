@@ -1,7 +1,7 @@
 <template>
   <FrappeBottomSheet
     :open="isInstallSheetOpen"
-    :title="t`Install Read RareBooks`"
+    :title="t`Install RareBooks`"
     @update:open="(open: boolean) => !open && close()"
   >
     <div
@@ -15,7 +15,7 @@
       />
       <p class="text-p-md text-ink-gray-7">
         {{
-          t`Add Read RareBooks to your home screen to open it full screen, like an app.`
+          t`Add RareBooks to your home screen to open it full screen, like an app.`
         }}
       </p>
       <ol
