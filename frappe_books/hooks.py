@@ -8,7 +8,7 @@ app_email = "hello@frappe.io"
 app_license = "agpl-3.0"
 app_logo_url = "/assets/frappe_books/books-icon.png"
 app_icon_url = app_logo_url
-app_icon_title = app_title
+app_icon_title = "Read RareBooks"
 app_icon_route = "/books"
 
 # Send non-GET requests for this app's endpoints as native `application/json`

@@ -1,7 +1,7 @@
 {
  "id": "/books/",
- "name": "RareBooks",
- "short_name": "Books",
+ "name": "Read RareBooks",
+ "short_name": "Read RareBooks",
  "description": "Invoices, payments and accounts for small businesses",
  "start_url": "/books/",
  "scope": "/books/",
