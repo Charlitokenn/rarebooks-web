@@ -5,6 +5,8 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate
 
 from frappe_books.reports.dashboard import (
+	get_best_sellers,
+	get_cash_balances,
 	get_cashflow,
 	get_invoice_summary,
 	get_period_dates,
@@ -12,7 +14,7 @@ from frappe_books.reports.dashboard import (
 	get_top_expenses,
 )
 from frappe_books.reports.financial_statements import get_account_balances
-from frappe_books.tests.accounting import make_account
+from frappe_books.tests.accounting import insert_sales_invoice, make_account, unique_name
 
 TODAY = "2031-12-15"
 PERIODS = ("This Year", "This Quarter", "This Month", "YTD")
@@ -164,7 +166,184 @@ class IntegrationTestAccountBalances(IntegrationTestCase):
 		self.assertEqual(result["credit_root_types"], ["Equity", "Income", "Liability"])
 
 
-def _post(account, debit, credit, date="2031-01-10"):
+class IntegrationTestCashBalances(IntegrationTestCase):
+	def test_leaf_cash_and_bank_accounts_are_listed_in_chart_order_with_their_total(self):
+		cash = make_account("Balances Cash", account_type="Cash")
+		bank = make_account("Balances Bank", account_type="Bank")
+		group = make_account("Balances Bank Group", account_type="Bank", is_group=1)
+		rent = make_account("Balances Rent", root_type="Expense")
+		_post(cash, 80, 0)
+		_post(cash, 0, 30)
+		_post(bank, 120, 0)
+		_post(rent, 40, 0)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		balances = {row["account"]: row["balance"] for row in result["accounts"]}
+		self.assertEqual((balances[cash.name], balances[bank.name]), (Decimal("50.00"), Decimal("120.00")))
+		self.assertNotIn(group.name, balances)
+		self.assertNotIn(rent.name, balances)
+		names = [row["account"] for row in result["accounts"]]
+		lft = {name: frappe.db.get_value("Books Account", name, "lft") for name in names}
+		self.assertEqual(names, sorted(names, key=lft.get))
+		self.assertEqual(result["total"], sum(balances.values()))
+
+	def test_entries_after_today_and_reverted_entries_are_left_out(self):
+		cash = make_account("Cut Off Cash", account_type="Cash")
+		_post(cash, 100, 0, TODAY)
+		_post(cash, 70, 0, "2031-12-16")
+		_post(cash, 25, 0, reverted=1)
+		_post(cash, 0, 25, reverted=1)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		self.assertIn({"account": cash.name, "balance": Decimal("100.00")}, result["accounts"])
+		self.assertEqual(result["as_of"], getdate(TODAY))
+
+	def test_an_empty_account_shows_zero_and_an_overdrawn_one_lowers_the_total(self):
+		empty = make_account("Empty Bank", account_type="Bank")
+		overdrawn = make_account("Overdrawn Bank", account_type="Bank")
+		_post(overdrawn, 0, 60)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		balances = {row["account"]: row["balance"] for row in result["accounts"]}
+		self.assertEqual(
+			(balances[empty.name], balances[overdrawn.name]), (Decimal("0.00"), Decimal("-60.00"))
+		)
+		others = sum(balance for name, balance in balances.items() if name != overdrawn.name)
+		self.assertEqual(result["total"], others - 60)
+
+
+class IntegrationTestBestSellers(IntegrationTestCase):
+	def test_the_five_largest_items_are_returned_and_every_item_counts_in_the_total(self):
+		items = _items("Best Seller", 7)
+		for item, amount in zip(items, (70, 60, 50, 40, 30, 20, 10), strict=True):
+			insert_sales_invoice("2031-12-05 10:00:00", [{"item": item, "amount": amount}])
+
+		with self.freeze_time(TODAY):
+			result = get_best_sellers("This Month")
+
+		self.assertEqual(
+			result["items"],
+			[_sale(item, amount) for item, amount in zip(items[:5], (70, 60, 50, 40, 30), strict=True)],
+		)
+		self.assertEqual(result["total"], 280)
+
+	def test_amounts_are_after_the_row_discount_and_in_base_currency(self):
+		before_tax, after_tax, doubled, zero_rate, empty_rate = _items("Discount Seller", 5)
+		insert_sales_invoice(
+			"2031-11-05", [{"item": before_tax, "amount": 100, "discounted": 90, "taxed": 99}]
+		)
+		insert_sales_invoice(
+			"2031-11-05",
+			[{"item": after_tax, "amount": 100, "discounted": 99, "taxed": 110}],
+			discount_after_tax=1,
+		)
+		insert_sales_invoice("2031-11-05", [{"item": doubled, "amount": 25}], exchange_rate=2)
+		insert_sales_invoice("2031-11-05", [{"item": zero_rate, "amount": 30}], exchange_rate=0)
+		insert_sales_invoice("2031-11-05", [{"item": empty_rate, "amount": 20}], exchange_rate=None)
+
+		with self.freeze_time("2031-11-20"):
+			result = get_best_sellers("This Month")
+
+		self.assertEqual(
+			result["items"],
+			[
+				_sale(before_tax, 90),
+				_sale(after_tax, 89),
+				_sale(doubled, 50),
+				_sale(zero_rate, 30),
+				_sale(empty_rate, 20),
+			],
+		)
+
+	def test_a_sale_late_on_the_last_day_counts_and_sales_outside_the_period_do_not(self):
+		late, next_day, before = _items("Edge Seller", 3)
+		insert_sales_invoice("2031-10-20 23:30:00", [{"item": late, "amount": 10}])
+		insert_sales_invoice("2031-10-21 00:00:00", [{"item": next_day, "amount": 10}])
+		insert_sales_invoice("2031-09-30 23:59:00", [{"item": before, "amount": 10}])
+
+		with self.freeze_time("2031-10-20 09:00:00"):
+			result = get_best_sellers("This Month")
+
+		self.assertEqual(result, {"items": [_sale(late, 10)], "total": 10})
+
+	def test_returns_lower_an_item_and_drafts_and_cancelled_invoices_change_nothing(self):
+		returned, refunded, unsold = _items("Return Seller", 3)
+		insert_sales_invoice(
+			"2031-08-03", [{"item": returned, "amount": 100}, {"item": refunded, "amount": 50}]
+		)
+		insert_sales_invoice(
+			"2031-08-10", [{"item": returned, "amount": -30}, {"item": refunded, "amount": -60}]
+		)
+		insert_sales_invoice("2031-08-11", [{"item": returned, "amount": 40}], docstatus=0)
+		insert_sales_invoice("2031-08-12", [{"item": unsold, "amount": 40}], docstatus=2)
+
+		with self.freeze_time("2031-08-20"):
+			result = get_best_sellers("This Month")
+
+		self.assertEqual(result, {"items": [_sale(returned, 70)], "total": 70})
+
+	def test_ties_are_broken_by_item_and_only_the_first_five_are_returned(self):
+		prefix = unique_name("Tie Seller")
+		items = [f"{prefix} {letter}" for letter in "ABCDEF"]
+		for item, amount in zip(reversed(items), (20, 20, 30, 40, 50, 60), strict=True):
+			insert_sales_invoice("2031-07-04", [{"item": item, "amount": amount}])
+
+		with self.freeze_time("2031-07-20"):
+			result = get_best_sellers("This Month")
+
+		self.assertEqual([row["item"] for row in result["items"]], items[:5])
+		self.assertEqual(result["total"], 220)
+
+	# covers: AC-1, AC-2
+	def test_an_item_sums_across_invoices_rates_and_discount_modes_over_the_quarter(self):
+		# The other tests keep to their own months; this one keeps to January to March.
+		(item,) = _items("Mixed Seller", 1)
+		insert_sales_invoice("2031-01-10", [{"item": item, "amount": 100, "discounted": 90}])
+		insert_sales_invoice("2031-02-10", [{"item": item, "amount": 10}], exchange_rate=3)
+		insert_sales_invoice(
+			"2031-03-10",
+			[{"item": item, "amount": 100, "discounted": 99, "taxed": 110}],
+			discount_after_tax=1,
+		)
+		# An invoice with no item rows joins as a row with no item and is skipped.
+		insert_sales_invoice("2031-03-11", [])
+
+		with self.freeze_time("2031-03-20"):
+			result = get_best_sellers("This Quarter")
+
+		self.assertEqual(result, {"items": [_sale(item, 90 + 30 + 89)], "total": 209})
+
+	def test_few_items_all_come_back_and_no_sales_give_an_empty_result(self):
+		items = _items("Few Seller", 3)
+		for item, amount in zip(items, (30, 20, 10), strict=True):
+			insert_sales_invoice("2031-06-04", [{"item": item, "amount": amount}])
+		insert_sales_invoice("2031-05-04", [{"item": items[0], "amount": -10}])
+
+		with self.freeze_time("2031-06-20"):
+			few = get_best_sellers("This Month")
+		with self.freeze_time("2031-05-20"):
+			below_zero = get_best_sellers("This Month")
+		with self.freeze_time("2031-04-20"):
+			none = get_best_sellers("This Month")
+
+		self.assertEqual(
+			few,
+			{
+				"items": [_sale(item, amount) for item, amount in zip(items, (30, 20, 10), strict=True)],
+				"total": 60,
+			},
+		)
+		self.assertEqual(below_zero, {"items": [], "total": 0})
+		self.assertEqual(none, {"items": [], "total": 0})
+
+
+def _post(account, debit, credit, date="2031-01-10", **values):
 	frappe.get_doc(
 		{
 			"doctype": "Books Ledger Entry",
@@ -172,6 +351,7 @@ def _post(account, debit, credit, date="2031-01-10"):
 			"account": account.name,
 			"debit": debit,
 			"credit": credit,
+			**values,
 		}
 	).insert()
 
@@ -188,6 +368,14 @@ def _invoice(date, total, outstanding, **values):
 			**values,
 		}
 	).db_insert()
+
+
+def _items(label, count):
+	return [unique_name(label) for _index in range(count)]
+
+
+def _sale(item, amount):
+	return {"item": item, "amount": Decimal(amount)}
 
 
 def _dates(*dates):

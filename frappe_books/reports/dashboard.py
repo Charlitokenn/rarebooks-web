@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 import frappe
 from frappe import _
 from frappe.utils import add_days, add_months, get_first_day, getdate, month_diff
 
-from frappe_books.accounting.money import as_decimal, rounded
+from frappe_books.accounting.money import as_decimal, rounded, sum_decimal
 from frappe_books.reports.filters import datetime_conditions
 from frappe_books.reports.periods import get_fiscal_year
 
@@ -13,6 +15,10 @@ MONTH_FIELDS = [{"YEAR": "posting_date", "as": "year"}, {"MONTH": "posting_date"
 DEBIT_MINUS_CREDIT = {"SUB": [{"SUM": "debit"}, {"SUM": "credit"}], "as": "balance"}
 CREDIT_MINUS_DEBIT = {"SUB": [{"SUM": "credit"}, {"SUM": "debit"}], "as": "balance"}
 CASH_ACCOUNTS = {"account.account_type": ["in", ["Cash", "Bank"]]}
+SALES_INVOICE = "Books Sales Invoice"
+# The database table name (with the `tab` prefix), not a DocType name: get_list needs it to qualify child fields.
+SALES_ITEM = "tabBooks Sales Invoice Item"
+TOP_COUNT = 5
 
 
 def get_period_dates(period: str) -> tuple:
@@ -79,6 +85,42 @@ def get_top_expenses(period: str) -> list[dict]:
 
 
 @frappe.whitelist()
+def get_best_sellers(period: str) -> dict:
+	"""Return the five items with the most sales in the period, and the total sales of every item."""
+	frappe.has_permission(SALES_INVOICE, "read", throw=True)
+	from_date, to_date = get_period_dates(period)
+	amounts = {item: rounded(amount) for item, amount in _item_sales(from_date, to_date).items()}
+	sold = sorted(
+		((item, amount) for item, amount in amounts.items() if amount > 0),
+		key=lambda sale: (-sale[1], sale[0]),
+	)
+	items = [{"item": item, "amount": amount} for item, amount in sold[:TOP_COUNT]]
+	return {"items": items, "total": rounded(sum_decimal(amount for _item, amount in sold))}
+
+
+@frappe.whitelist()
+def get_cash_balances() -> dict:
+	"""Return each cash and bank account's balance as of today, and their total."""
+	frappe.has_permission(LEDGER, "read", throw=True)
+	as_of = getdate()
+	names = _dashboard_accounts()
+	sums = {}
+	if names:
+		rows = frappe.get_list(
+			LEDGER,
+			filters={"reverted": 0, "posting_date": ["<=", as_of], "account": ["in", names]},
+			fields=["account", DEBIT_MINUS_CREDIT],
+			group_by="account",
+			order_by="account",
+			limit_page_length=0,
+		)
+		sums = {row.account: row.balance for row in rows}
+	accounts = [{"account": name, "balance": rounded(sums.get(name, 0))} for name in names]
+	total = rounded(sum_decimal(row["balance"] for row in accounts))
+	return {"accounts": accounts, "total": total, "as_of": as_of}
+
+
+@frappe.whitelist()
 def get_invoice_summary(doctype: str, period: str) -> dict:
 	"""Return the paid and unpaid amounts and counts of the period's submitted invoices.
 
@@ -102,6 +144,52 @@ def get_invoice_summary(doctype: str, period: str) -> dict:
 		"from_date": from_date,
 		"before_date": add_days(to_date, 1),
 	}
+
+
+def _dashboard_accounts() -> list[str]:
+	"""Return the leaf cash and bank accounts the balances card lists, in chart order."""
+	return frappe.get_list(
+		"Books Account",
+		filters={"account_type": ["in", ["Cash", "Bank"]], "is_group": 0},
+		order_by="lft",
+		pluck="name",
+		limit_page_length=0,
+	)
+
+
+def _item_sales(from_date, to_date) -> dict[str, Decimal]:
+	"""Return each item's base currency sales in the period, after the row discount and before tax."""
+	rows = frappe.get_list(
+		SALES_INVOICE,
+		filters=[["docstatus", "=", 1], *datetime_conditions("date", from_date, to_date)],
+		fields=[
+			f"`{SALES_ITEM}`.item",
+			"exchange_rate",
+			"discount_after_tax",
+			{"SUM": f"`{SALES_ITEM}`.amount", "as": "amount"},
+			{"SUM": f"`{SALES_ITEM}`.item_discounted_total", "as": "discounted"},
+			{"SUM": f"`{SALES_ITEM}`.item_taxed_total", "as": "taxed"},
+		],
+		group_by=f"`{SALES_ITEM}`.item, exchange_rate, discount_after_tax",
+		order_by=None,
+		limit_page_length=0,
+	)
+	sales = {}
+	for row in rows:
+		# An invoice with no item rows joins as a row with no item.
+		if not row.item:
+			continue
+		sales[row.item] = sales.get(row.item, Decimal(0)) + _net_amount(row) * (
+			as_decimal(row.exchange_rate) or 1
+		)
+	return sales
+
+
+def _net_amount(row) -> Decimal:
+	"""Return a row's amount after its discount, worked out as `accounting.invoice.row_discount` does."""
+	if row.discount_after_tax:
+		return as_decimal(row.amount) - (as_decimal(row.taxed) - as_decimal(row.discounted))
+	return as_decimal(row.discounted)
 
 
 def _monthly_totals(from_date, to_date, filters, fields) -> dict:

@@ -115,6 +115,42 @@ def make_invoice(doctype, party, account, item, item_account, **values):
 	).insert()
 
 
+def insert_sales_invoice(date, rows, **values):
+	"""Write a submitted sales invoice and its item rows straight to the database, skipping validation.
+
+	Each row has an `item` and `amount`, and optional `discounted` and `taxed` totals (both default to `amount`).
+	"""
+	name = frappe.generate_hash()
+	frappe.get_doc(
+		{
+			"doctype": "Books Sales Invoice",
+			"name": name,
+			"date": date,
+			"docstatus": 1,
+			"exchange_rate": 1,
+			"discount_after_tax": 0,
+			**values,
+		}
+	).db_insert()
+	# db_insert on the parent writes no child rows.
+	for idx, row in enumerate(rows, start=1):
+		frappe.get_doc(
+			{
+				"doctype": "Books Sales Invoice Item",
+				"name": frappe.generate_hash(),
+				"parent": name,
+				"parenttype": "Books Sales Invoice",
+				"parentfield": "items",
+				"idx": idx,
+				"item": row["item"],
+				"amount": row["amount"],
+				"item_discounted_total": row.get("discounted", row["amount"]),
+				"item_taxed_total": row.get("taxed", row["amount"]),
+			}
+		).db_insert()
+	return name
+
+
 def ledger_entries(voucher_type, voucher_no):
 	return frappe.get_all(
 		"Books Ledger Entry",

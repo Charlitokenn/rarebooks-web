@@ -110,6 +110,52 @@ test('top expenses shows the full total spending under its title', async ({
   ).toContainText('Total spending: ₹ 12,34,567.89');
 });
 
+test('account balances sits full width on its own card', async ({ page }) => {
+  await page.route(/reports\.dashboard\.get_cash_balances/, (route) =>
+    route.fulfill({
+      json: {
+        message: {
+          accounts: [{ account: 'Cash', balance: 100 }],
+          total: 100,
+          as_of: '2031-12-15',
+        },
+      },
+    })
+  );
+  await page.reload();
+
+  const balances = page.locator('[data-slot="chart-container"]', {
+    hasText: 'Account balances',
+  });
+  await balances.scrollIntoViewIfNeeded();
+  await expect(balances.getByRole('link', { name: 'Cash' })).toBeVisible();
+  const cardBox = await balances.locator('xpath=..').boundingBox();
+  expect(cardBox!.width).toBeGreaterThan(390 - 2 * 16 - 2);
+  await expect(balances.locator('xpath=..')).toHaveClass(/rounded-6 border/);
+});
+
+// covers: AC-10
+test('best sellers sits full width on its own card', async ({ page }) => {
+  const items = ['Atlas', 'Bible', 'Hymnal', 'Novel', 'Psalter'].map(
+    (item, index) => ({ item, amount: (5 - index) * 100 })
+  );
+  await page.route(/reports\.dashboard\.get_best_sellers/, (route) =>
+    route.fulfill({ json: { message: { items, total: 2000 } } })
+  );
+  await page.reload();
+
+  const sellers = page.locator('[data-slot="chart-container"]', {
+    hasText: 'Best sellers',
+  });
+  await sellers.scrollIntoViewIfNeeded();
+  await expect(sellers).toHaveAttribute('data-state', 'ready');
+  await expect(sellers).toContainText('Top 5');
+  const cardBox = await sellers.locator('xpath=..').boundingBox();
+  expect(cardBox!.width).toBeGreaterThan(390 - 2 * 16 - 2);
+  await expect(sellers.locator('xpath=..')).toHaveClass(/rounded-6 border/);
+  await expect(sellers.locator('xpath=..')).toHaveClass(/h-96/);
+});
+
 test('invoice cards name their totals in sentence case', async ({ page }) => {
   for (const title of [
     'Paid sales',

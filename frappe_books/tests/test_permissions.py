@@ -10,6 +10,8 @@ from frappe.tests import IntegrationTestCase
 
 from frappe_books.linked_entries import get_linked_entries
 from frappe_books.reports.dashboard import (
+	get_best_sellers,
+	get_cash_balances,
 	get_cashflow,
 	get_invoice_summary,
 	get_profit_and_loss,
@@ -18,6 +20,7 @@ from frappe_books.reports.dashboard import (
 from frappe_books.reports.financial_statements import get_account_balances
 from frappe_books.search import BooksSearch, build_search_index, search
 from frappe_books.tests.accounting import (
+	insert_sales_invoice,
 	make_account,
 	make_invoice,
 	make_item,
@@ -70,6 +73,7 @@ STOCK_REPORTS = ("Books Stock Ledger", "Books Stock Balance")
 BOOKS_USER = "books-user-permissions@example.com"
 MANAGER = "books-manager-permissions@example.com"
 SYSTEM_MANAGER = "books-system-manager-permissions@example.com"
+CASHIER = "books-cashier-permissions@example.com"
 
 
 class IntegrationTestPermissions(IntegrationTestCase):
@@ -80,6 +84,7 @@ class IntegrationTestPermissions(IntegrationTestCase):
 			(BOOKS_USER, "Books User"),
 			(MANAGER, "Books Manager"),
 			(SYSTEM_MANAGER, "System Manager"),
+			(CASHIER, "Books Cashier"),
 		):
 			if not frappe.db.exists("User", email):
 				frappe.get_doc(
@@ -141,6 +146,29 @@ class IntegrationTestPermissions(IntegrationTestCase):
 				with self.subTest(method=method.__name__):
 					self.assertRaises(frappe.PermissionError, method, "This Month")
 			self.assertRaises(frappe.PermissionError, get_account_balances)
+			self.assertRaises(frappe.PermissionError, get_cash_balances)
+
+	def test_only_ledger_readers_get_cash_balances(self):
+		with self.set_user(CASHIER):
+			self.assertRaises(frappe.PermissionError, get_cash_balances)
+		with self.set_user(MANAGER):
+			self.assertIn("total", get_cash_balances())
+
+	def test_every_sales_role_gets_the_same_best_sellers_and_others_are_refused(self):
+		item = unique_name("Rights Seller")
+		insert_sales_invoice("2031-12-05", [{"item": item, "amount": 100}])
+		insert_sales_invoice("2031-12-06", [{"item": item, "amount": 50, "discounted": 40}])
+
+		with self.freeze_time("2031-12-15"):
+			with self.set_user(MANAGER):
+				expected = get_best_sellers("This Month")
+			for user in (BOOKS_USER, CASHIER):
+				with self.subTest(user=user), self.set_user(user):
+					self.assertEqual(get_best_sellers("This Month"), expected)
+			with self.set_user("Guest"):
+				self.assertRaises(frappe.PermissionError, get_best_sellers, "This Month")
+
+		self.assertIn({"item": item, "amount": 140}, expected["items"])
 
 	def test_books_user_keeps_the_accounts_the_server_chooses(self):
 		income = make_account("Rights Income", root_type="Income", account_type="Income Account")
