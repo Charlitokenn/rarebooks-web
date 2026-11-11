@@ -19,7 +19,7 @@ The server side of Books: 65 `books_*` DocTypes with their controllers, plus pla
 | `search.py` | Frappe's SQLite search index (`BooksSearch`) behind the search palette |
 | `setup.py`, `setup_service.py`, `coa.py`, `data/` | Install, setup wizard, charts of accounts, country info |
 | `www/books.py`, `pwa/` | Serves `/books` and its service worker |
-| `tests/accounting.py` | `before_tests` helpers plus `make_account`, `make_party`, `make_item`, `make_invoice` |
+| `tests/accounting.py` | `before_tests` helpers plus `make_account`, `make_party`, `make_item`, `make_invoice`, and `insert_sales_invoice` (writes a submitted invoice and its rows straight to the database) |
 
 ## Commands
 
@@ -46,6 +46,8 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - The invoice `date` is a Datetime, the ledger `posting_date` is a Date. Bound an invoice period with `reports/filters.py` `datetime_conditions`, so a sale late on the last day still counts.
 - Invoice totals in base currency use `base_grand_total`; a row converts with the invoice's `exchange_rate`.
 - `Sum` comes back as a Decimal on MariaDB: wrap it with `as_decimal` and `rounded` before comparing or returning.
+- To read child table fields through a parent's `frappe.get_list`, qualify them with the table name, for example `` `tabBooks Sales Invoice Item`.amount `` (see `SALES_ITEM` in `reports/dashboard.py`).
+- Rows a test writes stay visible to the later tests in its `IntegrationTestCase` class, so each dashboard test keeps its invoices in its own months of 2031.
 - There are no `doc_events`; the search index updates through Frappe's `sqlite_search` hook.
 - The test site must have the setup wizard completed (`books_setup_wizard.complete_setup`) before the Playwright tests run.
 - No ERPNext doctypes exist. Do not add links, checks or fallbacks for them.

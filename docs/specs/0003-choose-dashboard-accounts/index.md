@@ -1,7 +1,7 @@
 # 0003. Choose the accounts the dashboard lists
 
 **Date**: 2026-11-10
-**Status**: Proposed
+**Status**: In Progress
 
 Decision history: [rationale.md](rationale.md).
 

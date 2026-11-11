@@ -34,6 +34,7 @@ yarn lint        # eslint .
 - The schema name (for example `SalesInvoice`, `Item`) is the route key and the `frappeModels` key. Table rows use the child DocType name without `Books ` (for example `SalesInvoiceItem`).
 - Talk to the server through `src/frappe/` and `src/web/api.ts`. No raw `fetch` in components, and no `createResource`.
 - No store library: shared state is the `fyo` singleton (`fyo.singles`, `fyo.observer`), refs in `src/utils/refs.ts`, and `provide`/`inject` with keys from `src/utils/injectionKeys.ts`.
+- Dashboard cards extend `src/pages/Dashboard/BaseDashboardChart.vue` (the `period` prop, `loadData` around their own `setData`, `cardClass` for phones) and show `ChartLoadError` on a failed load.
 - Charts come from `frappe-ui/charts`; check that frappe-ui 1.0.0 has a prop before you use it, since `develop` is on a newer frappe-ui.
 - Styling is Tailwind with the frappe-ui preset; use logical (RTL safe) classes from `tailwindcss-rtl`.
 - Translate with the `t` tag at runtime, never in module level constants (they run before translations load).

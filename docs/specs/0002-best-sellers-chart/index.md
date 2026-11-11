@@ -1,7 +1,7 @@
 # 0002. Best sellers chart on the version-16 dashboard
 
 **Date**: 2026-11-10
-**Status**: In Progress
+**Status**: Accepted
 
 Decision history: [rationale.md](rationale.md).
 

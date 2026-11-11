@@ -12,9 +12,9 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
 | A | Dashboard (period picker, invoice cards, cashflow, profit and loss, top expenses) | Existing | existing |
-| 1 | Project context for version-16 | Foundation | planned |
+| 1 | Project context for version-16 | Foundation | done |
 | 2 | Account balances card | Slice 1 | in-progress |
-| 3 | Best sellers chart | Slice 2 | in-progress |
+| 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | in-progress |
 
 ## Already built
@@ -24,10 +24,10 @@ The version-16 dashboard: a period picker, paid and unpaid invoice cards, the ca
 
 ## Foundations
 
-### 1. Project context for version-16
+### 1. Project context for version-16 · done
 version-16 has no `AGENTS.md`, so `/architect` and `/develop` have no project rules to read. Draft them from the real v16 code, so later skills don't follow develop's rules (Frappe 17, three databases).
 **Done when:** root and nested `AGENTS.md` describe the v16 stack (Frappe 16, MariaDB, frappe-ui 1.0.0, `Books Ledger Entry`) and its lint, typecheck and test commands.
-- [ ] Capture the project context: `/audit`
+- [x] Capture the project context: `/audit`
 
 ## Slice 1: Account balances card
 
@@ -37,19 +37,19 @@ A dashboard card that lists each leaf cash and bank account's balance as of toda
 spec [0001](../specs/0001-account-balances-card/index.md)
 code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/AccountBalances.vue`
 - [x] Design it (spec): `/architect account balances card` (port develop's spec 0001 to the v16 names: `Books Ledger Entry`, `reverted`)
-- [ ] Build it: `/develop account balances card`
+- [x] Build it: `/develop account balances card`
   - [x] Server method `get_cash_balances` with its happy path, cut off and permission tests (AC-1, AC-2, AC-4, AC-8)
   - [x] Thin card end to end: client call, minimal card, the new dashboard row and its gate, mobile mock (AC-1, AC-3, AC-4, AC-8, AC-11, AC-12)
   - [x] Card complete: colors, ledger links, scrolling with sticky header and Total, loading, empty and error states, stale load guard, zero and negative tests (AC-5, AC-6, AC-7, AC-9, AC-10, AC-12)
-  - [ ] Layout polish and Playwright tests, desktop and phone (AC-2, AC-3, AC-6, AC-7, AC-9, AC-10, AC-11, AC-12)
-- [ ] Verify it: `/check verify account balances card`
-- [ ] Test it: `/test account balances card`
+  - [x] Layout polish and Playwright tests, desktop and phone (AC-2, AC-3, AC-6, AC-7, AC-9, AC-10, AC-11, AC-12)
+- [x] Verify it: `/check verify account balances card`
+- [x] Test it: `/test account balances card`
 - [ ] Review it (fresh model): `/check review account balances card`
 - [ ] Document it: `/document account balances card`
 
 ## Slice 2: Best sellers chart
 
-### 3. Best sellers chart · in-progress
+### 3. Best sellers chart · done
 A donut chart of the period's five best selling items by base currency sales, with the total sales of every item. Ported from develop's spec 0002 in its final top five shape, with no Others slice.
 **Done when:** a sales reader sees the period's top five items and the total, with returns netted in. A sale made late on the period's last day counts. A user who can read sales but not the ledger still sees the chart, in the left half of the row.
 spec [0002](../specs/0002-best-sellers-chart/index.md)
@@ -61,9 +61,9 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Be
   - [x] Edge rule tests: discounts, currency, period edge, returns, draft and cancelled, zero or below, ties, few and none (AC-1, AC-2, AC-3, AC-4, AC-5, AC-9)
   - [x] Card complete and Playwright tests, desktop and phone: states, centre label, left column fallback, no click action (AC-6, AC-7, AC-9, AC-10, AC-11)
 - [x] Verify it: `/check verify best sellers chart`
-- [ ] Test it: `/test best sellers chart`
-- [ ] Review it (fresh model): `/check review best sellers chart`
-- [ ] Document it: `/document best sellers chart`
+- [x] Test it: `/test best sellers chart`
+- [x] Review it (fresh model): `/check review best sellers chart`
+- [x] Document it: `/document best sellers chart`
 
 ## Slice 3: Choose dashboard accounts
 

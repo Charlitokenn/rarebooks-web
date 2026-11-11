@@ -301,23 +301,23 @@ class IntegrationTestBestSellers(IntegrationTestCase):
 		self.assertEqual(result["total"], 220)
 
 	# covers: AC-1, AC-2
-	def test_an_item_sums_across_invoices_rates_and_discount_modes_over_the_year(self):
+	def test_an_item_sums_across_invoices_rates_and_discount_modes_over_the_quarter(self):
+		# The other tests keep to their own months; this one keeps to January to March.
 		(item,) = _items("Mixed Seller", 1)
 		insert_sales_invoice("2031-01-10", [{"item": item, "amount": 100, "discounted": 90}])
-		insert_sales_invoice("2031-06-10", [{"item": item, "amount": 10}], exchange_rate=3)
+		insert_sales_invoice("2031-02-10", [{"item": item, "amount": 10}], exchange_rate=3)
 		insert_sales_invoice(
-			"2031-11-10",
+			"2031-03-10",
 			[{"item": item, "amount": 100, "discounted": 99, "taxed": 110}],
 			discount_after_tax=1,
 		)
 		# An invoice with no item rows joins as a row with no item and is skipped.
-		insert_sales_invoice("2031-11-11", [])
+		insert_sales_invoice("2031-03-11", [])
 
-		with self.freeze_time(TODAY):
-			result = get_best_sellers("This Year")
+		with self.freeze_time("2031-03-20"):
+			result = get_best_sellers("This Quarter")
 
-		self.assertIn(_sale(item, 90 + 30 + 89), result["items"])
-		self.assertTrue(all(row["item"] for row in result["items"]))
+		self.assertEqual(result, {"items": [_sale(item, 90 + 30 + 89)], "total": 209})
 
 	def test_few_items_all_come_back_and_no_sales_give_an_empty_result(self):
 		items = _items("Few Seller", 3)
