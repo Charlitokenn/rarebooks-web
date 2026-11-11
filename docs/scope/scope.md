@@ -14,8 +14,8 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | A | Dashboard (period picker, invoice cards, cashflow, profit and loss, top expenses) | Existing | existing |
 | 1 | Project context for version-16 | Foundation | planned |
 | 2 | Account balances card | Slice 1 | in-progress |
-| 3 | Best sellers chart | Slice 2 | planned |
-| 4 | Choose dashboard accounts | Slice 3 | planned |
+| 3 | Best sellers chart | Slice 2 | in-progress |
+| 4 | Choose dashboard accounts | Slice 3 | in-progress |
 
 ## Already built
 
@@ -49,20 +49,44 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Ac
 
 ## Slice 2: Best sellers chart
 
-### 3. Best sellers chart · needs a decision
+### 3. Best sellers chart · in-progress
 A donut chart of the period's five best selling items by base currency sales, with the total sales of every item. Ported from develop's spec 0002 in its final top five shape, with no Others slice.
 **Done when:** a sales reader sees the period's top five items and the total, with returns netted in. A sale made late on the period's last day counts. A user who can read sales but not the ledger still sees the chart, in the left half of the row.
-- [ ] Design it (spec): `/architect best sellers chart` (port develop's spec 0002 to the v16 names: invoice `date` as a Datetime, item link `item`, `exchange_rate`, item name from the Item's own name; settle whether Frappe 16's `get_list(run=False)` works as a subquery and whether frappe-ui 1.0.0 has the chart props used)
+spec [0002](../specs/0002-best-sellers-chart/index.md)
+code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/BestSellers.vue`
+- [x] Design it (spec): `/architect best sellers chart` (port develop's spec 0002 to the v16 names: invoice `date` as a Datetime, item link `item`, `exchange_rate`, item name from the Item's own name; settle whether Frappe 16's `get_list(run=False)` works as a subquery and whether frappe-ui 1.0.0 has the chart props used)
+- [x] Build it: `/develop best sellers chart`
+  - [x] Server method `get_best_sellers` on one `get_list`, the shared invoice fixture, happy path and the permission test for every sales role (apply the fallback if a role fails) (AC-1, AC-4, AC-6, AC-8)
+  - [x] Thin card end to end: client call, minimal `BestSellers.vue`, the widened row gate, mobile mock (AC-6, AC-7, AC-8, AC-10)
+  - [x] Edge rule tests: discounts, currency, period edge, returns, draft and cancelled, zero or below, ties, few and none (AC-1, AC-2, AC-3, AC-4, AC-5, AC-9)
+  - [x] Card complete and Playwright tests, desktop and phone: states, centre label, left column fallback, no click action (AC-6, AC-7, AC-9, AC-10, AC-11)
+- [x] Verify it: `/check verify best sellers chart`
+- [ ] Test it: `/test best sellers chart`
+- [ ] Review it (fresh model): `/check review best sellers chart`
+- [ ] Document it: `/document best sellers chart`
 
 ## Slice 3: Choose dashboard accounts
 
-### 4. Choose dashboard accounts · needs a decision
+### 4. Choose dashboard accounts · in-progress
 Let a user who can save Accounting Settings pick which leaf asset and liability accounts the balances card lists, from a Dashboard section in Accounting Settings. With none picked, the card falls back to every cash and bank account. Ported from develop's spec 0003.
 **Done when:** picked accounts show on the card in chart order. A duplicate or a non leaf, non asset, non liability pick is refused on save. A saved pick that later stops qualifying is skipped on the card and doesn't block saving other settings. The "Choose accounts" button shows only to users who can write Accounting Settings.
-- [ ] Design it (spec): `/architect choose dashboard accounts` (port develop's spec 0003; merge into v16's own Accounting Settings model and controller, which differ from develop's)
+spec [0003](../specs/0003-choose-dashboard-accounts/index.md)
+- [x] Design it (spec): `/architect choose dashboard accounts` (port develop's spec 0003; merge into v16's own Accounting Settings model and controller, which differ from develop's)
+- [ ] Build it: `/develop choose dashboard accounts`
+  - [ ] Server thread: Books Dashboard Account child table, `_dashboard_accounts()` read through `get_list` with the Settings check and the Cash and Bank fallback, delete block, test helper, read path and delete tests first (AC-4, AC-5, AC-8, AC-9, AC-10)
+  - [ ] Settings end to end: `DashboardAccount` row model with no Create, help line in `SettingsField.vue`, read only check for non writers, node test, pick shows on the card after the reload (AC-1, AC-2, AC-6)
+  - [ ] Save rules and the gate: `validate_dashboard_accounts()` with the stale row rule, `canRead.settings` on the dashboard row and card, Python rule, mirror and permission tests (AC-3, AC-4, AC-5, AC-9)
+  - [ ] "Choose accounts" button in every card state, then Playwright tests for the settings flow, the button and the gate, desktop and phone (AC-1, AC-2, AC-4, AC-5, AC-6, AC-7, AC-9)
+- [ ] Verify it: `/check verify choose dashboard accounts`
+- [ ] Test it: `/test choose dashboard accounts`
+- [ ] Review it (fresh model): `/check review choose dashboard accounts`
+- [ ] Document it: `/document choose dashboard accounts`
 
 ## Deferred
 
+- Label the balances card's Total "Net" (or add a tooltip) when a picked liability is listed; revisit after real users pick one (from spec 0003)
+
+- If the dashboard gets slow on a large site, measure `get_best_sellers` and consider an index on Books Sales Invoice `date` (from spec 0002)
 - Check whether `frappe.get_list` on v16 applies a default page length from Python, which could cut rows in `get_top_expenses` and `_monthly_totals` (from spec 0001)
 
 ## Legend

@@ -134,6 +134,28 @@ test('account balances sits full width on its own card', async ({ page }) => {
   await expect(balances.locator('xpath=..')).toHaveClass(/rounded-6 border/);
 });
 
+// covers: AC-10
+test('best sellers sits full width on its own card', async ({ page }) => {
+  const items = ['Atlas', 'Bible', 'Hymnal', 'Novel', 'Psalter'].map(
+    (item, index) => ({ item, amount: (5 - index) * 100 })
+  );
+  await page.route(/reports\.dashboard\.get_best_sellers/, (route) =>
+    route.fulfill({ json: { message: { items, total: 2000 } } })
+  );
+  await page.reload();
+
+  const sellers = page.locator('[data-slot="chart-container"]', {
+    hasText: 'Best sellers',
+  });
+  await sellers.scrollIntoViewIfNeeded();
+  await expect(sellers).toHaveAttribute('data-state', 'ready');
+  await expect(sellers).toContainText('Top 5');
+  const cardBox = await sellers.locator('xpath=..').boundingBox();
+  expect(cardBox!.width).toBeGreaterThan(390 - 2 * 16 - 2);
+  await expect(sellers.locator('xpath=..')).toHaveClass(/rounded-6 border/);
+  await expect(sellers.locator('xpath=..')).toHaveClass(/h-96/);
+});
+
 test('invoice cards name their totals in sentence case', async ({ page }) => {
   for (const title of [
     'Paid sales',

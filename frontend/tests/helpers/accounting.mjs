@@ -39,6 +39,7 @@ await build({
       export { fyo as appFyo } from './src/initFyo';
       export { getDefaultFilters as getReportDefaultFilters } from './src/components/Report/Mobile/MobileFilters';
       export {
+        getBestSellers,
         getCashBalances,
         getDashboardData,
         getInvoiceListFilters,
@@ -108,6 +109,7 @@ export const {
   getReportCellColorClass,
   getDateRangePresets,
   getFilterItems,
+  getBestSellers,
   getCashBalances,
   getDashboardData,
   getInvoiceListFilters,

@@ -49,14 +49,19 @@
             <Expenses class="h-96 min-w-0 md:h-80" :period="period" />
           </div>
         </template>
-        <!-- Best sellers will share this row and widen its gate to canRead.sales. -->
-        <template v-if="canRead.ledger && canRead.accounts">
+        <template v-if="(canRead.ledger && canRead.accounts) || canRead.sales">
           <div class="border-t border-outline-gray-2 max-md:hidden" />
+          <!-- Without Account balances, Best sellers moves into the left column. -->
           <div class="grid gap-4 md:gap-8 lg:grid-cols-2">
             <!-- No period: the balances are as of today. -->
             <AccountBalances
               v-if="canRead.ledger && canRead.accounts"
               class="h-72 min-w-0 md:h-80"
+            />
+            <BestSellers
+              v-if="canRead.sales"
+              class="h-96 min-w-0 md:h-80"
+              :period="period"
             />
           </div>
         </template>
@@ -70,6 +75,7 @@ import { ScrollArea as FrappeScrollArea } from 'frappe-ui';
 import { ModelNameEnum } from 'models/types';
 import PageHeader from 'src/components/PageHeader.vue';
 import AccountBalances from './AccountBalances.vue';
+import BestSellers from './BestSellers.vue';
 import Cashflow from './Cashflow.vue';
 import Expenses from './Expenses.vue';
 import InvoiceCards from './InvoiceCards.vue';
@@ -86,6 +92,7 @@ export default {
     FrappeScrollArea,
     PageHeader,
     AccountBalances,
+    BestSellers,
     Cashflow,
     ProfitAndLoss,
     Expenses,

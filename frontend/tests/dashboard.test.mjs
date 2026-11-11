@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  getBestSellers,
   getCashBalances,
   getDashboardData,
   getInvoiceListFilters,
@@ -34,6 +35,22 @@ test('cash balances take no period, as they are as of today', async () => {
   assert.deepEqual(calls, [
     { method: 'frappe_books.reports.dashboard.get_cash_balances', args: {} },
   ]);
+});
+
+// covers: AC-7
+test('best sellers ask the server for the chosen period and pass its answer through', async () => {
+  const answer = { items: [{ item: 'Folio Atlas', amount: 500 }], total: 900 };
+  const calls = stubServer(() => answer);
+
+  const result = await getBestSellers('This Quarter');
+
+  assert.deepEqual(calls, [
+    {
+      method: 'frappe_books.reports.dashboard.get_best_sellers',
+      args: { period: 'This Quarter' },
+    },
+  ]);
+  assert.deepEqual(result, answer);
 });
 
 test('paid and unpaid lists show the submitted invoices of the period', () => {
