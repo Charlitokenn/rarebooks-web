@@ -77,14 +77,39 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Paid From options come from `search_expense_payment_accounts` and `is_expense_payment_account`: change an untyped Liability to account type Tax in Desk, reopen the picker → it drops out → Value sourcing row "Paid from picker"
 - [ ] Duplicate warning names only an expense the user can read: as a user with read on Books Expense restricted by User Permission, repeat a reference held by an expense they can't read → no message → Value sourcing row "duplicate warning's other expense"
 
+## UI / manual (milestone 4, entry points and extras)
+- [ ] As a Books User at phone width, open the dashboard and tap Create → the menu lists "Expense" after "Make payment"; tap it → a new expense form opens at `/books/edit/Expense/...` → AC-9
+- [ ] As a Books Cashier at phone width, tap Create → no "Expense" entry → AC-9, AC-8
+- [ ] Save an expense for a supplier with reference RCPT-77, then open the search palette and search its name, the supplier's name, and RCPT-77 → each finds the expense → AC-10
+- [ ] As a Books Cashier, search RCPT-77 → no expense, and no Expense filter chip → AC-10, AC-8
+- [ ] Open that supplier, its Paid From account and a row's Expense account, then Linked Entries on each → an "Expense" group lists the expense with its name, date, supplier and total → AC-11
+- [ ] Cancel the expense and reopen Linked Entries → it drops out (cancelled documents are left out) → AC-11
+- [ ] As a Books Manager, open Import Wizard → Expense is offered; its template has Paid From, Date, Supplier, Reference Number, Remark and the Account, Description and Amount columns for Expenses, and no Status, Total or Amended From → AC-12
+- [ ] Import two expenses (one with two rows, one with an amount of 0), answer No to "submit after syncing" → the first saves as a Saved draft named `EXP-...` with total equal to its rows; the second is refused with "Row 1: amount must be greater than zero." → AC-12, AC-4
+- [ ] As a Books User, open Import Wizard → Expense is not offered (only Managers import) → AC-12, AC-8
+- [ ] Open a submitted expense and Print → "Business - Expense" is the chosen format and shows the name, date, supplier, Paid From, reference, each row's account, description and amount, the total and the remark → AC-13
+- [ ] On a submitted (or amended) expense with a receipt attached, use Duplicate → a new unsaved form with the same series, date, Paid From, supplier, reference, remark and rows, but no receipt, no Amended From and status Saved; save it → a new `EXP-` name → AC-14
+
+## Commands (milestone 4)
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → passes, including the linked entries test → AC-11, AC-13
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_search` → passes, including finding an expense by name, supplier and reference, and nothing for a Cashier → AC-10
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_data_import` → passes, including the draft expense import with one refused row → AC-12
+- [ ] `cd frontend && node --test tests/expense-model.test.mjs tests/importer.test.mjs tests/permissions.test.mjs tests/search.test.mjs` → passes → AC-10, AC-12, AC-14
+- [ ] `cd frontend && yarn test:ui tests/ui/mobile-dashboard.spec.ts --trace off` → passes, including "the create menu opens a new expense" → AC-9
+
+## Value sourcing checks (milestone 4)
+- [ ] Print header and company details come from `get_print_settings`: change the company name and colour in Print Settings, reprint → the expense voucher follows → Value sourcing row "Print"
+- [ ] Duplicate copies only what Duplicate may copy: `attachment`, `status` and `amended_from` are `no_copy` in the DocType, so a copy never carries them, whatever the source's state → Key invariant on Duplicate
+
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
-- AC-9, AC-10, AC-11, AC-12, AC-14, AC-15: steps arrive with milestones 3 to 5 (screens)
+- AC-9, AC-10, AC-11, AC-12, AC-14: the milestone 4 steps (create menu, search, linked entries, import, Duplicate)
+- AC-15: steps arrive with milestone 5 (phone layout)
 - AC-3: new expense series and `preview` steps (server half; pickers come in milestone 3)
 - AC-4: the refusal steps for rows, row accounts, `paid_from` and party
 - AC-5: posting, summing, rounding and Top Expenses steps (General Ledger Ref Type comes in milestone 2)
 - AC-6: draft edit, read only after submit, cancel and amend steps
 - AC-7: the duplicate reference step (the client message comes in milestone 3)
 - AC-8: Books User, Books Manager and Books Cashier steps (the `paid_from` search 403 comes in milestone 3)
-- AC-13: the print step (Print button on the form comes in milestone 4)
+- AC-13: the print step, and the milestone 4 Print step on the form
 - AC-16: the migrate command step
