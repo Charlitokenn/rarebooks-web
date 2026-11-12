@@ -83,7 +83,7 @@ code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/
   - [x] Save rules and the gate: `validate_dashboard_accounts()` with the stale row rule, `canRead.settings` on the dashboard row and card, Python rule, mirror and permission tests (AC-3, AC-4, AC-5, AC-9)
   - [x] "Choose accounts" button in every card state, then Playwright tests for the settings flow, the button and the gate, desktop and phone (AC-1, AC-2, AC-4, AC-5, AC-6, AC-7, AC-9)
 - [x] Verify it: `/check verify choose dashboard accounts`
-- [x] Test it: `/test choose dashboard accounts`
+- [ ] Test it: `/test choose dashboard accounts`
 - [x] Review it (fresh model): `/check review choose dashboard accounts`
 - [ ] Document it: `/document choose dashboard accounts`
 

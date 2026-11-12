@@ -259,6 +259,22 @@ class IntegrationTestDashboardAccounts(IntegrationTestCase):
 
 		self.assertIn(cash.name, names)
 
+	# covers: AC-5
+	def test_the_fallback_leaves_out_cash_and_bank_accounts_outside_asset_and_liability(self):
+		asset_cash = make_account("Fallback Asset Cash", account_type="Cash")
+		loan_bank = make_account("Fallback Loan Bank", root_type="Liability", account_type="Bank")
+		equity_cash = make_account("Fallback Equity Cash", root_type="Equity", account_type="Cash")
+		income_bank = make_account("Fallback Income Bank", root_type="Income", account_type="Bank")
+		set_dashboard_accounts()
+
+		with self.freeze_time(TODAY):
+			names = [row["account"] for row in get_cash_balances()["accounts"]]
+
+		self.assertIn(asset_cash.name, names)
+		self.assertIn(loan_bank.name, names)
+		self.assertNotIn(equity_cash.name, names)
+		self.assertNotIn(income_bank.name, names)
+
 	def test_a_pick_that_stopped_qualifying_is_skipped(self):
 		cash = make_account("Stale Fallback Cash", account_type="Cash")
 		stale = make_account("Stale Pick", account_type="Bank")
