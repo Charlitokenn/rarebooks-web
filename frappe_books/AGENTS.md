@@ -2,7 +2,7 @@
 
 ## Overview
 
-The server side of Books: 65 `books_*` DocTypes with their controllers, plus plain Python modules for accounting, inventory, commerce (POS, pricing, loyalty) and reports. It owns every business rule; the Vue app in `frontend/` only renders and calls into it.
+The server side of Books: 68 `books_*` DocTypes with their controllers, plus plain Python modules for accounting, inventory, commerce (POS, pricing, loyalty) and reports. It owns every business rule; the Vue app in `frontend/` only renders and calls into it.
 
 ## Key files
 
@@ -39,6 +39,7 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - Reports read through `frappe.get_list` with dict aggregate fields (`{"SUM": "debit"}`, `{"SUB": [...], "as": "balance"}`) and link filters like `"account.root_type"`, so the caller's read rights apply. See `reports/dashboard.py`. No raw SQL, and no `ignore_permissions` in reports.
 - Tests use `frappe.tests.IntegrationTestCase` (or `UnitTestCase` when no database is needed).
 - Patches are listed in `patches.txt` by section and named for what they do, for example `patches/grant_cashier_core_permissions.py`.
+- A numbered DocType adds its entry to `NUMBER_SERIES` in `series.py` (prefix, reference type, Books Defaults field), the reference type to Books Number Series, the field to Books Defaults, and a patch that gives existing sites the series (see `patches/add_expense_number_series.py`).
 
 ## Gotchas
 

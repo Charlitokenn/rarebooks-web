@@ -1,7 +1,7 @@
 # 0005. Trial clock and read only lock
 
 **Date**: 2026-11-12
-**Status**: Proposed
+**Status**: In Progress
 
 Decision history: [rationale.md](rationale.md).
 
