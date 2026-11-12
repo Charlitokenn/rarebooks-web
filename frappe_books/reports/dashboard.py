@@ -170,7 +170,11 @@ def _dashboard_accounts() -> list[str]:
 			return names
 	return frappe.get_list(
 		"Books Account",
-		filters={"account_type": ["in", ["Cash", "Bank"]], "is_group": 0},
+		filters={
+			"account_type": ["in", ["Cash", "Bank"]],
+			"is_group": 0,
+			"root_type": ["in", DASHBOARD_ROOT_TYPES],
+		},
 		order_by="lft",
 		pluck="name",
 		limit_page_length=0,

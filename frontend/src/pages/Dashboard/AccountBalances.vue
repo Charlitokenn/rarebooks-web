@@ -103,10 +103,13 @@ import { DateTime } from 'luxon';
 import { ModelNameEnum } from 'models/types';
 import { fyo } from 'src/initFyo';
 import { getCashBalances, type AccountBalance } from 'src/utils/dashboard';
+import { settingsDialog } from 'src/utils/refs';
 import { defineComponent } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import DashboardChartBase from './BaseDashboardChart.vue';
 import ChartLoadError from './ChartLoadError.vue';
+
+const SETTINGS_SYNC = `sync:${ModelNameEnum.AccountingSettings}`;
 
 /** Balances are as of the server's today, so the card leaves the inherited `period` alone. */
 export default defineComponent({
@@ -117,12 +120,31 @@ export default defineComponent({
     FrappeChartContainer,
   },
   extends: DashboardChartBase,
+  setup: () => ({ settingsDialog }),
   data: () => ({
     accounts: [] as AccountBalance[],
     total: 0,
     asOf: '',
     loadId: 0,
+    settingsSaved: false,
   }),
+  watch: {
+    /** The desktop dialog opens over the dashboard, so the card reloads itself once a save closes it. */
+    'settingsDialog.open'(open: boolean) {
+      if (open || !this.settingsSaved) {
+        return;
+      }
+
+      this.settingsSaved = false;
+      void this.loadData();
+    },
+  },
+  created() {
+    fyo.observer.on(SETTINGS_SYNC, this.onSettingsSaved);
+  },
+  unmounted() {
+    fyo.observer.off(SETTINGS_SYNC, this.onSettingsSaved);
+  },
   computed: {
     /** Only those who can save the settings may change the accounts. */
     canChooseAccounts(): boolean {
@@ -170,6 +192,9 @@ export default defineComponent({
         this.error = String(error);
         console.error(error);
       }
+    },
+    onSettingsSaved() {
+      this.settingsSaved = true;
     },
     amountClass(value: number): string {
       if (value > 0) {

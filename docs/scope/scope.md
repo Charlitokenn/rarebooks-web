@@ -16,6 +16,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Account balances card | Slice 1 | in-progress |
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | in-progress |
+| 5 | Expenses | Slice 4 | planned |
 
 ## Already built
 
@@ -82,6 +83,13 @@ code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/
 - [ ] Test it: `/test choose dashboard accounts`
 - [x] Review it (fresh model): `/check review choose dashboard accounts`
 - [ ] Document it: `/document choose dashboard accounts`
+
+## Slice 4: Expenses
+
+### 5. Expenses · planned · needs a decision
+Let you record, view and change the money the business spends that isn't a purchase invoice (rent, utilities, fees). Expenses get their own list and form, reached from the sidebar under Purchases.
+**Done when:** a user with the right role can create, view, edit and list expenses from Purchases → Expenses in the sidebar. The server checks the caller's rights for every action. The list and form work on a phone.
+- [ ] Design it (spec): `/architect expenses` (settle the data model, whether an expense posts to the ledger and feeds the dashboard's Top Expenses, which roles can record or change one, and what editing means once it is submitted)
 
 ## Deferred
 
