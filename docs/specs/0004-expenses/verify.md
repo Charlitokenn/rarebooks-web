@@ -27,7 +27,7 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 
 ## UI / manual (milestone 2, the thin screen at /books)
 - [ ] Sign in as a Books User, open the sidebar's Purchases group → "Expenses" sits after "Purchase Payments" and before "Suppliers", and opens `/books/list/Expense` → AC-1
-- [ ] Sign in as a Books Cashier → no Expenses item under Purchases; `/books/list/Expense` shows no rows (403 from the server) → AC-1, AC-8
+- [x] Sign in as a Books Cashier → no Expenses item under Purchases; `/books/list/Expense` shows no rows (403 from the server) → AC-1, AC-8
 - [ ] The Expenses list shows Expense No, Status, Date, Supplier, Paid From and Total, newest date first, with a Saved, Submitted or Cancelled badge → AC-2
 - [ ] Filter the list by Submitted, then Cancelled → only those rows show → AC-2
 - [ ] Click New → the form opens with Number Series `EXP-`, Date today, one empty row under Expenses, and Total read only → AC-3
@@ -35,20 +35,20 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Save, then Submit → status Submitted, every field read only, and the form offers "Accounting entries" under View → AC-5, AC-6
 - [ ] Open "Accounting entries" → the General Ledger opens on the expense date filtered to Ref Type "Expenses" and this expense: two debits and one credit of 35 → AC-5
 - [ ] Open the General Ledger's Ref Type filter → "Expenses" is offered after "Journal Entries" → AC-5
-- [ ] Open the dashboard for this month → Total spending in Top Expenses is 35 higher than before the submit → AC-5
-- [ ] Cancel the expense → status Cancelled in the list, and Top Expenses drops back by 35 → AC-6
-- [ ] Open the cancelled expense → no Amend action anywhere (header, Actions menu, phone More actions), the same as a cancelled journal entry; Duplicate is offered → AC-6, AC-14
+- [x] Open the dashboard for this month → Total spending in Top Expenses is 35 higher than before the submit → AC-5
+- [x] Cancel the expense → status Cancelled in the list, and Top Expenses drops back by 35 → AC-6
+- [x] Open the cancelled expense → no Amend action anywhere (header, Actions menu, phone More actions), the same as a cancelled journal entry; Duplicate is offered → AC-6, AC-14
 
 ## Commands (milestone 2)
-- [ ] `cd frontend && node --test tests/expense-model.test.mjs tests/permissions.test.mjs` → all pass → AC-1, AC-2, AC-3, AC-5
+- [x] `cd frontend && node --test tests/expense-model.test.mjs tests/permissions.test.mjs` → all pass → AC-1, AC-2, AC-3, AC-5
 - [ ] `cd frontend && npx playwright test tests/ui/expense.spec.ts` against a v16 site → 3 pass → AC-1, AC-3, AC-5, AC-6
-- [ ] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
+- [x] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
 
 ## Commands
-- [ ] `bench --site <v16 site> migrate` → Books Expense and Books Expense Account tables exist, Books Defaults has `expense_number_series` = `EXP-` (unless one was set), the default print format for Books Expense is "Business - Expense", and the patch `frappe_books.patches.add_expense_number_series` is in the Patch Log → AC-16
+- [x] `bench --site <v16 site> migrate` → Books Expense and Books Expense Account tables exist, Books Defaults has `expense_number_series` = `EXP-` (unless one was set), the default print format for Books Expense is "Business - Expense", and the patch `frappe_books.patches.add_expense_number_series` is in the Patch Log → AC-16
 - [ ] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → 22 tests OK → AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-16
-- [ ] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.tests.test_printing` → OK → AC-13
-- [ ] `uvx ruff@0.14.10 check frappe_books && uvx ruff@0.14.10 format --check frappe_books` → clean
+- [x] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.tests.test_printing` → OK → AC-13
+- [x] `uvx ruff@0.14.10 check frappe_books && uvx ruff@0.14.10 format --check frappe_books` → clean
 
 ## Value sourcing checks
 - [ ] `number_series`: set Books Defaults `expense_number_series` to another Expense series, open a new expense → it uses that series; clear it → it falls back to `EXP-`
@@ -92,10 +92,10 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 
 ## Commands (milestone 4)
 - [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → passes, including the linked entries test → AC-11, AC-13
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_search` → passes, including finding an expense by name, supplier and reference, and nothing for a Cashier → AC-10
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_search` → passes, including finding an expense by name, supplier and reference, and nothing for a Cashier → AC-10
 - [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_data_import` → passes, including the draft expense import with one refused row → AC-12
-- [ ] `cd frontend && node --test tests/expense-model.test.mjs tests/importer.test.mjs tests/permissions.test.mjs tests/search.test.mjs` → passes → AC-10, AC-12, AC-14
-- [ ] `cd frontend && yarn test:ui tests/ui/mobile-dashboard.spec.ts --trace off` → passes, including "the create menu opens a new expense" → AC-9
+- [x] `cd frontend && node --test tests/expense-model.test.mjs tests/importer.test.mjs tests/permissions.test.mjs tests/search.test.mjs` → passes → AC-10, AC-12, AC-14
+- [x] `cd frontend && yarn test:ui tests/ui/mobile-dashboard.spec.ts --trace off` → passes, including "the create menu opens a new expense" → AC-9
 
 ## Value sourcing checks (milestone 4)
 - [ ] Print header and company details come from `get_print_settings`: change the company name and colour in Print Settings, reprint → the expense voucher follows → Value sourcing row "Print"
@@ -105,16 +105,16 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] As a Books User on desktop, click New on Expenses, pick a Cash account in Paid From, an Expense account and 42 in the first row → Total shows 42.00; Save, then Submit → status Submitted, no Save button, Paid From shows as disabled text → AC-3, AC-6
 - [ ] On that submitted expense, Actions → Cancel → "Cancel Expense" → status Cancelled → AC-6
 - [ ] As a Books User, delete a draft expense through the API → 403 → AC-8
-- [ ] As a Books Cashier, open /books → no Expenses link; list and insert on Books Expense return 403; the `paid_from` search returns 403 (or 404 outside developer mode) → AC-1, AC-8
+- [x] As a Books Cashier, open /books → no Expenses link; list and insert on Books Expense return 403; the `paid_from` search returns 403 (or 404 outside developer mode) → AC-1, AC-8
 - [ ] At phone width (390px), open Expenses and search an expense with a supplier → one two line row: the supplier and the total, then the name, Paid From and date, with the Submitted badge; the page has no sideways scroll, and tapping the row opens the form with no sideways scroll → AC-2, AC-15
 - [ ] At phone width, open a new expense → "1 row"; tap Row 1 → a sheet with Account, Description and Amount; Done, then Add row → "2 rows", no sideways scroll → AC-3, AC-15
-- [ ] At phone width, open a submitted expense, More actions → Cancel → "Cancel Expense" → Cancelled → AC-6, AC-15
-- [ ] At phone width, on that cancelled expense, More actions → no Amend; Duplicate opens a new Saved draft with the rows copied and no Amended From → AC-6, AC-14, AC-15
+- [x] At phone width, open a submitted expense, More actions → Cancel → "Cancel Expense" → Cancelled → AC-6, AC-15
+- [x] At phone width, on that cancelled expense, More actions → no Amend; Duplicate opens a new Saved draft with the rows copied and no Amended From → AC-6, AC-14, AC-15
 
 ## Commands (milestone 5)
 - [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts --trace off` against a v16 site → 11 pass, including the two "no Amend, Duplicate opens a draft" tests (desktop and phone) → AC-1, AC-2, AC-3, AC-5, AC-6, AC-8, AC-14, AC-15
-- [ ] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
-- [ ] `cd frontend && node --test tests/form-actions.test.mjs` → a cancelled expense offers Duplicate, no Amend and no Cancel, the same lifecycle actions as a cancelled journal entry → AC-6, AC-14
+- [x] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
+- [x] `cd frontend && node --test tests/form-actions.test.mjs` → a cancelled expense offers Duplicate, no Amend and no Cancel, the same lifecycle actions as a cancelled journal entry → AC-6, AC-14
 
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
