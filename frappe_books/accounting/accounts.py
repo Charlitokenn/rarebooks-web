@@ -36,6 +36,34 @@ def validate_payment_account(doc, fieldname, method_type):
 	validate_account(doc, fieldname, ("Cash",) if method_type == "Cash" else PAYMENT_ACCOUNT_TYPES)
 
 
+def is_expense_payment_account(values) -> bool:
+	"""An expense is paid from a cash or bank account, or a liability with no type (a loan or a card)."""
+	if values.is_group:
+		return False
+	return values.account_type in PAYMENT_ACCOUNT_TYPES or (
+		values.root_type == "Liability" and not values.account_type
+	)
+
+
+def validate_expense_payment_account(doc, fieldname):
+	"""Throw unless the field holds an account an expense can be paid from."""
+	account = doc.get(fieldname)
+	values = account and frappe.db.get_value(
+		"Books Account", account, ["is_group", "account_type", "root_type"], as_dict=True
+	)
+	if not values:
+		return
+	label = _(doc.meta.get_label(fieldname))
+	if values.is_group:
+		frappe.throw(_("{0} cannot be the group account {1}.").format(label, account))
+	if not is_expense_payment_account(values):
+		frappe.throw(
+			_(
+				"{0} must be a Cash or Bank account, or a liability with no account type, but {1} is not."
+			).format(label, account)
+		)
+
+
 def validate_party_account(doc, fieldname, role):
 	"""A customer's ledger account is receivable, a supplier's payable."""
 	validate_account(doc, fieldname, PARTY_ACCOUNT_TYPES.get(role, ()))

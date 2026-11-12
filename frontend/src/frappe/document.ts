@@ -99,6 +99,8 @@ export class FrappeDoc extends Observable<DocValue | FrappeDoc[]> {
   static refills: Record<string, string[]> = {};
   /** Fields whose default the server decides, like one that follows a setting; see `leaveToServer`. */
   static serverDefaults: string[] = [];
+  /** Tables a new document starts with one empty row in, as Frappe desk does for a required table. */
+  static startRows: string[] = [];
 
   static lists: ListsMap = {};
   static filters: FiltersMap = {};

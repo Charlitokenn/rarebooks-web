@@ -43,6 +43,7 @@ Each schema's model is in `frappeModels` in `frontend/models/index.ts`. The sche
 | Rows of a table: their presentation, link filters, hidden fields | A row model, named in the parent's `static rowModels` by table fieldname. Other rows are plain `FrappeDoc`s. A child DocType has one row model, for example `TaxSummary` for invoices and payments. |
 | Fields the server fills again after the user edits the field they follow, for example a payment account after its method | `static refills` on the model or the row model |
 | Fields whose default the server decides, for example one that follows a setting | `static serverDefaults` |
+| Tables a new document starts with one empty row in, as Frappe desk does for a required table, for example an expense's rows | `static startRows` |
 | List columns, badges, actions, option lists, formatting | The model statics, as before: `getListViewSettings`, `getActions`, `lists`, `emptyMessages` |
 | List order | The DocType's `sort_field`, else `date`, newest first |
 | Visibility that depends on /books settings | The model's `hidden` map |

@@ -185,6 +185,34 @@ test('purchase payments show only to users who can read purchase invoices', () =
   ]);
 });
 
+test('Expenses show under Purchases, after Purchase Payments, only to users who can read them', () => {
+  const purchaseItems = (canRead) => {
+    fyo.store.permissions = {
+      doctypes: {
+        Expense: 'Books Expense',
+        Party: 'Books Party',
+        Payment: 'Books Payment',
+        PurchaseInvoice: 'Books Purchase Invoice',
+      },
+      user: { can_read: canRead },
+    };
+    const purchases = getSidebarConfig().find(
+      ({ label }) => label === 'Purchases'
+    );
+    return purchases?.items.map((item) => item.label);
+  };
+
+  const others = ['Books Party', 'Books Payment', 'Books Purchase Invoice'];
+  assert.deepEqual(purchaseItems([...others, 'Books Expense']), [
+    'Purchase Invoices',
+    'Purchase Payments',
+    'Expenses',
+    'Suppliers',
+  ]);
+  assert.equal(purchaseItems(others).includes('Expenses'), false);
+  assert.deepEqual(purchaseItems(['Books Expense']), ['Expenses']);
+});
+
 test('Setup lists Number Series for a user who can read them', () => {
   const setupItems = (canRead) => {
     fyo.store.permissions = {

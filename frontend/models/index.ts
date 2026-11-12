@@ -7,6 +7,7 @@ import { Currency } from './baseModels/Currency/Currency';
 import { Address } from './baseModels/Address/Address';
 import { CustomForm } from './baseModels/CustomForm/CustomForm';
 import { Defaults } from './baseModels/Defaults/Defaults';
+import { Expense } from './baseModels/Expense/Expense';
 import { GetStarted } from './baseModels/GetStarted/GetStarted';
 import { Item } from './baseModels/Item/Item';
 import { JournalEntry } from './baseModels/JournalEntry/JournalEntry';
@@ -71,6 +72,7 @@ export const frappeModels: Record<string, FrappeModel> = {
   Payment,
   PaymentMethod,
   JournalEntry,
+  Expense,
   ItemEnquiry,
   CouponCode,
   PriceList,

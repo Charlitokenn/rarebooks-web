@@ -16,7 +16,9 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Account balances card | Slice 1 | in-progress |
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | in-progress |
-| 5 | Expenses | Slice 4 | planned |
+| 5 | Expenses | Slice 4 | in-progress |
+| 6 | Trial and read only lock | Slice 5 | planned |
+| 7 | Trial end export and site removal | Slice 5 | planned |
 
 ## Already built
 
@@ -86,12 +88,40 @@ code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/
 
 ## Slice 4: Expenses
 
-### 5. Expenses · planned · needs a decision
+### 5. Expenses · in-progress
 Let you record, view and change the money the business spends that isn't a purchase invoice (rent, utilities, fees). Expenses get their own list and form, reached from the sidebar under Purchases.
 **Done when:** a user with the right role can create, view, edit and list expenses from Purchases → Expenses in the sidebar. The server checks the caller's rights for every action. The list and form work on a phone.
-- [ ] Design it (spec): `/architect expenses` (settle the data model, whether an expense posts to the ledger and feeds the dashboard's Top Expenses, which roles can record or change one, and what editing means once it is submitted)
+spec [0004](../specs/0004-expenses/index.md)
+- [x] Design it (spec): `/architect expenses` (settle the data model, whether an expense posts to the ledger and feeds the dashboard's Top Expenses, which roles can record or change one, and what editing means once it is submitted)
+- [ ] Build it: `/develop expenses`
+  - [x] Server thread: Books Expense and its rows, the EXP- series and patch, the controller that validates, posts, cancels and deletes, and its Python tests (AC-4, AC-5, AC-6, AC-8, AC-16)
+  - [ ] Thin screen end to end: models, sidebar item, list, General Ledger Ref Type, node tests and a Playwright happy path (AC-1, AC-2, AC-3, AC-5, AC-6)
+  - [ ] Pickers and rules: the Paid From server search with the `linkQueries` hook, supplier filters, the duplicate warning, and tests (AC-3, AC-4, AC-7, AC-8)
+  - [ ] Entry points and extras: phone create menu, search, linked entries, import, print format, Duplicate (AC-9, AC-10, AC-11, AC-12, AC-13, AC-14)
+  - [ ] Phone layout and the full Playwright suite, desktop and phone, with the Cashier gate (AC-8, AC-15)
+- [ ] Verify it: `/check verify expenses`
+- [ ] Test it: `/test expenses`
+- [ ] Review it (fresh model): `/check review expenses`
+- [ ] Document it: `/document expenses`
+
+## Slice 5: Subscription gating
+
+A new site gets a 30 day clock: days 1 to 21 are the free trial, and days 22 to 30 are the window to pay. A site that hasn't subscribed by day 26 turns read only. On day 30 the data is sent to the owner and the site is removed.
+
+### 6. Trial and read only lock · needs a decision
+Track each site's trial clock and subscription state. Show how many days are left and how to subscribe. From day 26, without a subscription, the site turns read only: you can still view and export your records, but you can't add or change anything. Paying lifts the lock at once.
+**Done when:** a new site has full access on days 1 to 25, sees a subscribe prompt from day 22, and from day 26 without a subscription the server refuses every create, edit, submit, cancel and delete (no matter the role) while viewing and export still work. A subscribed site is never locked. The prompt and the lock notice work on a phone.
+- [ ] Design it (spec): `/architect trial and read only lock` (settle where the trial clock and subscription state live and who can change them, how payment is taken and confirmed, how the server enforces read only across every doctype and whitelisted method, what export covers, and what happens with time zones and a payment that arrives late in the window)
+
+### 7. Trial end export and site removal · needs a decision
+On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
+**Done when:** an unsubscribed site gets warnings before day 30, then on day 30 the owner receives a zip of all their records and the site is removed. A site that subscribes at any point before the removal is never removed. A failed export or email stops the removal and gets flagged, it doesn't delete anyway.
+- [ ] Design it (spec): `/architect trial end export and site removal` (settle what runs the removal, since a site can't safely remove itself, what the zip holds and in what format, how a large zip reaches the owner, the warning schedule, retries and a safety hold, and what is kept for legal or audit reasons)
 
 ## Deferred
+
+- Tax on expenses (a Books Tax per row, posting to tax accounts), if input tax needs claiming back (from spec 0004)
+- Foreign currency expenses with an exchange rate, if foreign bills become common (from spec 0004)
 
 - Label the balances card's Total "Net" (or add a tooltip) when a picked liability is listed; revisit after real users pick one (from spec 0003)
 

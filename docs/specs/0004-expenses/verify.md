@@ -1,0 +1,74 @@
+# Verify: Expenses · spec 0004 · updated 2026-11-12
+_Steps derived from spec 0004 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
+_Milestone 1 (server thread) has landed. The screen steps arrive with milestones 2 to 5; until then, check these through the API, `bench console` or Desk._
+
+## UI / manual (server, through Desk or the API)
+- [ ] Insert a Books Expense with no `number_series`, paid from a Cash account, rows Rent 100 and Fuel 50 → it is named `EXP-1001` style (from Books Defaults `expense_number_series`), `total` is 150, status Saved → AC-3, AC-16
+- [ ] Call `preview` on an unsaved expense with rows 4.5 and 5.5 → `number_series` and `total` 10 are filled and no record is saved → AC-3
+- [ ] Submit that expense → Books Ledger Entry rows: Rent debit 100, Fuel debit 50, Cash credit 150, `voucher_type` Books Expense, `posting_date` equal to the expense `date`, `party` empty on every row → AC-5
+- [ ] Two rows on the same account (Fuel 30 and 20) → one Fuel debit of 50 → AC-5
+- [ ] Rows 10.004 and 10.004 → each stored as 10.00, `total` 20.00, ledger debits and credit both 20.00 → AC-5 (rounding before summing)
+- [ ] Rows 0.004 and 0.004 → refused with "Row 1: amount must be greater than zero." → AC-4
+- [ ] Open the dashboard for the month holding the expense `date` → Rent shows in Top Expenses and in profit and loss → AC-5
+- [ ] Edit a Saved expense and save twice → no ledger rows exist → AC-6
+- [ ] Try to change `paid_from` on a submitted expense → refused (update after submit) → AC-6
+- [ ] Cancel the submitted expense → its ledger rows are marked reverted with reversing rows added, status Cancelled, Rent drops out of Top Expenses → AC-6
+- [ ] Amend the cancelled expense → the new draft is named `<original>-1`, `amended_from` set, every value copied, status Saved → AC-6
+- [ ] Save with no rows → "An expense needs at least one row." → AC-4
+- [ ] Save with a 0 or negative amount → "Row 1: amount must be greater than zero." → AC-4
+- [ ] Save with a group row account, then an Income row account → the group message, then "must be of type Expense" → AC-4
+- [ ] Save `paid_from` = Payable, Tax (liability with a type), an Asset with no type, a Cash group → each refused naming the field and account; Cash, Bank and an untyped Liability (a loan) are accepted → AC-4
+- [ ] Save with a Customer only party → "Supplier must be a Supplier, but ... is a Customer."; a Supplier or Both party saves → AC-4
+- [ ] Two expenses for one supplier with reference R-77, the first submitted → the second saves and shows "EXP-.... already has reference R-77 for <supplier>." → AC-7
+- [ ] As a Books User: create, submit, cancel and amend work; delete is refused (403) → AC-8
+- [ ] As a Books Manager: delete a cancelled expense → it and its ledger rows are gone; deleting a submitted one is refused → AC-8
+- [ ] As a Books Cashier: list, insert and `preview` on Books Expense all return 403 → AC-8
+- [ ] Print an expense with the default format → "Business - Expense" shows the name, date, Paid From, reference, each row's account, description and amount, and the total → AC-13
+
+## UI / manual (milestone 2, the thin screen at /books)
+- [ ] Sign in as a Books User, open the sidebar's Purchases group → "Expenses" sits after "Purchase Payments" and before "Suppliers", and opens `/books/list/Expense` → AC-1
+- [ ] Sign in as a Books Cashier → no Expenses item under Purchases; `/books/list/Expense` shows no rows (403 from the server) → AC-1, AC-8
+- [ ] The Expenses list shows Expense No, Status, Date, Supplier, Paid From and Total, newest date first, with a Saved, Submitted or Cancelled badge → AC-2
+- [ ] Filter the list by Submitted, then Cancelled → only those rows show → AC-2
+- [ ] Click New → the form opens with Number Series `EXP-`, Date today, one empty row under Expenses, and Total read only → AC-3
+- [ ] Fill Paid From with a Cash account, a row of Rent 25 and a row of another Expense account 10 → Total shows 35 after the preview → AC-3
+- [ ] Save, then Submit → status Submitted, every field read only, and the form offers "Accounting entries" under View → AC-5, AC-6
+- [ ] Open "Accounting entries" → the General Ledger opens on the expense date filtered to Ref Type "Expenses" and this expense: two debits and one credit of 35 → AC-5
+- [ ] Open the General Ledger's Ref Type filter → "Expenses" is offered after "Journal Entries" → AC-5
+- [ ] Open the dashboard for this month → Total spending in Top Expenses is 35 higher than before the submit → AC-5
+- [ ] Cancel the expense → status Cancelled in the list, and Top Expenses drops back by 35 → AC-6
+- [ ] Amend it → a new draft named `<original>-1` opens with the rows copied → AC-6
+
+## Commands (milestone 2)
+- [ ] `cd frontend && node --test tests/expense-model.test.mjs tests/permissions.test.mjs` → all pass → AC-1, AC-2, AC-3, AC-5
+- [ ] `cd frontend && npx playwright test tests/ui/expense.spec.ts` against a v16 site → 3 pass → AC-1, AC-3, AC-5, AC-6
+- [ ] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
+
+## Commands
+- [ ] `bench --site <v16 site> migrate` → Books Expense and Books Expense Account tables exist, Books Defaults has `expense_number_series` = `EXP-` (unless one was set), the default print format for Books Expense is "Business - Expense", and the patch `frappe_books.patches.add_expense_number_series` is in the Patch Log → AC-16
+- [ ] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → 22 tests OK → AC-4, AC-5, AC-6, AC-7, AC-8, AC-13, AC-16
+- [ ] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.tests.test_printing` → OK → AC-13
+- [ ] `uvx ruff@0.14.10 check frappe_books && uvx ruff@0.14.10 format --check frappe_books` → clean
+
+## Value sourcing checks
+- [ ] `number_series`: set Books Defaults `expense_number_series` to another Expense series, open a new expense → it uses that series; clear it → it falls back to `EXP-`
+- [ ] `date`: a new expense defaults to today; change the date to last month and submit → ledger `posting_date` is last month and it shows under last month's Top Expenses, not this month's
+- [ ] `total`: change a row amount on a draft and preview → `total` follows the rounded sum
+- [ ] Duplicate warning source: the matching expense is a draft, or cancelled → no warning (only submitted ones count); a user who cannot read the other expense → no warning
+- [ ] Credit currency: on a site whose company currency is not INR, submit → ledger rows are in the company currency, rounded to its smallest unit
+- [ ] Reversing rows come from the posted rows: cancel → reversing rows mirror the original amounts exactly
+- [ ] Amend name: amend twice (`-1`, then cancel and amend again) → `-2`
+- [ ] Status badge source: `status` column reads Saved, Submitted, Cancelled through the lifecycle
+- [ ] Top Expenses and profit and loss read the posted ledger rows: a Saved expense never shows there
+
+## Acceptance-criteria coverage
+- AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
+- AC-9, AC-10, AC-11, AC-12, AC-14, AC-15: steps arrive with milestones 3 to 5 (screens)
+- AC-3: new expense series and `preview` steps (server half; pickers come in milestone 3)
+- AC-4: the refusal steps for rows, row accounts, `paid_from` and party
+- AC-5: posting, summing, rounding and Top Expenses steps (General Ledger Ref Type comes in milestone 2)
+- AC-6: draft edit, read only after submit, cancel and amend steps
+- AC-7: the duplicate reference step (the client message comes in milestone 3)
+- AC-8: Books User, Books Manager and Books Cashier steps (the `paid_from` search 403 comes in milestone 3)
+- AC-13: the print step (Print button on the form comes in milestone 4)
+- AC-16: the migrate command step

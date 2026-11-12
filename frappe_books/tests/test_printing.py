@@ -131,6 +131,7 @@ class IntegrationTestPrinting(IntegrationTestCase):
 		self.assertEqual(
 			formats,
 			{
+				"Business - Expense": "Books Expense",
 				"Business - Quote": "Books Sales Quote",
 				"Business - Sales Invoice": "Books Sales Invoice",
 				"Business - Purchase Invoice": "Books Purchase Invoice",
