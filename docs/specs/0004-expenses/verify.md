@@ -13,14 +13,14 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Edit a Saved expense and save twice → no ledger rows exist → AC-6
 - [ ] Try to change `paid_from` on a submitted expense → refused (update after submit) → AC-6
 - [ ] Cancel the submitted expense → its ledger rows are marked reverted with reversing rows added, status Cancelled, Rent drops out of Top Expenses → AC-6
-- [ ] Amend the cancelled expense → the new draft is named `<original>-1`, `amended_from` set, every value copied, status Saved → AC-6
+- [ ] Server only: `frappe.copy_doc` of the cancelled expense with `amended_from` set inserts as `<original>-1`, status Saved (Frappe's own amend path still names correctly) → AC-6
 - [ ] Save with no rows → "An expense needs at least one row." → AC-4
 - [ ] Save with a 0 or negative amount → "Row 1: amount must be greater than zero." → AC-4
 - [ ] Save with a group row account, then an Income row account → the group message, then "must be of type Expense" → AC-4
 - [ ] Save `paid_from` = Payable, Tax (liability with a type), an Asset with no type, a Cash group → each refused naming the field and account; Cash, Bank and an untyped Liability (a loan) are accepted → AC-4
 - [ ] Save with a Customer only party → "Supplier must be a Supplier, but ... is a Customer."; a Supplier or Both party saves → AC-4
 - [ ] Two expenses for one supplier with reference R-77, the first submitted → the second saves and shows "EXP-.... already has reference R-77 for <supplier>." → AC-7
-- [ ] As a Books User: create, submit, cancel and amend work; delete is refused (403) → AC-8
+- [ ] As a Books User: create, submit and cancel work; delete is refused (403) → AC-8
 - [ ] As a Books Manager: delete a cancelled expense → it and its ledger rows are gone; deleting a submitted one is refused → AC-8
 - [ ] As a Books Cashier: list, insert and `preview` on Books Expense all return 403 → AC-8
 - [ ] Print an expense with the default format → "Business - Expense" shows the name, date, Paid From, reference, each row's account, description and amount, and the total → AC-13
@@ -37,7 +37,7 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Open the General Ledger's Ref Type filter → "Expenses" is offered after "Journal Entries" → AC-5
 - [ ] Open the dashboard for this month → Total spending in Top Expenses is 35 higher than before the submit → AC-5
 - [ ] Cancel the expense → status Cancelled in the list, and Top Expenses drops back by 35 → AC-6
-- [ ] Amend it → a new draft named `<original>-1` opens with the rows copied → AC-6
+- [ ] Open the cancelled expense → no Amend action anywhere (header, Actions menu, phone More actions), the same as a cancelled journal entry; Duplicate is offered → AC-6, AC-14
 
 ## Commands (milestone 2)
 - [ ] `cd frontend && node --test tests/expense-model.test.mjs tests/permissions.test.mjs` → all pass → AC-1, AC-2, AC-3, AC-5
@@ -88,7 +88,7 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Import two expenses (one with two rows, one with an amount of 0), answer No to "submit after syncing" → the first saves as a Saved draft named `EXP-...` with total equal to its rows; the second is refused with "Row 1: amount must be greater than zero." → AC-12, AC-4
 - [ ] As a Books User, open Import Wizard → Expense is not offered (only Managers import) → AC-12, AC-8
 - [ ] Open a submitted expense and Print → "Business - Expense" is the chosen format and shows the name, date, supplier, Paid From, reference, each row's account, description and amount, the total and the remark → AC-13
-- [ ] On a submitted (or amended) expense with a receipt attached, use Duplicate → a new unsaved form with the same series, date, Paid From, supplier, reference, remark and rows, but no receipt, no Amended From and status Saved; save it → a new `EXP-` name → AC-14
+- [ ] On a submitted or cancelled expense with a receipt attached, use Duplicate → a new unsaved form with the same series, date, Paid From, supplier, reference, remark and rows, but no receipt, no Amended From and status Saved; save it → a new `EXP-` name → AC-14
 
 ## Commands (milestone 4)
 - [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → passes, including the linked entries test → AC-11, AC-13
@@ -109,7 +109,7 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] At phone width (390px), open Expenses and search an expense with a supplier → one two line row: the supplier and the total, then the name, Paid From and date, with the Submitted badge; the page has no sideways scroll, and tapping the row opens the form with no sideways scroll → AC-2, AC-15
 - [ ] At phone width, open a new expense → "1 row"; tap Row 1 → a sheet with Account, Description and Amount; Done, then Add row → "2 rows", no sideways scroll → AC-3, AC-15
 - [ ] At phone width, open a submitted expense, More actions → Cancel → "Cancel Expense" → Cancelled → AC-6, AC-15
-- [ ] Amend from the /books form: not built. The app has no Amend action on any document; spec 0004 needs `/architect` to settle it (AC-6) → AC-6
+- [ ] At phone width, on that cancelled expense, More actions → no Amend; Duplicate opens a new Saved draft with the rows copied and no Amended From → AC-6, AC-14, AC-15
 
 ## Commands (milestone 5)
 - [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts --trace off` against a v16 site → 9 pass → AC-1, AC-2, AC-3, AC-5, AC-6, AC-8, AC-15
@@ -119,11 +119,11 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
 - AC-9, AC-10, AC-11, AC-12, AC-14: the milestone 4 steps (create menu, search, linked entries, import, Duplicate)
 - AC-15: the milestone 5 phone steps (list, form, rows, cancel)
-- AC-6 amend through /books: not built, owed to `/architect` (no Amend action exists in the app)
+- AC-6 correcting a cancelled expense: settled, no Amend action, Duplicate instead (the milestone 2 and 5 steps)
 - AC-3: new expense series and `preview` steps (server half; pickers come in milestone 3)
 - AC-4: the refusal steps for rows, row accounts, `paid_from` and party
 - AC-5: posting, summing, rounding and Top Expenses steps (General Ledger Ref Type comes in milestone 2)
-- AC-6: draft edit, read only after submit, cancel and amend steps
+- AC-6: draft edit, read only after submit, cancel, no Amend action, and the server amend naming step
 - AC-7: the duplicate reference step (the client message comes in milestone 3)
 - AC-8: Books User, Books Manager and Books Cashier steps (the `paid_from` search 403 comes in milestone 3)
 - AC-13: the print step, and the milestone 4 Print step on the form

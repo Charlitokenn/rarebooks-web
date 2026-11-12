@@ -7,14 +7,14 @@ Decision history: [rationale.md](rationale.md).
 
 ## Summary
 
-Expenses become their own submittable document, Books Expense, listed under Purchases → Expenses in the sidebar. An expense is money already paid out (rent, fuel, bank fees): you pick the account it was paid from and add one or more rows, each with an Expense account and an amount. Submitting posts it to the ledger (each row debits its account, the total credits the paid from account), so it shows up in Top Expenses, profit and loss and the General Ledger with no extra work. To change a submitted expense you cancel it, which reverses its ledger rows, and amend it, the same as journal entries and invoices today.
+Expenses become their own submittable document, Books Expense, listed under Purchases → Expenses in the sidebar. An expense is money already paid out (rent, fuel, bank fees): you pick the account it was paid from and add one or more rows, each with an Expense account and an amount. Submitting posts it to the ledger (each row debits its account, the total credits the paid from account), so it shows up in Top Expenses, profit and loss and the General Ledger with no extra work. To change a submitted expense you cancel it, which reverses its ledger rows, and use Duplicate to start a corrected draft, the same as every other submitted document in /books today. /books has no Amend action, for expenses or any other document.
 
 ## Requirements
 
 **User stories**:
 - As a Books User, I want to record a paid expense with its receipt in a few fields, so the books show what the business spent without me writing a journal entry.
 - As a Books User, I want to split one receipt across several expense accounts, so fuel and parking on one slip land in the right places.
-- As a Books Manager, I want a submitted expense to be fixed and only changed by cancel and amend, so the ledger keeps an audit trail.
+- As a Books Manager, I want a submitted expense to be fixed and only changed by cancelling it and recording a corrected copy, so the ledger keeps an audit trail.
 - As a Books User on a phone, I want to log an expense from the dashboard's create menu, so I can record a receipt when I get it.
 - As a Books Manager, I want to bring past expenses in through the importer and print an expense voucher, so the feature fits how I already work.
 
@@ -24,15 +24,15 @@ Expenses become their own submittable document, Books Expense, listed under Purc
 - **AC-3**: A new expense opens with `number_series` set to the Books Defaults `expense_number_series` (`EXP-` on a fresh site), `date` set to today, and one empty row. The `paid_from` picker offers only leaf accounts that are Cash or Bank, or that have root type Liability and no account type (loans, an overdraft, a credit card account you add), with no Create. A row's `account` picker offers only leaf accounts with root type Expense, with no Create. The `party` picker offers only parties whose role is Supplier or Both, and Create makes a supplier. The form shows `total`, filled by the server preview from the rows.
 - **AC-4**: Saving is refused by the controller, with a message naming the field or account, when: there are no rows; a row has no account or an amount of zero or below; a row account is a group account or not root type Expense; `paid_from` is a group account or is neither Cash, Bank nor a Liability with no account type; or `party` is a Customer only party. The client only mirrors these checks to place a message at the field.
 - **AC-5**: Submitting posts balanced Books Ledger Entry rows with `voucher_type` Books Expense and `posting_date` equal to the expense `date`: one debit per distinct row account (rows on the same account are summed), and one credit to `paid_from` for `total`. No ledger row carries the party. After submit, the expense appears in the General Ledger (with "Expenses" offered in its Ref Type filter), and in the dashboard's Top Expenses and profit and loss for the period holding its `date`.
-- **AC-6**: A draft (Saved) expense can be edited and saved any number of times with no ledger effect. A submitted expense is read only. Cancelling it marks its ledger rows reverted and adds the reversing rows (`reverse_entries`), so it drops out of Top Expenses, profit and loss and the General Ledger, and its status becomes Cancelled. Amending a cancelled expense opens a new draft named after it (for example `EXP-0001-1`) with `amended_from` set and every value copied.
+- **AC-6**: A draft (Saved) expense can be edited and saved any number of times with no ledger effect. A submitted expense is read only. Cancelling it marks its ledger rows reverted and adds the reversing rows (`reverse_entries`), so it drops out of Top Expenses, profit and loss and the General Ledger, and its status becomes Cancelled. A cancelled expense stays read only as the record. /books offers no Amend action on it, the same as every other submittable document; you correct it with Duplicate (AC-14). The form adds no expense specific amend action, button or route.
 - **AC-7**: On save, when `party` and `reference_number` are both filled and another submitted expense has the same party and reference number, the server shows the message "{0} already has reference {1} for {2}." naming that expense, and the save still succeeds.
-- **AC-8**: Books Manager and Books User (and System Manager) can read, create, write, submit, cancel and amend expenses. Only Books Manager and System Manager can delete, and only a draft or a cancelled expense (Frappe refuses a submitted one). Deleting removes its ledger rows (`delete_entries`). A Books Cashier, or any user without read on Books Expense, gets `frappe.PermissionError` (403) from every expense API call, including the `paid_from` search, and sees no sidebar item, list, create menu entry or linked entries for expenses.
+- **AC-8**: Books Manager and Books User (and System Manager) can read, create, write, submit and cancel expenses (they also hold Frappe's amend right, as on every submittable doctype, though /books offers no Amend action). Only Books Manager and System Manager can delete, and only a draft or a cancelled expense (Frappe refuses a submitted one). Deleting removes its ledger rows (`delete_entries`). A Books Cashier, or any user without read on Books Expense, gets `frappe.PermissionError` (403) from every expense API call, including the `paid_from` search, and sees no sidebar item, list, create menu entry or linked entries for expenses.
 - **AC-9**: The dashboard's phone create menu (`MobileCreateMenu.vue`) has an "Expense" entry that opens a new expense form. It shows only to users who can create Books Expense.
 - **AC-10**: The search palette finds an expense by its name, its party and its reference number, once saved, for users who can read Books Expense.
 - **AC-11**: A party's and an account's Linked Entries panel lists the expenses that link them, showing the name, `date`, `party` and `total`.
 - **AC-12**: The Import Wizard offers Expense with its rows. An imported expense goes through the same controller rules (AC-4) and is saved as a draft, ready to submit.
 - **AC-13**: A built in print format "Business - Expense" prints the expense header, its rows and the total, and is the default print format for Books Expense on new and existing sites.
-- **AC-14**: The form's existing Duplicate action works on a submitted expense: it opens a new draft with every value copied, including `date` and the rows, but with a new name, no `amended_from` and status Saved.
+- **AC-14**: The form's existing Duplicate action works on a submitted or a cancelled expense: it opens a new draft with every value copied, including `date` and the rows, but with a new name, no `amended_from` and status Saved.
 - **AC-15**: The Expenses list and the expense form work at phone width (no sideways page scroll, rows editable), as the other purchase screens do.
 - **AC-16**: `bench migrate` on an existing v16 site adds both doctypes and the new fields. A patch creates the `EXP-` number series, sets Books Defaults `expense_number_series` to it when empty, and sets the default print format when none is chosen. A new site gets the same through `setup.bootstrap` and the setup wizard defaults.
 
@@ -54,7 +54,7 @@ Reasoning and options: see [rationale.md](rationale.md).
 
 | DocType | Field | Type | Required | Notes |
 |---|---|---|---|---|
-| Books Expense (new, `is_submittable: 1`, module Frappe Books) | `number_series` | Link → Books Number Series | yes | `set_only_once`; filtered to `reference_type = Expense`; copied by Duplicate and Amend |
+| Books Expense (new, `is_submittable: 1`, module Frappe Books) | `number_series` | Link → Books Number Series | yes | `set_only_once`; filtered to `reference_type = Expense`; copied by Duplicate |
 | | `date` | Date | yes | default `Today`; becomes the ledger `posting_date` |
 | | `paid_from` | Link → Books Account | yes | label "Paid From"; rule in Key invariants |
 | | `party` | Link → Books Party | no | label "Supplier"; role Supplier or Both |
@@ -64,7 +64,7 @@ Reasoning and options: see [rationale.md](rationale.md).
 | | `user_remark` | Text | no | label "Remark" |
 | | `attachment` | Attach | no | the receipt; `no_copy` (a receipt belongs to one expense) |
 | | `status` | Select `Saved\nSubmitted\nCancelled` | | `read_only`, `no_copy`, stored by `StatusMixin`; DocType `states` give the badge colours |
-| | `amended_from` | Link → Books Expense | | `read_only`, `no_copy` |
+| | `amended_from` | Link → Books Expense | | `read_only`, `no_copy`; Frappe's standard field on a submittable doctype, kept so the doctype matches the others. /books never sets it |
 | Books Expense Account (new child, `istable: 1`, `editable_grid: 1`) | `account` | Link → Books Account | yes | `in_list_view`; `link_filters` `is_group = 0`, `root_type = Expense` |
 | | `description` | Data | no | `in_list_view` |
 | | `amount` | Currency | yes | `in_list_view` |
@@ -78,14 +78,14 @@ Relationships: Books Expense 1:N Books Expense Account. Each row N:1 Books Accou
 Migration: both doctypes and the two existing doctype changes arrive through `bench migrate`. One `post_model_sync` patch `frappe_books.patches.add_expense_number_series` for existing sites (AC-16).
 
 **State transitions**:
-Saved (docstatus 0, editable, no ledger rows) → Submitted (docstatus 1, read only, ledger rows posted) → Cancelled (docstatus 2, ledger rows reversed). A Cancelled expense can be amended into a new Saved expense. Delete is allowed from Saved or Cancelled only.
+Saved (docstatus 0, editable, no ledger rows) → Submitted (docstatus 1, read only, ledger rows posted) → Cancelled (docstatus 2, ledger rows reversed). A Cancelled expense stays as the record; Duplicate starts a new Saved expense from it. There is no Amend transition in /books. Delete is allowed from Saved or Cancelled only.
 
 **API surface**:
 | Endpoint | Method | Key inputs | Key outputs | Auth | Key errors |
 |---|---|---|---|---|---|
 | `/api/v2/document/Books Expense` (existing layer: insert, save, load, list, count) | POST, PUT, GET | the document with `accounts` rows | the saved document | Frappe doctype perms (AC-8) | 403 no right; 417 `ValidationError` (AC-4); 417 `TimestampMismatchError` on a stale copy |
 | `BooksExpense.preview` (doc method via `run_doc_method`) | POST | the unsaved client copy | `number_series`, `total` filled; no save | `check_preview_permission` | 403 |
-| submit, cancel, amend, delete (existing document methods) | POST / DELETE | name, `modified` | new docstatus | submit, cancel, amend, delete rights | 403; 417 for a stale copy |
+| submit, cancel, delete (existing document methods) | POST / DELETE | name, `modified` | new docstatus | submit, cancel, delete rights | 403; 417 for a stale copy |
 | `frappe_books.accounting.accounts.search_expense_payment_accounts` (new, whitelisted, called by `search_widget` as its `query`) | POST via `searchFrappeLink` | `doctype`, `txt`, `searchfield`, `start`, `page_len`, `filters` | rows of `name` (and `account_name`) | read on Books Account and on Books Expense | 403 without either |
 
 Server shape:
@@ -138,7 +138,6 @@ Client shape:
 | Submit | `posting_date` | the expense `date` (`ledger._posting_date` reads `date`) |
 | Submit | currency | the company base currency; there is no currency field on the expense (base only) |
 | Cancel | reversing rows | `reverse_entries(self)` from its posted rows |
-| Amend | new name | Frappe amend naming from the original name (`EXP-0001` → `EXP-0001-1`) |
 | List | status badge | `status`, stored by `StatusMixin.on_change` |
 | Paid from picker | options | `search_expense_payment_accounts`, from `Books Account` `is_group`, `account_type`, `root_type` |
 | Top Expenses, P&L | the expense amounts | the posted ledger rows, read by the existing dashboard and report queries (no change) |
@@ -147,7 +146,8 @@ Client shape:
 **Key invariants**:
 - Each row amount is rounded to the currency precision before anything else, `total` equals the sum of those rounded amounts, and every rounded row amount is above zero.
 - The Paid From picker and the save use one rule (`is_expense_payment_account`), so the picker never offers an account the save refuses.
-- Duplicate and Amend never copy `status` or `attachment`. Duplicate never copies `amended_from`.
+- Duplicate never copies `status`, `attachment` or `amended_from`.
+- /books has one way to correct a submitted document, cancel then Duplicate, the same for expenses as for every other submittable doctype. No expense only lifecycle action exists.
 - A submitted expense's ledger rows balance: total debits equal the one credit (`LedgerPosting._validate`).
 - `paid_from` is a leaf account that is Cash or Bank, or root type Liability with an empty account type. Payable, Tax and Stock Received But Not Billed accounts are never allowed.
 - Every row account is a leaf account of root type Expense.
@@ -155,7 +155,7 @@ Client shape:
 - Business rules live in the controller. The client mirrors only to place messages.
 
 **Security model**:
-DocType permissions: System Manager and Books Manager get every right (including delete, import, export, share); Books User gets read, create, write, submit, cancel, amend, print, email, export, report (no delete, no import); Books Cashier gets nothing. The Import Wizard checks import rights, so only Managers import (AC-12). The new whitelisted search method checks read on Books Expense and on Books Account itself and reads through `get_list`. `preview` keeps `check_preview_permission`. No regulated data; amounts are business records, with the change history kept by `track_changes` and the cancel and amend trail.
+DocType permissions: System Manager and Books Manager get every right (including delete, import, export, share); Books User gets read, create, write, submit, cancel, amend, print, email, export, report (no delete, no import); Books Cashier gets nothing. The Import Wizard checks import rights, so only Managers import (AC-12). The new whitelisted search method checks read on Books Expense and on Books Account itself and reads through `get_list`. `preview` keeps `check_preview_permission`. No regulated data; amounts are business records, with the change history kept by `track_changes` and the cancelled record staying in place.
 
 **Configuration required**: none (no environment variables or credentials).
 
@@ -169,18 +169,18 @@ DocType permissions: System Manager and Books Manager get every right (including
 
 Ordered as tracer bullets (the project default): a thin thread through server, client and tests first, then thicker slices.
 
-1. Server thread: both doctype JSONs, the `Expense` number series option, the Books Defaults field, the `series.py` entry, the `BooksExpense` controller (preview, validate without the duplicate warning, submit, cancel, trash) with `is_expense_payment_account` and `validate_expense_payment_account`, the patch, and Python tests for posting, row rounding (0.004 + 0.004 posts balanced), cancel, amend (the amended name is `EXP-0001-1`, despite `SeriesNamingMixin.autoname`), delete, each AC-4 rule and the role permissions, satisfies **AC-4**, **AC-5**, **AC-6**, **AC-8**, **AC-16**
+1. Server thread: both doctype JSONs, the `Expense` number series option, the Books Defaults field, the `series.py` entry, the `BooksExpense` controller (preview, validate without the duplicate warning, submit, cancel, trash) with `is_expense_payment_account` and `validate_expense_payment_account`, the patch, and Python tests for posting, row rounding (0.004 + 0.004 posts balanced), cancel, server side amend naming (`EXP-0001-1`, despite `SeriesNamingMixin.autoname`; this only guards Frappe's own amend path, /books has no Amend action), delete, each AC-4 rule and the role permissions, satisfies **AC-4**, **AC-5**, **AC-6**, **AC-8**, **AC-16**
 2. Thin screen end to end: `Expense` and `ExpenseAccount` models, `ModelNameEnum`, `frappeModels`, the sidebar item, list settings, General Ledger Ref Type option, node tests for the model and form layout, a Playwright happy path (create, submit, see it in the General Ledger and Top Expenses), then the guard tests, satisfies **AC-1**, **AC-2**, **AC-3**, **AC-5**, **AC-6**
 3. Pickers and rules: `search_expense_payment_accounts` with the shared rule, the `linkQueries` hook in `link.ts` (and its line in `docs/framework-backed-doctypes.md`), party filters and Create, the duplicate warning, Python plus node tests (the picker offers exactly what the save accepts; a Cashier gets 403 from the search), then the guard tests again, satisfies **AC-3**, **AC-4**, **AC-7**, **AC-8**
 4. Entry points and extras: phone create menu, search fields and searchables, Linked Entries, importer, the "Business - Expense" print format and its default, and a check of the Duplicate action, with node and Python tests, satisfies **AC-9**, **AC-10**, **AC-11**, **AC-12**, **AC-13**, **AC-14**
-5. Phone layout and the full Playwright suite, desktop and phone: list, form, rows, cancel and amend, the Cashier gate, then run the guard tests (`settings-readers`, `settings-models`, `link-create`), satisfies **AC-8**, **AC-15**
+5. Phone layout and the full Playwright suite, desktop and phone: list, form, rows, cancel and Duplicate of a cancelled expense, the Cashier gate, then run the guard tests (`settings-readers`, `settings-models`, `link-create`), satisfies **AC-8**, **AC-15**
 
 ## Consequences
 
 **Positive**:
 - Everyday spending reaches the ledger in a few fields, so Top Expenses and profit and loss reflect real costs with no report change.
 - One reusable `linkQueries` hook lets later pickers run a server rule the AND filters cannot express.
-- Cancel and amend keep the same audit trail as every other posted document.
+- Cancel then Duplicate keeps the same audit trail and the same steps as every other posted document.
 
 **Negative / tradeoffs**:
 - A supplier bill you pay later is still a Purchase Invoice; users must learn which to use (expense = paid now).
@@ -199,3 +199,4 @@ Ordered as tracer bullets (the project default): a thin thread through server, c
 - [ ] Set up a Frappe 16 bench for `/develop` and `/check verify`; the WSL bench at `~/books-bench` runs Frappe `develop`.
 - [ ] Pull `origin/version-16` (one commit ahead) before building.
 - [ ] Widen the scope title past the dashboard port (from `/scope`).
+- [ ] If an Amend action is ever wanted in /books, design it once for every submittable doctype (its own `/architect`), never for expenses alone.

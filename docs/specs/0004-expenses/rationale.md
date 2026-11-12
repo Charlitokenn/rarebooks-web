@@ -66,3 +66,7 @@ Decisions made at write time:
 - **Status values**: the house `StatusMixin` values (Saved, Submitted, Cancelled) rather than a new "Draft" label, so the list badges match every other document.
 - **Party off the ledger**: nothing is owed, so putting the party on the rows would make the supplier look settled in reports that read party balances. Runner up: put it on the debit rows for party reporting.
 - **Total stored**: `total` is stored, as every Books document stores its totals for lists and print; it is recomputed on every preview and save, so it cannot go stale.
+
+## Update 2026-11-12: no Amend action in /books (AC-6)
+
+`/develop` found that /books has no Amend action on any document, so AC-6's amend step could not be built as written. You decided expenses mirror the other submittable doctypes exactly: no Amend action is added, for expenses or anything else. A cancelled expense stays as the record, and Duplicate (already shown on submitted and cancelled documents, `getDuplicateAction` in `frontend/src/utils/ui.ts`) starts the corrected draft. Options weighed: a shared Amend action for every submittable doctype, or an expense only one. Both were set aside to keep one correction path across the app; a shared action stays possible later as its own decision. The server keeps Frappe's `amended_from` field and amend right, and the existing amend naming test, because they come with every submittable doctype and cost nothing.
