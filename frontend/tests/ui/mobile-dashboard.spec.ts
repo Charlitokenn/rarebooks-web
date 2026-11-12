@@ -166,3 +166,22 @@ test('invoice cards name their totals in sentence case', async ({ page }) => {
     await expect(page.getByText(title, { exact: true })).toBeVisible();
   }
 });
+
+// covers: AC-7
+test('"Choose accounts" opens the General settings page on a phone', async ({
+  page,
+}) => {
+  const balances = page.locator('[data-slot="chart-container"]', {
+    hasText: 'Account balances',
+  });
+  const choose = balances.getByRole('link', {
+    name: 'Choose accounts',
+    exact: true,
+  });
+  await choose.scrollIntoViewIfNeeded();
+  await choose.tap();
+
+  await expect(page).toHaveURL(/\/books\/settings\?tab=AccountingSettings$/);
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0);
+  await expect(page.getByText('Dashboard Accounts')).toBeVisible();
+});

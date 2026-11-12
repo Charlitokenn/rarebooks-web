@@ -7,6 +7,8 @@ PARTY_ACCOUNT_TYPES = {
 	"Both": ("Receivable", "Payable"),
 }
 PAYMENT_ACCOUNT_TYPES = ("Cash", "Bank")
+# The root types of the accounts the dashboard's balances card may list.
+DASHBOARD_ROOT_TYPES = ("Asset", "Liability")
 
 
 def validate_account(doc, fieldname, account_types=(), root_types=()):

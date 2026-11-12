@@ -7,6 +7,17 @@
       :error="error"
       :empty="!accounts.length"
     >
+      <!-- The header slot sits outside the state slots, so the button shows in every state. -->
+      <template v-if="canChooseAccounts" #actions>
+        <FrappeButton
+          variant="ghost"
+          :size="isMobile ? 'md' : 'sm'"
+          icon="lucide-settings-2"
+          :label="t`Choose accounts`"
+          :tooltip="t`Choose accounts`"
+          :route="settingsRoute"
+        />
+      </template>
       <!-- Rows stand in for the table, so the card keeps its shape while loading. -->
       <template #loading>
         <div class="space-y-3 pt-7">
@@ -86,8 +97,10 @@
 
 <script lang="ts">
 import { t } from 'fyo';
+import { Button as FrappeButton } from 'frappe-ui';
 import { ChartContainer as FrappeChartContainer } from 'frappe-ui/charts';
 import { DateTime } from 'luxon';
+import { ModelNameEnum } from 'models/types';
 import { fyo } from 'src/initFyo';
 import { getCashBalances, type AccountBalance } from 'src/utils/dashboard';
 import { defineComponent } from 'vue';
@@ -100,6 +113,7 @@ export default defineComponent({
   name: 'AccountBalances',
   components: {
     ChartLoadError,
+    FrappeButton,
     FrappeChartContainer,
   },
   extends: DashboardChartBase,
@@ -110,6 +124,17 @@ export default defineComponent({
     loadId: 0,
   }),
   computed: {
+    /** Only those who can save the settings may change the accounts. */
+    canChooseAccounts(): boolean {
+      return fyo.can(ModelNameEnum.AccountingSettings, 'write');
+    },
+    /** The router opens it as the settings dialog on desktop and the page on a phone. */
+    settingsRoute(): RouteLocationRaw {
+      return {
+        path: '/settings',
+        query: { tab: ModelNameEnum.AccountingSettings },
+      };
+    },
     /** Names the date the server used, so a card left open past midnight does not claim today. */
     subtitle(): string {
       return this.asOf

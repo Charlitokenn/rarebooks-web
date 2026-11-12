@@ -71,15 +71,16 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Be
 Let a user who can save Accounting Settings pick which leaf asset and liability accounts the balances card lists, from a Dashboard section in Accounting Settings. With none picked, the card falls back to every cash and bank account. Ported from develop's spec 0003.
 **Done when:** picked accounts show on the card in chart order. A duplicate or a non leaf, non asset, non liability pick is refused on save. A saved pick that later stops qualifying is skipped on the card and doesn't block saving other settings. The "Choose accounts" button shows only to users who can write Accounting Settings.
 spec [0003](../specs/0003-choose-dashboard-accounts/index.md)
+code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/books_accounting_settings/`, `frappe_books/frappe_books/doctype/books_dashboard_account/` and `frontend/src/pages/Dashboard/AccountBalances.vue`
 - [x] Design it (spec): `/architect choose dashboard accounts` (port develop's spec 0003; merge into v16's own Accounting Settings model and controller, which differ from develop's)
-- [ ] Build it: `/develop choose dashboard accounts`
-  - [ ] Server thread: Books Dashboard Account child table, `_dashboard_accounts()` read through `get_list` with the Settings check and the Cash and Bank fallback, delete block, test helper, read path and delete tests first (AC-4, AC-5, AC-8, AC-9, AC-10)
-  - [ ] Settings end to end: `DashboardAccount` row model with no Create, help line in `SettingsField.vue`, read only check for non writers, node test, pick shows on the card after the reload (AC-1, AC-2, AC-6)
-  - [ ] Save rules and the gate: `validate_dashboard_accounts()` with the stale row rule, `canRead.settings` on the dashboard row and card, Python rule, mirror and permission tests (AC-3, AC-4, AC-5, AC-9)
-  - [ ] "Choose accounts" button in every card state, then Playwright tests for the settings flow, the button and the gate, desktop and phone (AC-1, AC-2, AC-4, AC-5, AC-6, AC-7, AC-9)
-- [ ] Verify it: `/check verify choose dashboard accounts`
+- [x] Build it: `/develop choose dashboard accounts`
+  - [x] Server thread: Books Dashboard Account child table, `_dashboard_accounts()` read through `get_list` with the Settings check and the Cash and Bank fallback, delete block, test helper, read path and delete tests first (AC-4, AC-5, AC-8, AC-9, AC-10)
+  - [x] Settings end to end: `DashboardAccount` row model with no Create, help line in `SettingsField.vue`, read only check for non writers, node test, pick shows on the card after the reload (AC-1, AC-2, AC-6)
+  - [x] Save rules and the gate: `validate_dashboard_accounts()` with the stale row rule, `canRead.settings` on the dashboard row and card, Python rule, mirror and permission tests (AC-3, AC-4, AC-5, AC-9)
+  - [x] "Choose accounts" button in every card state, then Playwright tests for the settings flow, the button and the gate, desktop and phone (AC-1, AC-2, AC-4, AC-5, AC-6, AC-7, AC-9)
+- [x] Verify it: `/check verify choose dashboard accounts`
 - [ ] Test it: `/test choose dashboard accounts`
-- [ ] Review it (fresh model): `/check review choose dashboard accounts`
+- [x] Review it (fresh model): `/check review choose dashboard accounts`
 - [ ] Document it: `/document choose dashboard accounts`
 
 ## Deferred

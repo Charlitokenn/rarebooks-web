@@ -4,11 +4,13 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, add_months, get_first_day, getdate, month_diff
 
+from frappe_books.accounting.accounts import DASHBOARD_ROOT_TYPES
 from frappe_books.accounting.money import as_decimal, rounded, sum_decimal
 from frappe_books.reports.filters import datetime_conditions
 from frappe_books.reports.periods import get_fiscal_year
 
 LEDGER = "Books Ledger Entry"
+SETTINGS = "Books Accounting Settings"
 INVOICE_DOCTYPES = ("Books Sales Invoice", "Books Purchase Invoice")
 PERIOD_MONTHS = {"This Year": 12, "This Quarter": 3, "This Month": 1}
 MONTH_FIELDS = [{"YEAR": "posting_date", "as": "year"}, {"MONTH": "posting_date", "as": "month"}]
@@ -100,7 +102,7 @@ def get_best_sellers(period: str) -> dict:
 
 @frappe.whitelist()
 def get_cash_balances() -> dict:
-	"""Return each cash and bank account's balance as of today, and their total."""
+	"""Return the balance as of today of each account the dashboard lists, and their total."""
 	frappe.has_permission(LEDGER, "read", throw=True)
 	as_of = getdate()
 	names = _dashboard_accounts()
@@ -147,7 +149,25 @@ def get_invoice_summary(doctype: str, period: str) -> dict:
 
 
 def _dashboard_accounts() -> list[str]:
-	"""Return the leaf cash and bank accounts the balances card lists, in chart order."""
+	"""Return the picked accounts the balances card lists, else the leaf cash and bank accounts, in chart order."""
+	frappe.has_permission(SETTINGS, "read", throw=True)
+	picked = frappe.get_list(
+		"Books Dashboard Account",
+		parent_doctype=SETTINGS,
+		filters={"parenttype": SETTINGS, "parentfield": "dashboard_accounts"},
+		pluck="account",
+		limit_page_length=0,
+	)
+	if picked:
+		names = frappe.get_list(
+			"Books Account",
+			filters={"name": ["in", picked], "is_group": 0, "root_type": ["in", DASHBOARD_ROOT_TYPES]},
+			order_by="lft",
+			pluck="name",
+			limit_page_length=0,
+		)
+		if names:
+			return names
 	return frappe.get_list(
 		"Books Account",
 		filters={"account_type": ["in", ["Cash", "Bank"]], "is_group": 0},
