@@ -48,7 +48,7 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Ac
   - [x] Layout polish and Playwright tests, desktop and phone (AC-2, AC-3, AC-6, AC-7, AC-9, AC-10, AC-11, AC-12)
 - [x] Verify it: `/check verify account balances card`
 - [x] Test it: `/test account balances card`
-- [ ] Review it (fresh model): `/check review account balances card`
+- [x] Review it (fresh model): `/check review account balances card`
 - [ ] Document it: `/document account balances card`
 
 ## Slice 2: Best sellers chart
