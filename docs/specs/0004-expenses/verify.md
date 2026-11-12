@@ -112,8 +112,10 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] At phone width, on that cancelled expense, More actions → no Amend; Duplicate opens a new Saved draft with the rows copied and no Amended From → AC-6, AC-14, AC-15
 
 ## Commands (milestone 5)
-- [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts --trace off` against a v16 site → 9 pass → AC-1, AC-2, AC-3, AC-5, AC-6, AC-8, AC-15
+- [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts --trace off` against a v16 site → 11 pass, including the two "no Amend, Duplicate opens a draft" tests (desktop and phone) → AC-1, AC-2, AC-3, AC-5, AC-6, AC-8, AC-14, AC-15
 - [ ] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
+
+- [ ] `cd frontend && node --test tests/form-actions.test.mjs` → a cancelled expense offers Duplicate, no Amend and no Cancel, the same lifecycle actions as a cancelled journal entry → AC-6, AC-14
 
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
