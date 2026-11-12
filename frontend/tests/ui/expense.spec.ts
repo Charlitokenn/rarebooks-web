@@ -23,8 +23,8 @@ test('Purchases lists Expenses, and a new expense takes its series and one row',
   await expect(
     page.getByRole('combobox', { name: 'Paid From (required)' })
   ).toBeVisible();
-  // The rows table starts with one empty row, after its header.
-  await expect(page.getByRole('row')).toHaveCount(2);
+  // The rows table starts with one empty row; the header and Add row rows have no Delete row.
+  await expect(dataRows(page)).toHaveCount(1);
 });
 
 // covers: AC-3, AC-6
@@ -83,14 +83,18 @@ test('a cancelled expense has no Amend, and Duplicate opens a draft with its row
   await expect(page.getByRole('button', { name: /amend/i })).toHaveCount(0);
   await page.getByRole('button', { name: 'Actions', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: /amend/i })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  // On desktop, Duplicate sits in the Create menu with New entry.
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: /amend/i })).toHaveCount(0);
   await page.getByRole('menuitem', { name: 'Duplicate', exact: true }).click();
 
   await expect(page).not.toHaveURL(new RegExp(`/${expense}$`));
   await expect(
     page.getByRole('combobox', { name: 'Paid From (required)' })
   ).toBeEnabled();
-  // The header row and the two copied rows.
-  await expect(page.getByRole('row')).toHaveCount(3);
+  // The two copied rows.
+  await expect(dataRows(page)).toHaveCount(2);
   await expect(page.getByLabel('Total', { exact: true })).toHaveValue(/35\.00/);
 });
 
@@ -249,7 +253,8 @@ test.describe('on a phone', () => {
     await page.getByText('Row 1', { exact: true }).click();
     const sheet = page.getByRole('dialog', { name: 'Row 1' });
     for (const label of ['Account', 'Description', 'Amount']) {
-      await expect(sheet.getByText(label, { exact: true })).toBeVisible();
+      // A required field's label reads "Amount (required)", so match the label as a part.
+      await expect(sheet.getByText(label).first()).toBeVisible();
     }
     await sheet.getByRole('button', { name: 'Done' }).click();
     await expect(sheet).toBeHidden();
@@ -431,6 +436,13 @@ async function request(
     },
     { method, url, body }
   );
+}
+
+/** The rows of the Expenses table, without its header and its Add row row. */
+function dataRows(page: Page) {
+  return page
+    .getByRole('row')
+    .filter({ has: page.getByRole('button', { name: 'Delete row' }) });
 }
 
 async function expectNoSidewaysScroll(page: Page) {

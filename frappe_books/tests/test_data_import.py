@@ -88,7 +88,16 @@ def _run_import(doctype, csv, submit=True):
 	).insert()
 	data_import.import_file = file.file_url
 	data_import.save()
-	# Tests run the import in the request; Frappe commits each row, so keep it in the test's transaction.
-	with patch.object(frappe.db, "commit"):
+	# Tests run the import in the request. Frappe commits each good row and rolls back a refused
+	# one; inside the test's transaction a commit marks a savepoint and a rollback returns to it,
+	# so a refused row cannot undo the import record and the rows saved before it.
+	savepoint = "data_import_row"
+	frappe.db.savepoint(savepoint)
+	rollback_to = frappe.db.rollback
+
+	with (
+		patch.object(frappe.db, "commit", lambda: frappe.db.savepoint(savepoint)),
+		patch.object(frappe.db, "rollback", lambda *args, **kwargs: rollback_to(save_point=savepoint)),
+	):
 		form_start_import(data_import.name)
 	return data_import.name
