@@ -101,10 +101,25 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Print header and company details come from `get_print_settings`: change the company name and colour in Print Settings, reprint → the expense voucher follows → Value sourcing row "Print"
 - [ ] Duplicate copies only what Duplicate may copy: `attachment`, `status` and `amended_from` are `no_copy` in the DocType, so a copy never carries them, whatever the source's state → Key invariant on Duplicate
 
+## UI / manual (milestone 5, phone layout and the full suite)
+- [ ] As a Books User on desktop, click New on Expenses, pick a Cash account in Paid From, an Expense account and 42 in the first row → Total shows 42.00; Save, then Submit → status Submitted, no Save button, Paid From shows as disabled text → AC-3, AC-6
+- [ ] On that submitted expense, Actions → Cancel → "Cancel Expense" → status Cancelled → AC-6
+- [ ] As a Books User, delete a draft expense through the API → 403 → AC-8
+- [ ] As a Books Cashier, open /books → no Expenses link; list and insert on Books Expense return 403; the `paid_from` search returns 403 (or 404 outside developer mode) → AC-1, AC-8
+- [ ] At phone width (390px), open Expenses and search an expense with a supplier → one two line row: the supplier and the total, then the name, Paid From and date, with the Submitted badge; the page has no sideways scroll, and tapping the row opens the form with no sideways scroll → AC-2, AC-15
+- [ ] At phone width, open a new expense → "1 row"; tap Row 1 → a sheet with Account, Description and Amount; Done, then Add row → "2 rows", no sideways scroll → AC-3, AC-15
+- [ ] At phone width, open a submitted expense, More actions → Cancel → "Cancel Expense" → Cancelled → AC-6, AC-15
+- [ ] Amend from the /books form: not built. The app has no Amend action on any document; spec 0004 needs `/architect` to settle it (AC-6) → AC-6
+
+## Commands (milestone 5)
+- [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts --trace off` against a v16 site → 9 pass → AC-1, AC-2, AC-3, AC-5, AC-6, AC-8, AC-15
+- [ ] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
+
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
 - AC-9, AC-10, AC-11, AC-12, AC-14: the milestone 4 steps (create menu, search, linked entries, import, Duplicate)
-- AC-15: steps arrive with milestone 5 (phone layout)
+- AC-15: the milestone 5 phone steps (list, form, rows, cancel)
+- AC-6 amend through /books: not built, owed to `/architect` (no Amend action exists in the app)
 - AC-3: new expense series and `preview` steps (server half; pickers come in milestone 3)
 - AC-4: the refusal steps for rows, row accounts, `paid_from` and party
 - AC-5: posting, summing, rounding and Top Expenses steps (General Ledger Ref Type comes in milestone 2)
