@@ -17,8 +17,9 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | in-progress |
 | 5 | Expenses | Slice 4 | in-progress |
-| 6 | Trial and read only lock | Slice 5 | planned |
+| 6 | Trial and read only lock | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | planned |
+| 8 | Billing control site | Slice 5 | planned |
 
 ## Already built
 
@@ -108,15 +109,31 @@ spec [0004](../specs/0004-expenses/index.md)
 
 A new site gets a 30 day clock: days 1 to 21 are the free trial, and days 22 to 30 are the window to pay. A site that hasn't subscribed by day 26 turns read only. On day 30 the data is sent to the owner and the site is removed.
 
-### 6. Trial and read only lock · needs a decision
+### 6. Trial and read only lock · in-progress
 Track each site's trial clock and subscription state. Show how many days are left and how to subscribe. From day 26, without a subscription, the site turns read only: you can still view and export your records, but you can't add or change anything. Paying lifts the lock at once.
 **Done when:** a new site has full access on days 1 to 25, sees a subscribe prompt from day 22, and from day 26 without a subscription the server refuses every create, edit, submit, cancel and delete (no matter the role) while viewing and export still work. A subscribed site is never locked. The prompt and the lock notice work on a phone.
-- [ ] Design it (spec): `/architect trial and read only lock` (settle where the trial clock and subscription state live and who can change them, how payment is taken and confirmed, how the server enforces read only across every doctype and whitelisted method, what export covers, and what happens with time zones and a payment that arrives late in the window)
+spec [0005](../specs/0005-trial-read-only-lock/index.md)
+- [x] Design it (spec): `/architect trial and read only lock` (settle where the trial clock and subscription state live and who can change them, how payment is taken and confirmed, how the server enforces read only across every doctype and whitelisted method, what export covers, and what happens with time zones and a payment that arrives late in the window)
+- [ ] Build it: `/develop trial and read only lock`
+  - [ ] Server thread: the read only transaction spike first, Books Subscription single and its guard, phase and time zone rules, install and patch, `before_request` and `before_job` locks with the allowlist, wildcard `doc_events`, `apply_state`, Python tests (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-9, AC-17, AC-18)
+  - [ ] Thin UI end to end: status in boot, the banner in the app shell, lock error mapping in `api.ts`, the Subscription page and sidebar item, node tests and one Playwright locked save test (AC-2, AC-3, AC-4, AC-5, AC-8)
+  - [ ] Control site contract: signing helpers, `receive_state` with rate limit and replay rule, signed pull, `start_checkout`, plans and the return refresh, payment pending and Retry states, the control stub and tests (AC-10, AC-11, AC-12, AC-15, AC-16)
+  - [ ] Paid lifecycle: active, renew soon, grace and lapsed texts and boundary tests (AC-13, AC-14)
+  - [ ] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
+- [ ] Verify it: `/check verify trial and read only lock`
+- [ ] Test it: `/test trial and read only lock`
+- [ ] Review it (fresh model): `/check review trial and read only lock`
+- [ ] Document it: `/document trial and read only lock`
 
 ### 7. Trial end export and site removal · needs a decision
 On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
 **Done when:** an unsubscribed site gets warnings before day 30, then on day 30 the owner receives a zip of all their records and the site is removed. A site that subscribes at any point before the removal is never removed. A failed export or email stops the removal and gets flagged, it doesn't delete anyway.
-- [ ] Design it (spec): `/architect trial end export and site removal` (settle what runs the removal, since a site can't safely remove itself, what the zip holds and in what format, how a large zip reaches the owner, the warning schedule, retries and a safety hold, and what is kept for legal or audit reasons)
+- [ ] Design it (spec): `/architect trial end export and site removal` (settle what runs the removal, since a site can't safely remove itself, what the zip holds and in what format, how a large zip reaches the owner, the warning schedule, retries and a safety hold, and what is kept for legal or audit reasons; spec 0005 gives the day 30 `removal_on` date and the `lapsed` phase, and suggests the billing control site as the runner)
+
+### 8. Billing control site · needs a decision
+A small central Frappe app of yours (`rarebooks_control`, its own repo) that keeps the list of hosted sites and their per site secrets, takes payment (ClickPesa yearly for Tanzania, PayPal Subscriptions monthly or yearly for everyone else), and pushes each change to the customer site through the signed contract in spec 0005. Production use of feature 6 waits on it. (from spec 0005)
+**Done when:** a customer site's Subscribe button reaches a real ClickPesa or PayPal checkout, a confirmed payment pushes a `paid_until` that lifts the lock within a minute, a PayPal cancel, suspend or expiry pushes the change, and a bad webhook signature changes nothing.
+- [ ] Design it (spec): `/architect billing control site` (settle the site registry and secret rotation, ClickPesa checkout links, its webhook checksum header and key, and its dashboard return URL, PayPal plans and webhook verification, how `paid_until` is computed (the paid period starts at trial end when someone pays early), push retries, and where it is hosted)
 
 ## Deferred
 
