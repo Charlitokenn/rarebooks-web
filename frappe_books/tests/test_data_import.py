@@ -37,9 +37,33 @@ class IntegrationTestDataImport(IntegrationTestCase):
 		self.assertEqual(invoice.docstatus, 1)
 		self.assertEqual([row.quantity for row in invoice.items], [2, 1])
 
+	def test_wizard_file_makes_draft_expenses_through_the_controller_rules(self):
+		cash = make_account("Import Cash", account_type="Cash")
+		rent = make_account("Import Rent", root_type="Expense")
+		fuel = make_account("Import Fuel", root_type="Expense")
+		reference, refused = unique_name("IMP").replace(" ", ""), unique_name("IMP").replace(" ", "")
+		rows = [
+			"docstatus,paid_from,date,reference_number,accounts.account,accounts.amount",
+			f"0,{cash.name},2031-01-05,{reference},{rent.name},100",
+			f",,,,{fuel.name},20",
+			f"0,{cash.name},2031-01-06,{refused},{rent.name},0",
+		]
 
-def _run_import(doctype, csv):
-	"""Import `csv` as the Import Wizard does, submitting what it inserts.
+		with self.set_user(MANAGER):
+			data_import = _run_import("Books Expense", "\r\n".join(rows), submit=False)
+
+		self.assertEqual(get_import_status(data_import)["status"], "Partial Success")
+		expense = frappe.get_last_doc("Books Expense", filters={"reference_number": reference})
+		self.assertTrue(expense.name.startswith("EXP-"))
+		self.assertEqual(expense.docstatus, 0)
+		self.assertEqual(expense.status, "Saved")
+		self.assertEqual([row.account for row in expense.accounts], [rent.name, fuel.name])
+		self.assertEqual(expense.total, 120)
+		self.assertFalse(frappe.db.exists("Books Expense", {"reference_number": refused}))
+
+
+def _run_import(doctype, csv, submit=True):
+	"""Import `csv` as the Import Wizard does, submitting what it inserts unless `submit` is off.
 
 	MariaDB keeps Data Import Logs (MyISAM) past the test's rollback, so each run names its own
 	import: one reusing a rolled-back name would read the old logs as rows already imported.
@@ -49,7 +73,7 @@ def _run_import(doctype, csv):
 			"doctype": "Data Import",
 			"reference_doctype": doctype,
 			"import_type": "Insert New Records",
-			"submit_after_import": 1,
+			"submit_after_import": int(submit),
 		}
 	).insert(set_name=unique_name(f"{doctype} Import"))
 	file = frappe.get_doc(

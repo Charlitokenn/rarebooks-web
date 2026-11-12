@@ -36,6 +36,7 @@ test('the create menu opens a new sales invoice', async ({ page }) => {
     'Receive payment',
     'Purchase Invoice',
     'Make payment',
+    'Expense',
     'Customer',
     'Item',
   ]) {
@@ -44,6 +45,16 @@ test('the create menu opens a new sales invoice', async ({ page }) => {
 
   await menu.getByRole('menuitem', { name: 'Sales Invoice' }).click();
   await expect(page).toHaveURL(/\/books\/edit\/SalesInvoice\/[^/]+$/);
+});
+
+// covers: AC-9
+test('the create menu opens a new expense', async ({ page }) => {
+  await createButton(page).click();
+  await page
+    .getByRole('menu')
+    .getByRole('menuitem', { name: 'Expense' })
+    .click();
+  await expect(page).toHaveURL(/\/books\/edit\/Expense\/[^/]+$/);
 });
 
 test('a tap on a chart shows the tapped month', async ({ page }) => {

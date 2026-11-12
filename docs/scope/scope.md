@@ -98,7 +98,7 @@ spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_boo
   - [x] Server thread: Books Expense and its rows, the EXP- series and patch, the controller that validates, posts, cancels and deletes, and its Python tests (AC-4, AC-5, AC-6, AC-8, AC-16)
   - [x] Thin screen end to end: models, sidebar item, list, General Ledger Ref Type, node tests and a Playwright happy path (AC-1, AC-2, AC-3, AC-5, AC-6)
   - [x] Pickers and rules: the Paid From server search with the `linkQueries` hook, supplier filters, the duplicate warning, and tests (AC-3, AC-4, AC-7, AC-8)
-  - [ ] Entry points and extras: phone create menu, search, linked entries, import, print format, Duplicate (AC-9, AC-10, AC-11, AC-12, AC-13, AC-14)
+  - [x] Entry points and extras: phone create menu, search, linked entries, import, print format, Duplicate (AC-9, AC-10, AC-11, AC-12, AC-13, AC-14)
   - [ ] Phone layout and the full Playwright suite, desktop and phone, with the Cashier gate (AC-8, AC-15)
 - [ ] Verify it: `/check verify expenses`
 - [ ] Test it: `/test expenses`

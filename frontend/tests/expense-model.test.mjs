@@ -76,6 +76,48 @@ test('an expense made with rows, or duplicated, keeps only its own rows', async 
   );
 });
 
+// covers: AC-14
+test('duplicating a submitted expense copies its values into a new draft', async () => {
+  const submitted = newFrappeDoc('Expense', {
+    name: 'EXP-0001-1',
+    number_series: 'EXP-',
+    date: new Date(2026, 10, 3),
+    paid_from: 'Cash',
+    party: 'Acme Fuels',
+    reference_number: 'RCPT-9',
+    user_remark: 'November',
+    attachment: '/private/files/receipt.pdf',
+    status: 'Submitted',
+    amended_from: 'EXP-0001',
+    docstatus: 1,
+    accounts: [
+      { account: 'Fuel', description: 'Diesel', amount: fyo.pesa(40) },
+    ],
+  });
+
+  const copy = await submitted.duplicate();
+  assert.equal(copy.notInserted, true);
+  assert.notEqual(copy.name, 'EXP-0001-1');
+  assert.deepEqual(
+    [copy.number_series, copy.paid_from, copy.party, copy.reference_number],
+    ['EXP-', 'Cash', 'Acme Fuels', 'RCPT-9']
+  );
+  assert.equal(copy.user_remark, 'November');
+  assert.equal(copy.date.toDateString(), new Date(2026, 10, 3).toDateString());
+  assert.deepEqual(
+    copy.accounts.map((row) => [
+      row.account,
+      row.description,
+      row.amount.float,
+    ]),
+    [['Fuel', 'Diesel', 40]]
+  );
+  assert.equal(copy.amended_from ?? null, null);
+  assert.equal(copy.attachment ?? null, null);
+  assert.notEqual(copy.status, 'Submitted');
+  assert.equal(copy.docstatus ?? 0, 0);
+});
+
 test('expense links filter series and row accounts, and rows offer no Create', async () => {
   assert.deepEqual(await Expense.filters.number_series(), [
     ['reference_type', '=', 'Expense'],

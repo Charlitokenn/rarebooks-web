@@ -105,6 +105,12 @@ test('the import wizard offers only the schemas the user may import', () => {
     user: { can_import: ['Books Party'] },
   };
   assert.deepEqual(getImportableSchemaNames(fyo), ['Party']);
+
+  fyo.store.permissions = {
+    doctypes: { Expense: 'Books Expense', Party: 'Books Party' },
+    user: { can_import: ['Books Expense', 'Books Party'] },
+  };
+  assert.deepEqual(getImportableSchemaNames(fyo), ['Expense', 'Party']);
 });
 
 test('export granted only to owners exports only the user’s documents', () => {

@@ -11,6 +11,7 @@ from frappe.utils.print_utils import get_print
 
 from frappe_books.accounting.accounts import is_expense_payment_account, search_expense_payment_accounts
 from frappe_books.accounting.money import as_decimal
+from frappe_books.linked_entries import get_linked_entries
 from frappe_books.patches import add_expense_number_series
 from frappe_books.reports.dashboard import get_top_expenses
 from frappe_books.tests.accounting import (
@@ -355,6 +356,21 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 			"RCPT-9",
 		):
 			self.assertIn(text, html)
+
+	def test_linked_entries_list_the_expense_under_its_supplier_and_accounts(self):
+		supplier = make_party(
+			make_account("Test Payable", root_type="Liability", account_type="Payable").name, "Supplier"
+		)
+		expense = make_expense(
+			self.cash.name, [{"account": self.rent.name, "amount": 10}], party=supplier.name
+		)
+
+		for doctype, name in (
+			("Books Party", supplier.name),
+			("Books Account", self.cash.name),
+			("Books Account", self.rent.name),
+		):
+			self.assertEqual(get_linked_entries(doctype, name).get("Books Expense"), [expense.name])
 
 	def test_patch_adds_the_series_and_keeps_a_chosen_default(self):
 		chosen = make_number_series("Expense")

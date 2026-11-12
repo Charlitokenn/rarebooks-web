@@ -49,6 +49,11 @@ const options = (
       initData: createFilters.PurchasePayments,
     },
     {
+      label: t`Expense`,
+      icon: 'lucide-wallet',
+      schemaName: ModelNameEnum.Expense,
+    },
+    {
       label: t`Customer`,
       icon: 'lucide-user-round',
       schemaName: ModelNameEnum.Party,
