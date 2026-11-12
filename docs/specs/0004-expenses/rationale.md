@@ -70,3 +70,13 @@ Decisions made at write time:
 ## Update 2026-11-12: no Amend action in /books (AC-6)
 
 `/develop` found that /books has no Amend action on any document, so AC-6's amend step could not be built as written. You decided expenses mirror the other submittable doctypes exactly: no Amend action is added, for expenses or anything else. A cancelled expense stays as the record, and Duplicate (already shown on submitted and cancelled documents, `getDuplicateAction` in `frontend/src/utils/ui.ts`) starts the corrected draft. Options weighed: a shared Amend action for every submittable doctype, or an expense only one. Both were set aside to keep one correction path across the app; a shared action stays possible later as its own decision. The server keeps Frappe's `amended_from` field and amend right, and the existing amend naming test, because they come with every submittable doctype and cost nothing.
+
+## Update 2026-11-12: who records expenses, and how a Books User picks accounts
+
+`/check verify` on a v16 site found that a Books User could not fill an expense: Books User has no right on Books Account. That was a deliberate decision in commit `d0f7aa8` ("it has no access to accounts, journal entries or the ledger"), made before this spec, which gave Books User full expense rights without noticing that an expense needs two account picks. Payments avoid the clash because the server fills their accounts.
+
+You decided Books User keeps recording expenses and keeps no account rights. Two narrow server searches (Paid From and the row account), gated on create or write on Books Expense, read accounts with `get_all` and return names only. The row picker offers every leaf Expense account, the same rule the save checks, with no new curation field. Account links that would end in a 403 stay hidden, which the existing `canLink` and `canOpenLedger` checks already do.
+
+Options weighed: giving Books User read on Books Account (one permission row, but it reverses part of `d0f7aa8` and opens the whole chart), and making expenses a Books Manager only job (nothing to build, but a Books User could no longer log a receipt). A curated "use on expenses" flag on accounts was set aside as more fields and rules than the need warrants.
+
+A cross check on another model then found that a list filter on an account column searches Books Account directly, so a Books User would get a 403 there too, on every list. You chose to hide a Link filter whose target the user cannot read, the same rule the open button uses, over passing the expense search into the filter picker (expense only) or leaving the 403. The same pass corrected the search shape to match Frappe 16 (rows as `frappe._dict`, and `search_widget` matching and paging translated names itself).

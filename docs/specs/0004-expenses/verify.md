@@ -116,6 +116,24 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [x] `cd frontend && node --test tests/settings-readers.test.mjs tests/settings-models.test.mjs tests/link-create.test.mjs` → guards pass
 - [x] `cd frontend && node --test tests/form-actions.test.mjs` → a cancelled expense offers Duplicate, no Amend and no Cancel, the same lifecycle actions as a cancelled journal entry → AC-6, AC-14
 
+## UI / manual (milestone 6, Books User pickers)
+- [ ] As a Books User, `GET /api/v2/document/Books Account` → still 403 (no account rights) → AC-8
+- [ ] As a Books User, open a new expense and the Paid From picker → Cash, Bank and untyped Liability leaf accounts, nothing else → AC-3, AC-8
+- [ ] As a Books User, open a row's Account picker → every leaf Expense account, no group and no other root type → AC-3, AC-8
+- [ ] As a Books User, pick Cash and an Expense account with 42, Save, Submit → it saves and submits → AC-3, AC-8
+- [ ] As a Books User, look at the submitted expense → Paid From and the row account show as names with no open button, and no "Accounting entries" under View; as a Books Manager both show → AC-17
+- [ ] As a Books Cashier, call `search_widget` with each expense search as `query` → 403, or 404 outside developer mode → AC-8
+- [ ] As a Books User, open the Expenses list filter → no Paid From filter offered; as a Books Manager it is → AC-17
+- [ ] As a Books User, type part of an account name in each picker → the list narrows to it (search_widget matches the translated names) → AC-3
+
+## Commands (milestone 6)
+- [ ] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → OK, including both searches as a Books User and a Cashier → AC-3, AC-8
+- [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts --trace off` against a v16 site → all pass, including the Books User test → AC-3, AC-8, AC-17
+
+## Value sourcing checks (milestone 6)
+- [ ] Row picker options follow the save rule: turn an Expense leaf into a group, or change its root type → it drops out of the row picker, and a save with it is refused
+- [ ] Shown account names on a Books User's form come from the stored values: rename nothing, reload the submitted expense as a Books User → the same names show with no Books Account request in the network log
+
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
 - AC-9, AC-10, AC-11, AC-12, AC-14: the milestone 4 steps (create menu, search, linked entries, import, Duplicate)
@@ -129,3 +147,4 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - AC-8: Books User, Books Manager and Books Cashier steps (the `paid_from` search 403 comes in milestone 3)
 - AC-13: the print step, and the milestone 4 Print step on the form
 - AC-16: the migrate command step
+- AC-17: the milestone 6 Books User view step
