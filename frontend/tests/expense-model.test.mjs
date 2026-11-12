@@ -89,6 +89,30 @@ test('expense links filter series and row accounts, and rows offer no Create', a
   assert.equal(account.create, false);
 });
 
+// covers: AC-3
+test('an expense picks a supplier, makes a supplier, and pays from the server rule', async () => {
+  assert.deepEqual(await Expense.filters.party(), [
+    ['role', 'in', ['Supplier', 'Both']],
+  ]);
+  assert.deepEqual(await Expense.createFilters.party(), [
+    ['role', '=', 'Supplier'],
+  ]);
+  assert.equal(
+    Expense.linkQueries.paid_from,
+    'frappe_books.accounting.accounts.search_expense_payment_accounts'
+  );
+  assert.equal(
+    Expense.filters.paid_from,
+    undefined,
+    'the search ignores client filters, so the model sends none'
+  );
+  const fields = getSchema('Expense').fields;
+  const paidFrom = fields.find(({ fieldname }) => fieldname === 'paid_from');
+  const party = fields.find(({ fieldname }) => fieldname === 'party');
+  assert.equal(paidFrom.create, false);
+  assert.notEqual(party.create, false);
+});
+
 test('a new expense is saved without its temporary name, which the server replaces', async () => {
   const requests = stubFrappe(({ path, body }) =>
     path.endsWith('run_doc_method')

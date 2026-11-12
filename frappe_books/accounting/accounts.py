@@ -64,6 +64,39 @@ def validate_expense_payment_account(doc, fieldname):
 		)
 
 
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def search_expense_payment_accounts(
+	doctype: str,
+	txt: str,
+	searchfield: str,
+	start: int,
+	page_len: int,
+	filters: list | dict | None = None,
+) -> list[frappe._dict]:
+	"""The Paid From picker of an expense: the accounts its save accepts, read with the caller's rights.
+
+	Called by `search_widget` as its `query`. The client `filters` are left out on purpose, so
+	`is_expense_payment_account` alone decides, as it does on save. Books Account is a translated
+	doctype, so `search_widget` sends an empty `txt` and matches the translated names itself.
+	"""
+	frappe.has_permission("Books Expense", "read", throw=True)
+	conditions = [["is_group", "=", 0]]
+	if txt:
+		conditions.append(["name", "like", f"%{txt}%"])
+	rows = frappe.get_list(
+		"Books Account",
+		filters=conditions,
+		or_filters=[["account_type", "in", PAYMENT_ACCOUNT_TYPES], ["root_type", "=", "Liability"]],
+		fields=["name", "is_group", "account_type", "root_type"],
+		order_by="lft",
+		limit_start=start,
+		limit_page_length=page_len,
+	)
+	# search_widget sorts translated results by `row.name`, so each row is a frappe._dict.
+	return [frappe._dict(name=row.name) for row in rows if is_expense_payment_account(row)]
+
+
 def validate_party_account(doc, fieldname, role):
 	"""A customer's ledger account is receivable, a supplier's payable."""
 	validate_account(doc, fieldname, PARTY_ACCOUNT_TYPES.get(role, ()))

@@ -4,10 +4,12 @@
 from decimal import Decimal
 
 import frappe
+from frappe.desk.search import search_widget
 from frappe.tests import IntegrationTestCase
 from frappe.utils import nowdate
 from frappe.utils.print_utils import get_print
 
+from frappe_books.accounting.accounts import is_expense_payment_account, search_expense_payment_accounts
 from frappe_books.accounting.money import as_decimal
 from frappe_books.patches import add_expense_number_series
 from frappe_books.reports.dashboard import get_top_expenses
@@ -22,6 +24,7 @@ from frappe_books.tests.accounting import (
 BOOKS_USER = "books-expense-user@example.com"
 BOOKS_CASHIER = "books-expense-cashier@example.com"
 BOOKS_MANAGER = "books-expense-manager@example.com"
+PAID_FROM_QUERY = "frappe_books.accounting.accounts.search_expense_payment_accounts"
 
 EXTRA_TEST_RECORD_DEPENDENCIES = []
 IGNORE_TEST_RECORD_DEPENDENCIES = []
@@ -206,6 +209,64 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 					[{"account": self.rent.name, "amount": 10}],
 				)
 
+	# covers: AC-3, AC-4
+	def test_the_paid_from_search_offers_exactly_what_the_save_accepts(self):
+		offered = (
+			self.cash.name,
+			make_account("Search Bank", account_type="Bank").name,
+			make_account("Search Loan", root_type="Liability").name,
+		)
+		left_out = (
+			make_account("Search Payable", root_type="Liability", account_type="Payable").name,
+			make_account("Search Tax", root_type="Liability", account_type="Tax").name,
+			make_account("Search Asset").name,
+			make_account("Search Cash Group", is_group=1, account_type="Cash").name,
+			self.rent.name,
+		)
+
+		found = [row.name for row in paid_from_search("")]
+
+		for account in offered:
+			self.assertIn(account, found)
+		for account in left_out:
+			self.assertNotIn(account, found)
+		for account in found:
+			values = frappe.db.get_value(
+				"Books Account", account, ["is_group", "account_type", "root_type"], as_dict=True
+			)
+			self.assertTrue(is_expense_payment_account(values), account)
+		for account in offered:
+			with self.subTest(account=account):
+				make_expense(account, [{"account": self.rent.name, "amount": 10}])
+
+	# covers: AC-3
+	def test_the_paid_from_search_matches_the_text_typed(self):
+		loan = make_account("Search Typed Loan", root_type="Liability").name
+
+		found = [row.name for row in paid_from_search(loan)]
+
+		self.assertIn(loan, found)
+		self.assertNotIn(self.cash.name, found)
+
+	# covers: AC-8
+	def test_a_cashier_gets_a_permission_error_from_the_paid_from_search(self):
+		with self.set_user(ensure_user(BOOKS_CASHIER, "Books Cashier")):
+			self.assertRaises(
+				frappe.PermissionError,
+				search_expense_payment_accounts,
+				"Books Account",
+				"",
+				"name",
+				0,
+				20,
+				[],
+			)
+
+	def test_a_books_user_can_use_the_paid_from_search(self):
+		with self.set_user(ensure_user(BOOKS_USER, "Books User")):
+			found = [row.name for row in paid_from_search("")]
+		self.assertIn(self.cash.name, found)
+
 	def test_party_must_be_a_supplier(self):
 		receivable = make_account("Test Receivable", account_type="Receivable").name
 		payable = make_account("Test Payable", root_type="Liability", account_type="Payable").name
@@ -309,6 +370,11 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 
 def top_expense_accounts():
 	return [row["account"] for row in get_top_expenses("This Month")]
+
+
+def paid_from_search(text):
+	"""Search the Paid From picker as the /books link search does."""
+	return search_widget("Books Account", text, query=PAID_FROM_QUERY, page_length=1000, as_dict=True)
 
 
 def make_expense(paid_from, accounts, **values):

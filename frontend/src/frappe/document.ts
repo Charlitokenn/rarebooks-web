@@ -106,6 +106,12 @@ export class FrappeDoc extends Observable<DocValue | FrappeDoc[]> {
   static filters: FiltersMap = {};
   /** Filters whose values a record created from the link's Create option takes. */
   static createFilters: FiltersMap = {};
+  /**
+   * Whitelisted search methods, by link fieldname, that Frappe's link search
+   * runs as its `query` instead of the filters, for a rule the filters can't
+   * express. The method checks the caller's rights itself.
+   */
+  static linkQueries: Record<string, string> = {};
   static emptyMessages: EmptyMessageMap = {};
 
   static getListViewSettings(_fyo: Fyo): ListViewSettings {

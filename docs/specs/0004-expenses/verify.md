@@ -61,6 +61,22 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Status badge source: `status` column reads Saved, Submitted, Cancelled through the lifecycle
 - [ ] Top Expenses and profit and loss read the posted ledger rows: a Saved expense never shows there
 
+## UI / manual (milestone 3, pickers and rules)
+- [ ] As a Books User, open a new expense and the Paid From picker → it offers Cash, Bank and untyped Liability leaf accounts (a loan), and no Payable, Tax, plain Asset, group or Expense account, and no Create → AC-3
+- [ ] Type part of a loan account's name in Paid From → the list narrows to it → AC-3
+- [ ] Pick each offered Paid From account in turn and save → every one saves (the picker never offers what the save refuses) → AC-3, AC-4
+- [ ] Open the Supplier picker → only Supplier and Both parties; Create opens a new party with role Supplier → AC-3
+- [ ] Submit an expense for a supplier with reference R-1, then save a second with the same supplier and reference → the message "{first} already has reference R-1 for {supplier}." shows and the second still saves → AC-7
+- [ ] As a Books Cashier, call `frappe.desk.search.search_widget` for Books Account with `query` set to `frappe_books.accounting.accounts.search_expense_payment_accounts` → refused (403, or the "Method not found" page outside developer mode) → AC-8
+
+## Commands (milestone 3)
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → passes, including the Paid From search tests → AC-3, AC-4, AC-8
+- [ ] `cd frontend && node --test tests/expense-model.test.mjs tests/link-search.test.mjs` → passes (party filters, Create values, `linkQueries` sent as `query`) → AC-3
+
+## Value sourcing checks (milestone 3)
+- [ ] Paid From options come from `search_expense_payment_accounts` and `is_expense_payment_account`: change an untyped Liability to account type Tax in Desk, reopen the picker → it drops out → Value sourcing row "Paid from picker"
+- [ ] Duplicate warning names only an expense the user can read: as a user with read on Books Expense restricted by User Permission, repeat a reference held by an expense they can't read → no message → Value sourcing row "duplicate warning's other expense"
+
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
 - AC-9, AC-10, AC-11, AC-12, AC-14, AC-15: steps arrive with milestones 3 to 5 (screens)

@@ -48,6 +48,7 @@ Each schema's model is in `frappeModels` in `frontend/models/index.ts`. The sche
 | List order | The DocType's `sort_field`, else `date`, newest first |
 | Visibility that depends on /books settings | The model's `hidden` map |
 | Link filters and create values | `static filters` and `static createFilters`, in the fieldnames of the target doctype |
+| A link whose options follow a rule the filters can't express, for example an expense's Paid From | `static linkQueries`, by fieldname: a whitelisted method that `search_widget` runs as its `query`. It checks the caller's rights, reads through `frappe.get_list`, and applies the same rule the controller checks on save. |
 | Actions that open a mapped document | `getMappedDocAction` in `models/helpers.ts`, with the target schema and a whitelisted mapper in the controller of the source DocType. It opens the new form, or what its `open` says, like the quick edit of a payment. |
 | Rows a screen adds for the user, like a scanned item | Append the row, then `set` its item, so the `refills` of the item leave the price and details to the server. A row appended with its item sends an empty rate as 0, which the server keeps. |
 | A cancel that also cancels linked documents | The controller's whitelisted `cancel_with_linked_docs` |

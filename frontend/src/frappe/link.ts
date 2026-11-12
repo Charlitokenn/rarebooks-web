@@ -16,13 +16,16 @@ export type LinkOption = { label: string; value: string; record: LinkRecord };
  * Letters typed are matched in order, e.g. `rce` finds `Rice`, as Books'
  * link search always has; Frappe matches a translated doctype's names, in the
  * user's language, by the text typed. Labels are those of Frappe's link search.
+ * A `query`, from the model's `linkQueries`, is the whitelisted method Frappe
+ * runs to find the records instead of applying the filters.
  */
 export async function searchFrappeLink(
   schemaName: string,
   text: string,
   filters: Filter[] | null,
   limit: number,
-  fields: string[] = []
+  fields: string[] = [],
+  query?: string
 ): Promise<LinkOption[]> {
   const { doctype, meta } = getDocType(schemaName);
   const words = text.trim();
@@ -33,6 +36,7 @@ export async function searchFrappeLink(
     filter_fields: JSON.stringify(fields),
     page_length: limit,
     as_dict: true,
+    ...(query ? { query } : {}),
   });
   return records.map((record) => ({
     label: getLinkLabel(schemaName, record.label || record.name),

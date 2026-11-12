@@ -14,6 +14,7 @@ export class Expense extends FrappeDoc {
   static override presentation = {
     label: 'Expense',
     nameField: { label: 'Expense No' },
+    fields: { paid_from: { create: false } },
   };
   static override previewMethod = 'preview';
   static override rowModels = { accounts: ExpenseAccount };
@@ -25,6 +26,17 @@ export class Expense extends FrappeDoc {
 
   static filters: FiltersMap = {
     number_series: () => [['reference_type', '=', 'Expense']],
+    party: () => [['role', 'in', ['Supplier', 'Both']]],
+  };
+
+  static override createFilters: FiltersMap = {
+    party: () => [['role', '=', 'Supplier']],
+  };
+
+  /** The server runs the rule the save checks, which these filters can't express. */
+  static override linkQueries = {
+    paid_from:
+      'frappe_books.accounting.accounts.search_expense_payment_accounts',
   };
 
   static getActions(fyo: Fyo): Action[] {
