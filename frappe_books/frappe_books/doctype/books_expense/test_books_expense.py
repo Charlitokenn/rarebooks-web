@@ -2,6 +2,7 @@
 # See license.txt
 
 from decimal import Decimal
+from unittest.mock import patch
 
 import frappe
 from frappe.desk.search import search_widget
@@ -9,7 +10,11 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils import nowdate
 from frappe.utils.print_utils import get_print
 
-from frappe_books.accounting.accounts import is_expense_payment_account, search_expense_payment_accounts
+from frappe_books.accounting.accounts import (
+	is_expense_payment_account,
+	search_expense_accounts,
+	search_expense_payment_accounts,
+)
 from frappe_books.accounting.money import as_decimal
 from frappe_books.linked_entries import get_linked_entries
 from frappe_books.patches import add_expense_number_series
@@ -26,6 +31,11 @@ BOOKS_USER = "books-expense-user@example.com"
 BOOKS_CASHIER = "books-expense-cashier@example.com"
 BOOKS_MANAGER = "books-expense-manager@example.com"
 PAID_FROM_QUERY = "frappe_books.accounting.accounts.search_expense_payment_accounts"
+ROW_ACCOUNT_QUERY = "frappe_books.accounting.accounts.search_expense_accounts"
+ACCOUNT_SEARCHES = (
+	(PAID_FROM_QUERY, search_expense_payment_accounts),
+	(ROW_ACCOUNT_QUERY, search_expense_accounts),
+)
 
 EXTRA_TEST_RECORD_DEPENDENCIES = []
 IGNORE_TEST_RECORD_DEPENDENCIES = []
@@ -249,24 +259,53 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 		self.assertIn(loan, found)
 		self.assertNotIn(self.cash.name, found)
 
-	# covers: AC-8
-	def test_a_cashier_gets_a_permission_error_from_the_paid_from_search(self):
-		with self.set_user(ensure_user(BOOKS_CASHIER, "Books Cashier")):
-			self.assertRaises(
-				frappe.PermissionError,
-				search_expense_payment_accounts,
-				"Books Account",
-				"",
-				"name",
-				0,
-				20,
-				[],
-			)
+	# covers: AC-3, AC-4
+	def test_the_row_account_search_offers_exactly_what_the_save_accepts(self):
+		left_out = (
+			make_account("Search Expense Group", root_type="Expense", is_group=1).name,
+			make_account("Search Income", root_type="Income").name,
+			self.cash.name,
+		)
 
-	def test_a_books_user_can_use_the_paid_from_search(self):
+		found = [row.name for row in account_search(ROW_ACCOUNT_QUERY, "")]
+
+		for account in (self.rent.name, self.fuel.name):
+			self.assertIn(account, found)
+		for account in left_out:
+			self.assertNotIn(account, found)
+		for account in found:
+			with self.subTest(account=account):
+				make_expense(self.cash.name, [{"account": account, "amount": 10}])
+
+	# covers: AC-3
+	def test_the_row_account_search_matches_the_text_typed(self):
+		found = [row.name for row in account_search(ROW_ACCOUNT_QUERY, self.fuel.name)]
+
+		self.assertIn(self.fuel.name, found)
+		self.assertNotIn(self.rent.name, found)
+
+	# covers: AC-8
+	def test_a_cashier_is_refused_by_both_account_searches(self):
+		with self.set_user(ensure_user(BOOKS_CASHIER, "Books Cashier")):
+			for query, search in ACCOUNT_SEARCHES:
+				with self.subTest(query=query):
+					self.assertRaises(frappe.PermissionError, search, "Books Account", "", "name", 0, 20, [])
+					self.assertEqual(refused_search_status(query), 404)
+
+	# covers: AC-3, AC-8
+	def test_a_books_user_picks_accounts_without_account_rights(self):
 		with self.set_user(ensure_user(BOOKS_USER, "Books User")):
-			found = [row.name for row in paid_from_search("")]
-		self.assertIn(self.cash.name, found)
+			self.assertRaises(frappe.PermissionError, frappe.get_list, "Books Account")
+			paid_from = account_search(PAID_FROM_QUERY, "")
+			row_accounts = account_search(ROW_ACCOUNT_QUERY, "")
+			expense = make_expense(self.cash.name, [{"account": self.rent.name, "amount": 10}])
+			expense.submit()
+
+		self.assertIn(self.cash.name, [row.name for row in paid_from])
+		self.assertIn(self.rent.name, [row.name for row in row_accounts])
+		for row in paid_from + row_accounts:
+			self.assertEqual(set(row), {"name"})
+		self.assertEqual(expense.docstatus, 1)
 
 	def test_party_must_be_a_supplier(self):
 		receivable = make_account("Test Receivable", account_type="Receivable").name
@@ -389,8 +428,23 @@ def top_expense_accounts():
 
 
 def paid_from_search(text):
-	"""Search the Paid From picker as the /books link search does."""
-	return search_widget("Books Account", text, query=PAID_FROM_QUERY, page_length=1000, as_dict=True)
+	return account_search(PAID_FROM_QUERY, text)
+
+
+def account_search(query, text):
+	"""Search an expense account picker as the /books link search does."""
+	return search_widget("Books Account", text, query=query, page_length=1000, as_dict=True)
+
+
+def refused_search_status(query):
+	"""The HTTP status `search_widget` answers outside developer mode when the query refuses the caller."""
+	response = frappe.local.response
+	with patch.dict(frappe.local.conf, {"developer_mode": 0}):
+		values = search_widget("Books Account", "", query=query, as_dict=True)
+	status = response.pop("http_status_code", None)
+	for key in ("type", "route"):
+		response.pop(key, None)
+	return status if values == [] else None
 
 
 def make_expense(paid_from, accounts, **values):

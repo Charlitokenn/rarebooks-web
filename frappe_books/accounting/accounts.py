@@ -64,6 +64,16 @@ def validate_expense_payment_account(doc, fieldname):
 		)
 
 
+# The accounts an expense row can take; `validate_account(..., root_types=("Expense",))` checks the same on save.
+EXPENSE_ROW_ACCOUNT_FILTERS = [["is_group", "=", 0], ["root_type", "=", "Expense"]]
+
+
+def check_expense_picker_permission():
+	"""Let only someone who can record or change an expense search its accounts (a Books User, not a Cashier)."""
+	if not any(frappe.has_permission("Books Expense", ptype) for ptype in ("create", "write")):
+		frappe.throw(_("You are not permitted to pick accounts for an expense."), frappe.PermissionError)
+
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def search_expense_payment_accounts(
@@ -73,28 +83,47 @@ def search_expense_payment_accounts(
 	start: int,
 	page_len: int,
 	filters: list | dict | None = None,
+	**kwargs,
 ) -> list[frappe._dict]:
-	"""The Paid From picker of an expense: the accounts its save accepts, read with the caller's rights.
+	"""The Paid From picker of an expense: the names of the accounts its save accepts.
 
-	Called by `search_widget` as its `query`. The client `filters` are left out on purpose, so
-	`is_expense_payment_account` alone decides, as it does on save. Books Account is a translated
-	doctype, so `search_widget` sends an empty `txt` and matches the translated names itself.
+	Called by `search_widget` as its `query`. It is gated on the expense rights, not on Books Account
+	rights, so a Books User fills the field without reading the chart of accounts, and it returns
+	names only. `is_expense_payment_account` alone decides, as it does on save, so the client
+	`filters` are ignored. Books Account is a translated doctype: `search_widget` sends an empty
+	`txt` and a large page, then matches the translated names and pages the result itself, so
+	`txt`, `start` and `page_len` are ignored too.
 	"""
-	frappe.has_permission("Books Expense", "read", throw=True)
-	conditions = [["is_group", "=", 0]]
-	if txt:
-		conditions.append(["name", "like", f"%{txt}%"])
-	rows = frappe.get_list(
+	check_expense_picker_permission()
+	rows = frappe.get_all(
 		"Books Account",
-		filters=conditions,
+		filters=[["is_group", "=", 0]],
 		or_filters=[["account_type", "in", PAYMENT_ACCOUNT_TYPES], ["root_type", "=", "Liability"]],
 		fields=["name", "is_group", "account_type", "root_type"],
 		order_by="lft",
-		limit_start=start,
-		limit_page_length=page_len,
 	)
 	# search_widget sorts translated results by `row.name`, so each row is a frappe._dict.
 	return [frappe._dict(name=row.name) for row in rows if is_expense_payment_account(row)]
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def search_expense_accounts(
+	doctype: str,
+	txt: str,
+	searchfield: str,
+	start: int,
+	page_len: int,
+	filters: list | dict | None = None,
+	**kwargs,
+) -> list[frappe._dict]:
+	"""The account picker of an expense row: the names of the leaf Expense accounts.
+
+	Gated and shaped like `search_expense_payment_accounts`, for the same reasons.
+	"""
+	check_expense_picker_permission()
+	names = frappe.get_all("Books Account", filters=EXPENSE_ROW_ACCOUNT_FILTERS, pluck="name", order_by="lft")
+	return [frappe._dict(name=name) for name in names]
 
 
 def validate_party_account(doc, fieldname, role):

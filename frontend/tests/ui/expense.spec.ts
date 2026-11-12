@@ -1,4 +1,10 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Browser,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { getLeafAccounts, insertDocument } from './helpers/records';
 import { useBooksSession, waitForBooks } from './helpers/session';
 
@@ -132,25 +138,92 @@ test('the general ledger offers Expenses as a Ref Type', async ({ page }) => {
   ).toBeVisible();
 });
 
-// covers: AC-8
-test('a Books User records an expense but cannot delete it', async ({
+// covers: AC-3, AC-8, AC-17
+test('a Books User picks both accounts without account rights, submits, and cannot delete', async ({
   page,
   browser,
   baseURL,
 }) => {
+  // The Manager session reads the accounts; the Books User never does.
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const cash = await getCashAccount(page);
   const user = await signInAs(page, browser, baseURL, 'Books User');
   try {
+    const accounts = await request(
+      user.page,
+      'GET',
+      '/api/v2/document/Books Account'
+    );
+    expect(accounts.status).toBe(403);
+
     await user.page.goto('/books/list/Expense');
     await waitForBooks(user.page);
     await expect(
       user.page.getByRole('link', { name: 'Expenses', exact: true })
     ).toBeVisible();
+    await user.page.getByRole('button', { name: 'New', exact: true }).click();
+    await expect(user.page).toHaveURL(/\/books\/edit\/Expense\//);
+
+    await pickLink(user.page, 'Paid From (required)', cash);
+    const row = user.page.getByRole('row').nth(1);
+    await pickLink(user.page, 'Account', rent, row);
+    await row.getByRole('textbox').last().fill('5');
+    await user.page.keyboard.press('Tab');
+    await expect(user.page.getByLabel('Total', { exact: true })).toHaveValue(
+      /5\.00/
+    );
+    // Accounts show as plain names; the series the user may read still opens.
+    const paidFrom = fieldBlock(
+      user.page,
+      user.page.getByRole('combobox', { name: 'Paid From (required)' }),
+      'Paid From'
+    );
+    await expect(openButton(paidFrom)).toHaveCount(0);
+    await expect(openButton(row)).toHaveCount(0);
+    await expect(
+      openButton(
+        fieldBlock(
+          user.page,
+          user.page.getByRole('combobox', { name: 'Number Series (required)' }),
+          'Number Series'
+        )
+      )
+    ).toHaveCount(1);
+
+    await user.page.getByRole('button', { name: 'Save', exact: true }).click();
+    await user.page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect(user.page).toHaveURL(/\/books\/edit\/Expense\/EXP-[^/]+$/);
+    await user.page
+      .getByRole('button', { name: 'Submit', exact: true })
+      .click();
+    await user.page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect(
+      user.page.getByText('Submitted', { exact: true })
+    ).toBeVisible();
+    const submittedPaidFrom = fieldBlock(
+      user.page,
+      user.page.getByRole('textbox', { name: /^Paid From/ }),
+      'Paid From'
+    );
+    await expect(
+      user.page.getByRole('textbox', { name: /^Paid From/ })
+    ).toHaveValue(cash);
+    await expect(openButton(submittedPaidFrom)).toHaveCount(0);
+    await expect(openButton(user.page.getByRole('row').nth(1))).toHaveCount(0);
+    await user.page
+      .getByRole('button', { name: 'Actions', exact: true })
+      .click();
+    await expect(
+      user.page.getByRole('menuitem', { name: 'Cancel', exact: true })
+    ).toBeVisible();
+    await expect(
+      user.page.getByRole('menuitem', { name: 'Accounting entries' })
+    ).toHaveCount(0);
+    await user.page.keyboard.press('Escape');
 
     const draft = await insertDocument(user.page, 'Books Expense', {
-      paid_from: await getCashAccount(user.page),
-      accounts: [
-        { account: (await getLeafAccounts(page, 'Expense'))[0], amount: 5 },
-      ],
+      paid_from: cash,
+      accounts: [{ account: rent, amount: 5 }],
     });
     const response = await request(
       user.page,
@@ -191,19 +264,19 @@ test('a Books Cashier sees no Expenses and every expense call is refused', async
       { paid_from: cash, accounts: [] }
     );
     expect(insert.status).toBe(403);
-    const search = await request(
-      cashier.page,
-      'POST',
-      '/api/method/frappe.desk.search.search_widget',
-      {
-        doctype: 'Books Account',
-        txt: '',
-        query:
-          'frappe_books.accounting.accounts.search_expense_payment_accounts',
-      }
-    );
-    // Outside developer mode Frappe answers a refused query as a missing method.
-    expect([403, 404]).toContain(search.status);
+    for (const query of [
+      'frappe_books.accounting.accounts.search_expense_payment_accounts',
+      'frappe_books.accounting.accounts.search_expense_accounts',
+    ]) {
+      const search = await request(
+        cashier.page,
+        'POST',
+        '/api/method/frappe.desk.search.search_widget',
+        { doctype: 'Books Account', txt: '', query }
+      );
+      // Outside developer mode Frappe answers a refused query as a missing method.
+      expect([403, 404], query).toContain(search.status);
+    }
   } finally {
     await cashier.close();
   }
@@ -436,6 +509,16 @@ async function request(
     },
     { method, url, body }
   );
+}
+
+/** A form field's block: the innermost element holding its label and its control. */
+function fieldBlock(page: Page, control: Locator, label: string) {
+  return page.locator('div').filter({ has: control, hasText: label }).last();
+}
+
+/** The button that opens the linked entry of a link value, within `scope`. */
+function openButton(scope: Locator) {
+  return scope.getByRole('button', { name: 'Open linked entry' });
 }
 
 /** The rows of the Expenses table, without its header and its Add row row. */

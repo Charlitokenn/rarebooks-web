@@ -118,15 +118,21 @@ test('duplicating a submitted expense copies its values into a new draft', async
   assert.equal(copy.docstatus ?? 0, 0);
 });
 
-test('expense links filter series and row accounts, and rows offer no Create', async () => {
+// covers: AC-3
+test('expense links filter the series, and rows pick accounts from the server rule with no Create', async () => {
   assert.deepEqual(await Expense.filters.number_series(), [
     ['reference_type', '=', 'Expense'],
   ]);
   const ExpenseAccount = getModel('ExpenseAccount');
-  assert.deepEqual(await ExpenseAccount.filters.account(), [
-    ['is_group', '=', 0],
-    ['root_type', '=', 'Expense'],
-  ]);
+  assert.equal(
+    ExpenseAccount.linkQueries.account,
+    'frappe_books.accounting.accounts.search_expense_accounts'
+  );
+  assert.equal(
+    ExpenseAccount.filters?.account,
+    undefined,
+    'the search ignores client filters, so the model sends none'
+  );
   const [account] = getSchema('ExpenseAccount').fields;
   assert.equal(account.create, false);
 });
