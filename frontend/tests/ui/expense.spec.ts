@@ -69,6 +69,31 @@ test('an expense filled in the form saves, submits read only and cancels', async
   await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
 });
 
+// covers: AC-6, AC-14
+test('a cancelled expense has no Amend, and Duplicate opens a draft with its rows', async ({
+  page,
+}) => {
+  const expense = await submitExpense(page, `Cancelled Copy ${run}`);
+  await cancelExpense(page, expense);
+  await page.goto(`/books/edit/Expense/${expense}`);
+  await waitForBooks(page);
+  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
+
+  // Like every other cancelled document, it offers no Amend, only Duplicate.
+  await expect(page.getByRole('button', { name: /amend/i })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Actions', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: /amend/i })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: 'Duplicate', exact: true }).click();
+
+  await expect(page).not.toHaveURL(new RegExp(`/${expense}$`));
+  await expect(
+    page.getByRole('combobox', { name: 'Paid From (required)' })
+  ).toBeEnabled();
+  // The header row and the two copied rows.
+  await expect(page.getByRole('row')).toHaveCount(3);
+  await expect(page.getByLabel('Total', { exact: true })).toHaveValue(/35\.00/);
+});
+
 test('a submitted expense posts to the ledger and Top Expenses, and cancelling takes it out', async ({
   page,
 }) => {
@@ -251,6 +276,25 @@ test.describe('on a phone', () => {
       .getByRole('button', { name: 'Cancel Expense', exact: true })
       .click();
     await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
+  });
+  // covers: AC-6, AC-14, AC-15
+  test('a cancelled expense has no Amend on a phone, and Duplicate opens a draft', async ({
+    page,
+  }) => {
+    const expense = await submitExpense(page, `Phone Copy ${run}`);
+    await cancelExpense(page, expense);
+    await page.goto(`/books/edit/Expense/${expense}`);
+    await waitForBooks(page);
+    await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menuitem', { name: /amend/i })).toHaveCount(0);
+    await page
+      .getByRole('menuitem', { name: 'Duplicate', exact: true })
+      .click();
+    await expect(page).not.toHaveURL(new RegExp(`/${expense}$`));
+    await expect(page.getByText('2 rows', { exact: true })).toBeVisible();
+    await expectNoSidewaysScroll(page);
   });
 });
 
