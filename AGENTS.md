@@ -55,6 +55,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`.
 
 - [code-style](.agents/skills/code-style/): `frappe/skills`, Frappe's Python and JS code style
 - [frappe-code-review](.agents/skills/frappe-code-review/): `frappe/skills`, checklist for reviewing Frappe changes
+- [paypal-best-practices](.agents/skills/paypal-best-practices/): `paypal/AI-Toolkit`, PayPal checkout, subscriptions and webhooks (for the planned billing control site)
 
 Area skills are listed in each nested doc. MCP servers: Frappe built in MCP (recommended), Playwright MCP (recommended), MariaDB MCP (recommended)
 

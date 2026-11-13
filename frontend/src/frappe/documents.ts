@@ -28,6 +28,11 @@ export function newFrappeDoc(
 
   const doc = new Model(schema, values, fyo) as FrappeDoc;
   doc.name ??= fyo.getTemporaryName(schema);
+  for (const fieldname of Model.startRows) {
+    if (!(fieldname in values)) {
+      doc.push(fieldname);
+    }
+  }
   doc.leaveToServer(
     Model.serverDefaults.filter((fieldname) => !(fieldname in values))
   );

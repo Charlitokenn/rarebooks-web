@@ -291,6 +291,12 @@ function getCompleteSidebar(): SidebarConfig {
           hidden: () => !fyo.can('PurchaseInvoice', 'read'),
         },
         {
+          label: t`Expenses`,
+          name: 'expenses',
+          route: '/list/Expense',
+          schemaName: 'Expense',
+        },
+        {
           label: t`Suppliers`,
           name: 'suppliers',
           route: `/list/Party/${t`Suppliers`}`,

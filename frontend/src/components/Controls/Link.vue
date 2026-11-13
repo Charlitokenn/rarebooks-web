@@ -66,12 +66,17 @@ export default {
         return [];
       }
 
+      const { schemaName: parent, fieldname } = this.df;
+      const query = parent
+        ? getModel(parent)?.linkQueries?.[fieldname]
+        : undefined;
       return await searchFrappeLink(
         schemaName,
         keyword,
         filters,
         LINK_PAGE_LENGTH,
-        fields
+        fields,
+        query
       );
     },
     async getSuggestions(keyword = '') {

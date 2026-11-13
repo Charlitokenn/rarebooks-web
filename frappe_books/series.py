@@ -10,6 +10,7 @@ INVALID_PREFIX = re.compile(r"[/=?&%]")
 INVALID_PREFIX_CHARACTERS = "/, ?, &, =, %"
 # Doctype: (standard prefix, series reference type, Books Defaults field that selects its series)
 NUMBER_SERIES = {
+	"Books Expense": ("EXP-", "Expense", "expense_number_series"),
 	"Books Journal Entry": ("JV-", "JournalEntry", "journal_entry_number_series"),
 	"Books Payment": ("PAY-", "Payment", "payment_number_series"),
 	"Books Purchase Invoice": ("PINV-", "PurchaseInvoice", "purchase_invoice_number_series"),

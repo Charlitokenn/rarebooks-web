@@ -17,6 +17,12 @@
       :value="doc[field.fieldname]"
       @change="(value: DocValue) => $emit('change', value)"
     />
+    <p
+      v-if="field.fieldtype === 'Table' && field.sub_label"
+      class="text-p-sm text-ink-gray-5"
+    >
+      {{ field.sub_label }}
+    </p>
     <FrappeErrorMessage :message="error" />
   </div>
   <FrappeSettingsRow v-else :title="field.label" :description="field.sub_label">

@@ -108,6 +108,13 @@
                   >
                     {{ fyo.format(e.amount, 'Currency') }}
                   </FrappeBadge>
+                  <FrappeBadge
+                    v-else-if="isPesa(e.total) && e.total.isPositive()"
+                    theme="green"
+                    variant="subtle"
+                  >
+                    {{ fyo.format(e.total, 'Currency') }}
+                  </FrappeBadge>
 
                   <!-- Quantities -->
                   <FrappeBadge
@@ -313,6 +320,7 @@ const linkSequence = [
   ModelNameEnum.PurchaseReceipt,
   // Other Transactional
   ModelNameEnum.Payment,
+  ModelNameEnum.Expense,
   ModelNameEnum.JournalEntry,
   ModelNameEnum.StockMovement,
   // Non Transfers
@@ -348,6 +356,7 @@ const linkEntryDisplayFields: Record<string, string[]> = {
   [ModelNameEnum.PurchaseReceipt]: ['name', 'date', 'party', 'grand_total'],
   // Other Transactional
   [ModelNameEnum.Payment]: ['name', 'date', 'party', 'amount'],
+  [ModelNameEnum.Expense]: ['name', 'date', 'party', 'total'],
   [ModelNameEnum.JournalEntry]: ['name', 'date', 'entry_type'],
   [ModelNameEnum.StockMovement]: ['name', 'date', 'amount'],
   // Ledgers
