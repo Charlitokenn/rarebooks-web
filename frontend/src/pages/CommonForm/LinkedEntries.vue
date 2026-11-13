@@ -108,6 +108,13 @@
                   >
                     {{ fyo.format(e.amount, 'Currency') }}
                   </FrappeBadge>
+                  <FrappeBadge
+                    v-else-if="isPesa(e.total) && e.total.isPositive()"
+                    theme="green"
+                    variant="subtle"
+                  >
+                    {{ fyo.format(e.total, 'Currency') }}
+                  </FrappeBadge>
 
                   <!-- Quantities -->
                   <FrappeBadge

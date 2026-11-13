@@ -236,6 +236,32 @@ test('a Books User picks both accounts without account rights, submits, and cann
   }
 });
 
+// covers: AC-11
+test("a supplier's Linked entries list the expense with its date and total", async ({
+  page,
+}) => {
+  const supplier = `Linked Expense Supplier ${run}`;
+  await insertDocument(page, 'Books Party', {
+    name: supplier,
+    role: 'Supplier',
+  });
+  const expense = await submitExpense(page, `Linked EXP ${run}`, supplier);
+
+  await page.goto(`/books/edit/Party/${encodeURIComponent(supplier)}`);
+  await waitForBooks(page);
+  await page.getByRole('button', { name: 'Actions', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Linked entries' }).click();
+
+  // submitExpense posts 25 and 10, so the entry shows a total of 35.
+  const entry = page
+    .getByRole('region', { name: 'Expense 1' })
+    .getByRole('listitem')
+    .filter({ hasText: expense });
+  await expect(entry).toBeVisible();
+  await expect(entry).toContainText(supplier);
+  await expect(entry).toContainText(/35\.00/);
+});
+
 // covers: AC-1, AC-8
 test('a Books Cashier sees no Expenses and every expense call is refused', async ({
   page,
