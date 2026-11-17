@@ -103,7 +103,7 @@ spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_boo
   - [x] Books User pickers: two account searches gated on the expense rights, so a Books User records expenses without account rights (AC-3, AC-8, AC-17)
   - [x] Server messages: show a message returned with a successful save as a toast, so the duplicate warning reaches you, per spec [0006](../specs/0006-server-messages-on-success.md) (AC-7)
 - [x] Verify it: `/check verify expenses`
-- [ ] Test it: `/test expenses`
+- [x] Test it: `/test expenses`
 - [ ] Review it (fresh model): `/check review expenses`
 - [ ] Document it: `/document expenses`
 

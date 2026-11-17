@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import frappe
 from frappe.desk.search import search_widget
-from frappe.tests import IntegrationTestCase
-from frappe.utils import nowdate
+from frappe.tests import IntegrationTestCase, change_settings
+from frappe.utils import add_months, getdate, nowdate
 from frappe.utils.print_utils import get_print
 
 from frappe_books.accounting.accounts import (
@@ -18,13 +18,14 @@ from frappe_books.accounting.accounts import (
 from frappe_books.accounting.money import as_decimal
 from frappe_books.linked_entries import get_linked_entries
 from frappe_books.patches import add_expense_number_series
-from frappe_books.reports.dashboard import get_top_expenses
+from frappe_books.reports.dashboard import get_profit_and_loss, get_top_expenses
 from frappe_books.tests.accounting import (
 	ensure_user,
 	ledger_entries,
 	make_account,
 	make_number_series,
 	make_party,
+	restored_company_settings,
 )
 
 BOOKS_USER = "books-expense-user@example.com"
@@ -428,6 +429,176 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 		frappe.db.set_single_value("Books Defaults", "expense_number_series", None)
 		add_expense_number_series.execute()
 		self.assertEqual(frappe.db.get_single_value("Books Defaults", "expense_number_series"), "EXP-")
+
+	# covers: AC-7
+	def test_only_a_submitted_match_warns(self):
+		supplier = make_party(
+			make_account("Test Payable", root_type="Liability", account_type="Payable").name, "Supplier"
+		)
+		rows = [{"account": self.rent.name, "amount": 10}]
+		draft = make_expense(self.cash.name, rows, party=supplier.name, reference_number="R-88")
+		frappe.clear_messages()
+		make_expense(self.cash.name, rows, party=supplier.name, reference_number="R-88")
+		self.assertEqual(warnings(), [], "a draft match warned")
+
+		draft.submit()
+		draft.cancel()
+		frappe.clear_messages()
+		make_expense(self.cash.name, rows, party=supplier.name, reference_number="R-88")
+		self.assertEqual(warnings(), [], "a cancelled match warned")
+
+	# covers: AC-7
+	def test_the_warning_never_names_an_expense_the_user_cannot_read(self):
+		supplier = make_party(
+			make_account("Test Payable", root_type="Liability", account_type="Payable").name, "Supplier"
+		)
+		other_cash = make_account("Other Cash", account_type="Cash").name
+		rows = [{"account": self.rent.name, "amount": 10}]
+		hidden = make_expense(self.cash.name, rows, party=supplier.name, reference_number="R-99")
+		hidden.submit()
+		user = ensure_user("books-expense-restricted@example.com", "Books User")
+		# The user may only read expenses paid from `other_cash`.
+		for account in (other_cash, self.rent.name):
+			frappe.get_doc(
+				{
+					"doctype": "User Permission",
+					"user": user,
+					"allow": "Books Account",
+					"for_value": account,
+					"apply_to_all_doctypes": 0,
+					"applicable_for": "Books Expense",
+				}
+			).insert(ignore_permissions=True)
+
+		with self.set_user(user):
+			frappe.clear_messages()
+			saved = make_expense(other_cash, rows, party=supplier.name, reference_number="R-99")
+			self.assertFalse(frappe.has_permission("Books Expense", doc=hidden.name))
+			self.assertTrue(saved.name)
+			self.assertEqual(warnings(), [])
+
+	# covers: AC-5
+	def test_profit_and_loss_counts_an_expense_only_once_submitted(self):
+		before = this_month_balance()
+		make_expense(self.cash.name, [{"account": self.rent.name, "amount": 77}])
+		self.assertEqual(this_month_balance(), before)
+
+		expense = make_expense(self.cash.name, [{"account": self.rent.name, "amount": 33}])
+		expense.submit()
+		self.assertEqual(this_month_balance(), before - Decimal("33"))
+
+	# covers: AC-5
+	def test_a_past_date_posts_on_that_date_and_stays_out_of_this_month(self):
+		last_month = add_months(getdate(), -1)
+		expense = make_expense(self.cash.name, [{"account": self.rent.name, "amount": 7}], date=last_month)
+		expense.submit()
+
+		dates = frappe.get_all(
+			"Books Ledger Entry",
+			filters={"voucher_type": expense.doctype, "voucher_no": expense.name},
+			pluck="posting_date",
+		)
+		self.assertEqual(set(dates), {last_month})
+		self.assertNotIn(self.rent.name, top_expense_accounts())
+		quarter = [row["account"] for row in get_top_expenses("This Quarter")]
+		self.assertIn(self.rent.name, quarter)
+
+	# covers: AC-5
+	def test_amounts_round_to_the_company_currency_unit(self):
+		try:
+			with restored_company_settings():
+				frappe.db.set_single_value("System Settings", {"currency": "JPY", "currency_precision": "0"})
+				frappe.clear_cache()
+				expense = make_expense(
+					self.cash.name,
+					[{"account": self.rent.name, "amount": 10.6}, {"account": self.rent.name, "amount": 4.4}],
+				)
+				expense.submit()
+				entries = ledger_entries(expense.doctype, expense.name)
+		finally:
+			frappe.clear_cache()
+
+		self.assertEqual([as_decimal(row.amount) for row in expense.accounts], [Decimal("11"), Decimal("4")])
+		self.assertEqual(as_decimal(expense.total), Decimal("15"))
+		self.assertEqual(sorted(as_decimal(row.debit or row.credit) for row in entries), [15, 15])
+
+	# covers: AC-6
+	def test_cancel_adds_reversing_rows_that_mirror_the_posted_ones(self):
+		expense = make_expense(
+			self.cash.name,
+			[{"account": self.rent.name, "amount": 100}, {"account": self.fuel.name, "amount": 50}],
+		)
+		expense.submit()
+		expense.cancel()
+
+		entries = ledger_entries(expense.doctype, expense.name)
+		posted = sorted(
+			(row.account, as_decimal(row.debit), as_decimal(row.credit)) for row in entries if not row.reverts
+		)
+		reversing = sorted(
+			(row.account, as_decimal(row.credit), as_decimal(row.debit)) for row in entries if row.reverts
+		)
+		self.assertEqual(len(posted), 3)
+		self.assertEqual(posted, reversing)
+
+	# covers: AC-6
+	def test_amending_an_amended_expense_takes_the_next_number(self):
+		expense = make_expense(self.cash.name, [{"account": self.rent.name, "amount": 10}])
+		expense.submit()
+		expense.cancel()
+		first = amend(expense)
+		first.submit()
+		first.cancel()
+
+		self.assertEqual(amend(first).name, f"{expense.name}-2")
+
+	# covers: AC-11
+	def test_a_cancelled_expense_leaves_linked_entries(self):
+		supplier = make_party(
+			make_account("Test Payable", root_type="Liability", account_type="Payable").name, "Supplier"
+		)
+		expense = make_expense(
+			self.cash.name, [{"account": self.rent.name, "amount": 10}], party=supplier.name
+		)
+		expense.submit()
+		expense.cancel()
+
+		for doctype, name in (
+			("Books Party", supplier.name),
+			("Books Account", self.cash.name),
+			("Books Account", self.rent.name),
+		):
+			with self.subTest(doctype=doctype):
+				self.assertNotIn(expense.name, get_linked_entries(doctype, name).get("Books Expense", []))
+
+	# covers: AC-13
+	def test_the_print_header_follows_books_print_settings(self):
+		expense = make_expense(self.cash.name, [{"account": self.rent.name, "amount": 10}])
+		with change_settings(
+			"Books Print Settings", {"company_name": "Expense Print Co", "color": "#123abc"}
+		):
+			html = get_print(expense.doctype, expense.name)
+
+		self.assertIn("Expense Print Co", html)
+		self.assertIn("#123abc", html.lower())
+
+
+def warnings():
+	"""The duplicate reference warnings this request has sent so far."""
+	messages = [frappe.parse_json(message) for message in frappe.message_log]
+	return [m.get("message") for m in messages if "already has reference" in (m.get("message") or "")]
+
+
+def this_month_balance():
+	"""Profit (income less expense) of the current month on the dashboard."""
+	return as_decimal(get_profit_and_loss("This Month")["months"][-1]["balance"])
+
+
+def amend(expense):
+	amended = frappe.copy_doc(expense)
+	amended.amended_from = expense.name
+	amended.docstatus = 0
+	return amended.insert()
 
 
 def top_expense_accounts():

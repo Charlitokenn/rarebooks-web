@@ -2,9 +2,11 @@ import {
   expect,
   test,
   type Browser,
+  type BrowserContextOptions,
   type Locator,
   type Page,
 } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { getLeafAccounts, insertDocument } from './helpers/records';
 import { useBooksSession, waitForBooks } from './helpers/session';
 
@@ -216,10 +218,11 @@ test('a Books User picks both accounts without account rights, submits, and cann
     await expect(
       user.page.getByRole('menuitem', { name: 'Cancel', exact: true })
     ).toBeVisible();
-    await expect(
-      user.page.getByRole('menuitem', { name: 'Accounting entries' })
-    ).toHaveCount(0);
     await user.page.keyboard.press('Escape');
+    // "Accounting entries" sits in the View menu, which a Books User doesn't get.
+    await expect(
+      user.page.getByRole('button', { name: 'View', exact: true })
+    ).toHaveCount(0);
 
     const draft = await insertDocument(user.page, 'Books Expense', {
       paid_from: cash,
@@ -350,11 +353,506 @@ test('a Books Cashier sees no Expenses and every expense call is refused', async
   }
 });
 
+// covers: AC-8
+test('a Books Cashier is refused the expense preview', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const cash = await getCashAccount(page);
+  const cashier = await signInAs(page, browser, baseURL, 'Books Cashier');
+  try {
+    const preview = await request(
+      cashier.page,
+      'POST',
+      '/api/v2/method/run_doc_method',
+      {
+        method: 'preview',
+        document: {
+          doctype: 'Books Expense',
+          paid_from: cash,
+          accounts: [{ account: rent, amount: 1 }],
+        },
+      }
+    );
+    expect(preview.status).toBe(403);
+  } finally {
+    await cashier.close();
+  }
+});
+
+// covers: AC-1
+test('Purchases places Expenses after Purchase Payments and before Suppliers', async ({
+  page,
+}) => {
+  const links = (await page.getByRole('link').allInnerTexts()).map((text) =>
+    text.trim()
+  );
+  const at = (name: string) => links.indexOf(name);
+
+  expect(at('Purchase Payments')).toBeGreaterThan(-1);
+  expect(at('Expenses')).toBe(at('Purchase Payments') + 1);
+  expect(at('Suppliers')).toBe(at('Expenses') + 1);
+});
+
+// covers: AC-2
+test('the list filters by Submitted and by Cancelled, newest date first', async ({
+  page,
+}) => {
+  const draft = await insertExpense(page, { date: '2026-01-04' });
+  const submitted = await submitExpense(page, `Filter Submitted ${run}`);
+  const cancelled = await submitExpense(page, `Filter Cancelled ${run}`);
+  await cancelExpense(page, cancelled);
+  await page.goto('/books/list/Expense');
+  await waitForBooks(page);
+
+  const header = await page.getByRole('columnheader').allInnerTexts();
+  expect(header.map((text) => text.trim()).filter(Boolean)).toEqual([
+    '#',
+    'Expense No',
+    'Status',
+    'Date',
+    'Supplier',
+    'Paid From',
+    'Total',
+  ]);
+  const dates = (await listRows(page)).map(getDateKey);
+  expect(dates).toEqual([...dates].sort().reverse());
+
+  for (const [status, shown, hidden] of [
+    ['Submitted', submitted, cancelled],
+    ['Cancelled', cancelled, submitted],
+  ] as const) {
+    await filterByStatus(page, status);
+    const rows = await listRows(page);
+    expect(rows.join('\n')).toContain(shown);
+    expect(rows.join('\n')).not.toContain(hidden);
+    expect(rows.join('\n')).not.toContain(draft);
+    for (const row of rows) {
+      expect(row).toContain(status);
+    }
+  }
+});
+
+// covers: AC-3
+test('the Supplier picker offers only suppliers, and Create makes a supplier', async ({
+  page,
+}) => {
+  const supplier = `Picker Supplier ${run}`;
+  const both = `Picker Both ${run}`;
+  const customer = `Picker Customer ${run}`;
+  for (const [name, role] of [
+    [supplier, 'Supplier'],
+    [both, 'Both'],
+    [customer, 'Customer'],
+  ]) {
+    await insertDocument(page, 'Books Party', { name, role });
+  }
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await expect(page).toHaveURL(/\/books\/edit\/Expense\//);
+
+  const party = page.getByRole('combobox', { name: 'Supplier' });
+  await party.click();
+  await party.fill(`Picker `);
+  await expect(page.getByRole('option', { name: supplier })).toBeVisible();
+  await expect(page.getByRole('option', { name: both })).toBeVisible();
+  await expect(page.getByRole('option', { name: customer })).toHaveCount(0);
+
+  await page
+    .getByRole('option', { name: /^Create/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('combobox', { name: 'Role', exact: true })
+  ).toHaveText('Supplier');
+});
+
+// covers: AC-3, AC-8, AC-17
+test('a Books User picks only what the save accepts, and gets no Paid From filter', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const accounts = await getAccounts(page);
+  const paidFromOk = accounts
+    .filter(
+      (account) =>
+        !account.is_group &&
+        (['Cash', 'Bank'].includes(account.account_type ?? '') ||
+          (account.root_type === 'Liability' && !account.account_type))
+    )
+    .map((account) => account.name);
+  const rowOk = accounts
+    .filter((account) => !account.is_group && account.root_type === 'Expense')
+    .map((account) => account.name);
+  const user = await signInAs(page, browser, baseURL, 'Books User');
+  try {
+    await user.page.goto('/books/list/Expense');
+    await waitForBooks(user.page);
+    await user.page.getByRole('button', { name: 'New', exact: true }).click();
+
+    await user.page
+      .getByRole('combobox', { name: 'Paid From (required)' })
+      .click();
+    const paidFrom = await getOptions(user.page);
+    expect(paidFrom.length).toBeGreaterThan(0);
+    expect(paidFrom.filter((name) => !paidFromOk.includes(name))).toEqual([]);
+    await user.page.keyboard.press('Escape');
+
+    const account = user.page
+      .getByRole('row')
+      .nth(1)
+      .getByRole('combobox', { name: 'Account' })
+      .last();
+    await account.click();
+    const rows = await getOptions(user.page);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.filter((name) => !rowOk.includes(name))).toEqual([]);
+    // Typing narrows the list.
+    await account.fill(rows[0].slice(0, 6));
+    await expect(
+      user.page.getByRole('option', { name: rows[0], exact: true })
+    ).toBeVisible();
+    await user.page.keyboard.press('Escape');
+
+    await user.page.goto('/books/list/Expense');
+    await waitForBooks(user.page);
+    expect(await getFilterFields(user.page)).not.toContain('Paid From');
+  } finally {
+    await user.close();
+  }
+});
+
+// covers: AC-17
+test('a Books User opens a submitted expense without reading Books Account', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const cash = await getCashAccount(page);
+  const expense = await submitExpense(page, `No Account Read ${run}`);
+  const user = await signInAs(page, browser, baseURL, 'Books User');
+  try {
+    const accountReads: string[] = [];
+    user.page.on('request', (sent) => {
+      // The form's field definitions name Books Account; only record reads.
+      if (sent.url().includes('get_books_meta')) return;
+      const url = decodeURIComponent(sent.url());
+      const body = sent.postData() ?? '';
+      if (
+        /Books Account([/?"]|$)/.test(url) ||
+        body.includes('"Books Account"')
+      ) {
+        accountReads.push(url);
+      }
+    });
+    await user.page.goto(`/books/edit/Expense/${expense}`);
+    await waitForBooks(user.page);
+
+    await expect(
+      user.page.getByRole('textbox', { name: /^Paid From/ })
+    ).toHaveValue(cash);
+    await expect(
+      user.page.getByRole('row').nth(1).getByRole('textbox').first()
+    ).toHaveValue(rent);
+    expect(accountReads).toEqual([]);
+  } finally {
+    await user.close();
+  }
+});
+
+// covers: AC-17
+test('a Books Manager gets open buttons, Accounting entries and a Paid From filter', async ({
+  page,
+}) => {
+  expect(await getFilterFields(page)).toContain('Paid From');
+  const expense = await submitExpense(page, `Manager View ${run}`);
+  await page.goto(`/books/edit/Expense/${expense}`);
+  await waitForBooks(page);
+
+  const paidFrom = fieldBlock(
+    page,
+    page.getByRole('textbox', { name: /^Paid From/ }),
+    'Paid From'
+  );
+  await expect(openButton(paidFrom)).toHaveCount(1);
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(
+    page.getByRole('menuitem', { name: 'Accounting entries' })
+  ).toBeVisible();
+});
+
+// covers: AC-5
+test('Accounting entries opens the General Ledger on the expense', async ({
+  page,
+}) => {
+  const expense = await submitExpense(page, `Ledger Link ${run}`);
+  await page.goto(`/books/edit/Expense/${expense}`);
+  await waitForBooks(page);
+
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Accounting entries' }).click();
+
+  await expect(page).toHaveURL(/\/books\/report\/GeneralLedger/);
+  expect(decodeURIComponent(page.url())).toContain(
+    `"referenceName":"${expense}"`
+  );
+  // submitExpense posts 25 and 10, credited as 35.
+  for (const amount of ['25.00', '10.00', '35.00']) {
+    await expect(page.getByText(amount).first()).toBeVisible();
+  }
+  await page.getByRole('combobox', { name: 'Ref Type' }).click();
+  const types = await getOptions(page);
+  expect(types.indexOf('Expenses')).toBe(types.indexOf('Journal Entries') + 1);
+});
+
+// covers: AC-7 (spec 0006: the preview stays quiet, a refusal keeps its own error)
+test('typing shows no server message, and a refused save shows only its error', async ({
+  page,
+}) => {
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const cash = await getCashAccount(page);
+  const previews: string[] = [];
+  page.on('request', (sent) => {
+    if ((sent.postData() ?? '').includes('"method":"preview"')) {
+      previews.push(sent.url());
+    }
+  });
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await pickLink(page, 'Paid From (required)', cash);
+  const row = page.getByRole('row').nth(1);
+  await pickLink(page, 'Account', rent, row);
+  await row.getByRole('textbox').last().fill('9');
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Total', { exact: true })).toHaveValue(/9\.00/);
+
+  expect(previews.length).toBeGreaterThan(0);
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+
+  await row.getByRole('textbox').last().fill('0');
+  await page.keyboard.press('Tab');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(
+    page.getByText('Row 1: amount must be greater than zero.').first()
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('[data-sonner-toast]')
+      .filter({ hasNotText: 'Row 1: amount must be greater than zero.' })
+  ).toHaveCount(0);
+});
+
+// covers: AC-13
+test('Print uses Business - Expense with the header, rows and remark', async ({
+  page,
+}) => {
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const cash = await getCashAccount(page);
+  const supplier = `Print Supplier ${run}`;
+  await insertDocument(page, 'Books Party', {
+    name: supplier,
+    role: 'Supplier',
+  });
+  const expense = await insertExpense(page, {
+    party: supplier,
+    reference_number: `PRINT-${run}`,
+    user_remark: `Print remark ${run}`,
+    docstatus: 1,
+    accounts: [{ account: rent, amount: 8, description: `Print row ${run}` }],
+  });
+
+  await page.goto(`/books/print/Expense/${expense}`);
+  await waitForBooks(page);
+
+  await expect(
+    page.getByRole('combobox', { name: 'Template Name' })
+  ).toContainText('Business - Expense');
+  const print = page.frameLocator('iframe[title="Print preview"]');
+  for (const text of [
+    expense,
+    cash,
+    supplier,
+    `PRINT-${run}`,
+    rent,
+    `Print row ${run}`,
+    `Print remark ${run}`,
+  ]) {
+    await expect(print.getByText(text).first()).toBeVisible();
+  }
+});
+
+// covers: AC-14
+test('Duplicate of a submitted expense with a receipt copies everything but the receipt', async ({
+  page,
+}) => {
+  const supplier = `Duplicate Copy Supplier ${run}`;
+  await insertDocument(page, 'Books Party', {
+    name: supplier,
+    role: 'Supplier',
+  });
+  const expense = await insertExpense(page, {
+    party: supplier,
+    reference_number: `COPY-${run}`,
+    user_remark: 'Copy me',
+    date: '2026-10-02',
+    docstatus: 1,
+    attachment: '/files/receipt.png',
+  });
+  await page.goto(`/books/edit/Expense/${expense}`);
+  await waitForBooks(page);
+
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Duplicate', exact: true }).click();
+  await expect(page).not.toHaveURL(new RegExp(`/${expense}$`));
+  await expect(
+    page.getByRole('textbox', { name: 'Reference Number' })
+  ).toHaveValue(`COPY-${run}`);
+  await expect(page.getByRole('combobox', { name: 'Supplier' })).toHaveValue(
+    supplier
+  );
+  await expect(page.getByRole('textbox', { name: 'Remark' })).toHaveValue(
+    'Copy me'
+  );
+  await expect(
+    page.getByRole('combobox', { name: 'Date (required)' })
+  ).toHaveValue('02-10-2026');
+  await expect(page.getByText('receipt.png')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page).toHaveURL(/\/books\/edit\/Expense\/EXP-[^/]+$/);
+  const copy = await getExpense(page, page.url().split('/').pop()!);
+  expect(copy).toMatchObject({ status: 'Saved', docstatus: 0 });
+  expect(copy.attachment ?? null).toBeNull();
+  expect(copy.amended_from ?? null).toBeNull();
+});
+
+// covers: AC-8, AC-12
+test('the Import Wizard imports a draft expense, refuses a zero row, and is a Manager tool', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const [rent, fuel] = await getLeafAccounts(page, 'Expense');
+  const cash = await getCashAccount(page);
+  await page.goto('/books/import-wizard');
+  await waitForBooks(page);
+  await page.getByRole('combobox').first().click();
+  await page.getByRole('option', { name: 'Expense', exact: true }).click();
+
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save template' }).click();
+  const template = await readFile((await (await download).path())!, 'utf8');
+  const columns = template
+    .split(/\r?\n/)[0]
+    .split(',')
+    .map((column) => column.replace(/"/g, ''));
+  expect(columns).toEqual([
+    'Expense No',
+    'Number Series',
+    'Date',
+    'Paid From',
+    'Supplier',
+    'Reference Number',
+    'Remark',
+    'ID (Expenses)',
+    'Account (Expenses)',
+    'Description (Expenses)',
+    'Amount (Expenses)',
+  ]);
+
+  // Rows that share an Expense No become one expense; the server fills the empty Number Series.
+  const kept = `IMP-${run}`;
+  const refused = `IMPZ-${run}`;
+  const csv = [
+    'Expense No,Number Series,Date,Paid From,Reference Number,Account (Expenses),Amount (Expenses)',
+    `A,,2026-11-02,${cash},${kept},${rent},100`,
+    `A,,,,,${fuel},20`,
+    `B,,2026-11-03,${cash},${refused},${rent},0`,
+  ].join('\n');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Select file', exact: true }).click();
+  await (
+    await chooser
+  ).setFiles({
+    name: 'import.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(csv),
+  });
+  await page.getByRole('button', { name: 'Import data', exact: true }).click();
+
+  // Keep them as drafts.
+  await page
+    .getByRole('dialog', { name: 'Submit entries?' })
+    .getByRole('button', { name: 'No', exact: true })
+    .click();
+
+  const results = page.getByRole('dialog', { name: 'Import complete' });
+  await expect(results).toContainText('1 entry imported');
+  await expect(results).toContainText('1 entry failed');
+  await expect(results).toContainText(
+    'Row 1: amount must be greater than zero.'
+  );
+  const imported = await getExpenses(page, [kept, refused]);
+  expect(imported).toHaveLength(1);
+  expect(imported[0]).toMatchObject({
+    reference_number: kept,
+    docstatus: 0,
+    status: 'Saved',
+    total: 120,
+  });
+
+  const user = await signInAs(page, browser, baseURL, 'Books User');
+  try {
+    await user.page.goto('/books/import-wizard');
+    await waitForBooks(user.page);
+    await user.page.getByRole('combobox').first().click();
+    await expect(
+      user.page.getByRole('option', { name: 'Expense', exact: true })
+    ).toHaveCount(0);
+  } finally {
+    await user.close();
+  }
+});
+
 test.describe('on a phone', () => {
   test.use({
     viewport: { width: 390, height: 844 },
     isMobile: true,
     hasTouch: true,
+  });
+
+  // covers: AC-8, AC-9
+  test("a Books Cashier's create menu offers no Expense", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    const cashier = await signInAs(page, browser, baseURL, 'Books Cashier', {
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const create = cashier.page.getByRole('button', {
+        name: 'Create',
+        exact: true,
+      });
+      if (await create.count()) {
+        await create.click();
+      }
+      await expect(
+        cashier.page.getByRole('menuitem', { name: 'Expense', exact: true })
+      ).toHaveCount(0);
+      await expect(
+        cashier.page.getByRole('button', { name: 'Expense', exact: true })
+      ).toHaveCount(0);
+    } finally {
+      await cashier.close();
+    }
   });
 
   // covers: AC-2, AC-15
@@ -532,7 +1030,8 @@ async function signInAs(
   page: Page,
   browser: Browser,
   baseURL: string | undefined,
-  role: string
+  role: string,
+  options: BrowserContextOptions = {}
 ) {
   const stamp = `${run}-${Date.now()}`;
   const email = `expense-${role.replace(/\W/g, '').toLowerCase()}-${stamp}@example.com`;
@@ -545,7 +1044,7 @@ async function signInAs(
     roles: [{ role }],
   });
 
-  const context = await browser.newContext({ baseURL });
+  const context = await browser.newContext({ ...options, baseURL });
   const login = await context.request.post('/api/method/login', {
     form: { usr: email, pwd: password },
   });
@@ -554,6 +1053,123 @@ async function signInAs(
   await userPage.goto('/books');
   await waitForBooks(userPage);
   return { page: userPage, close: () => context.close() };
+}
+
+/** Inserts an expense paid from a Cash account with one 25 row, overriding any value given. */
+async function insertExpense(
+  page: Page,
+  values: Record<string, unknown> = {}
+): Promise<string> {
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const expense = await insertDocument(page, 'Books Expense', {
+    paid_from: await getCashAccount(page),
+    accounts: [{ account: rent, amount: 25 }],
+    ...values,
+  });
+  return expense.name as string;
+}
+
+async function getExpense(
+  page: Page,
+  name: string
+): Promise<Record<string, any>> {
+  const { text } = await request(
+    page,
+    'GET',
+    `/api/v2/document/Books Expense/${name}`
+  );
+  return JSON.parse(text).data;
+}
+
+/** The expenses with these reference numbers. */
+async function getExpenses(
+  page: Page,
+  references: string[]
+): Promise<Record<string, any>[]> {
+  const filters = JSON.stringify([['reference_number', 'in', references]]);
+  const fields = JSON.stringify([
+    'name',
+    'reference_number',
+    'docstatus',
+    'status',
+    'total',
+  ]);
+  const { text } = await request(
+    page,
+    'GET',
+    `/api/v2/document/Books Expense?filters=${encodeURIComponent(filters)}&fields=${encodeURIComponent(fields)}`
+  );
+  return JSON.parse(text).data;
+}
+
+/** Every Books Account, read as the page's user (a Manager). */
+async function getAccounts(page: Page): Promise<
+  {
+    name: string;
+    is_group: number;
+    root_type: string;
+    account_type: string | null;
+  }[]
+> {
+  const fields = JSON.stringify([
+    'name',
+    'is_group',
+    'root_type',
+    'account_type',
+  ]);
+  const { text } = await request(
+    page,
+    'GET',
+    `/api/v2/document/Books Account?fields=${encodeURIComponent(fields)}&limit=1000`
+  );
+  return JSON.parse(text).data;
+}
+
+/** The options an open picker shows, once it has some. */
+async function getOptions(page: Page): Promise<string[]> {
+  await expect(page.getByRole('option').first()).toBeVisible();
+  const options = await page.getByRole('option').allInnerTexts();
+  return options.map((text) => text.trim()).filter(Boolean);
+}
+
+/** The fields the list's Filter panel offers. */
+async function getFilterFields(page: Page): Promise<string[]> {
+  await page.getByRole('button', { name: 'Filter', exact: true }).click();
+  await page.getByRole('button', { name: 'Add a filter', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Field', exact: true }).click();
+  const fields = await getOptions(page);
+  await page.keyboard.press('Escape');
+  return fields;
+}
+
+async function filterByStatus(page: Page, status: string) {
+  await page.goto('/books/list/Expense');
+  await waitForBooks(page);
+  await page.getByRole('button', { name: 'Filter', exact: true }).click();
+  await page.getByRole('button', { name: 'Add a filter', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Field', exact: true }).click();
+  await page.getByRole('option', { name: 'Status', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Value', exact: true }).click();
+  await page.getByRole('option', { name: status, exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('button', { name: /1 filter applied/ })
+  ).toBeVisible();
+}
+
+/** The text of each list row that shows an expense. */
+async function listRows(page: Page): Promise<string[]> {
+  await expect(
+    page.getByRole('row').filter({ hasText: /EXP-/ }).first()
+  ).toBeVisible();
+  const rows = await page.getByRole('row').allInnerTexts();
+  return rows.filter((text) => /EXP-\d+/.test(text));
+}
+
+/** A list row's date as YYYYMMDD, so rows sort by it. */
+function getDateKey(row: string): string {
+  const [, day, month, year] = row.match(/(\d\d)-(\d\d)-(\d{4})/) ?? [];
+  return `${year}${month}${day}`;
 }
 
 /** Calls the server as the page's user and returns the status, so a refusal can be checked. */
