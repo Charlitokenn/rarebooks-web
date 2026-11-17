@@ -92,7 +92,8 @@ def search_expense_payment_accounts(
 	names only. `is_expense_payment_account` alone decides, as it does on save, so the client
 	`filters` are ignored. Books Account is a translated doctype: `search_widget` sends an empty
 	`txt` and a large page, then matches the translated names and pages the result itself, so
-	`txt`, `start` and `page_len` are ignored too.
+	`txt`, `start` and `page_len` are ignored too. This relies on `translated_doctype` staying set on
+	Books Account; a test in `test_books_expense.py` fails if it is removed.
 	"""
 	check_expense_picker_permission()
 	rows = frappe.get_all(

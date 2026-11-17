@@ -9,6 +9,7 @@ import {
   newFrappeDoc,
   parseServerMessages,
   registerFrappeModels,
+  showServerMessages,
   stubFrappe,
   toast,
 } from './helpers/frappe.mjs';
@@ -188,4 +189,34 @@ test('a call() with _server_messages shows the same toasts', async () => {
       duration: 5_000,
     },
   ]);
+});
+
+test('a toast that fails to show is logged, and the save still succeeds', async (t) => {
+  const failure = new Error('Toaster is gone');
+  t.mock.method(toast, 'warning', () => {
+    throw failure;
+  });
+  const logged = t.mock.method(console, 'error', () => {});
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  t.after(() => process.off('unhandledRejection', onUnhandled));
+  answerWith([warning]);
+
+  const saved = await frappeApi.insertDocument('Books Expense', {});
+  await settled();
+
+  assert.equal(saved.name, 'EXP-0002');
+  assert.deepEqual(unhandled, []);
+  assert.equal(logged.mock.callCount(), 1);
+  assert.equal(logged.mock.calls[0].arguments.at(-1), failure);
+});
+
+test('showServerMessages never rejects', async (t) => {
+  t.mock.method(toast, 'info', () => {
+    throw new Error('Toaster is gone');
+  });
+  t.mock.method(console, 'error', () => {});
+
+  await assert.doesNotReject(showServerMessages([{ message: 'Note' }]));
 });

@@ -285,6 +285,21 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 		self.assertIn(self.fuel.name, found)
 		self.assertNotIn(self.rent.name, found)
 
+	# covers: AC-3
+	def test_search_widget_filters_and_pages_both_searches_because_books_account_is_translated(self):
+		# The searches return every account they allow and leave the text match and paging to
+		# search_widget, which does both only for a translated doctype.
+		self.assertTrue(frappe.get_meta("Books Account").translated_doctype)
+		for query, account in ((PAID_FROM_QUERY, self.cash.name), (ROW_ACCOUNT_QUERY, self.rent.name)):
+			with self.subTest(query=query):
+				everything = [row.name for row in account_search(query, "")]
+				typed = [row.name for row in account_search(query, account)]
+				first_page = search_widget("Books Account", "", query=query, page_length=1, as_dict=True)
+
+				self.assertGreater(len(everything), 1)
+				self.assertEqual(typed, [account])
+				self.assertEqual(len(first_page), 1)
+
 	# covers: AC-8
 	def test_a_cashier_is_refused_by_both_account_searches(self):
 		with self.set_user(ensure_user(BOOKS_CASHIER, "Books Cashier")):

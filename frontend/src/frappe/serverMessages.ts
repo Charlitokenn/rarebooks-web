@@ -21,11 +21,20 @@ const toastTypeByIndicator: Record<string, ToastType | undefined> = {
 /**
  * Shows each distinct message from a successful response as a toast.
  * Only the request layers call this; screens never handle server messages.
+ * It never rejects: the request already succeeded, so a toast that fails to
+ * show is logged, not reported as a failed request.
  */
 export async function showServerMessages(
   messages: ServerMessage[] = []
 ): Promise<void> {
-  const distinct = getDistinctMessages(messages);
+  try {
+    await showToasts(getDistinctMessages(messages));
+  } catch (error) {
+    console.error('Could not show the server messages', messages, error);
+  }
+}
+
+async function showToasts(distinct: ServerMessage[]): Promise<void> {
   if (!distinct.length) {
     return;
   }
