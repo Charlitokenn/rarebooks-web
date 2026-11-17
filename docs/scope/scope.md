@@ -15,7 +15,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 1 | Project context for version-16 | Foundation | done |
 | 2 | Account balances card | Slice 1 | in-progress |
 | 3 | Best sellers chart | Slice 2 | done |
-| 4 | Choose dashboard accounts | Slice 3 | in-progress |
+| 4 | Choose dashboard accounts | Slice 3 | done |
 | 5 | Expenses | Slice 4 | done |
 | 6 | Trial and read only lock | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | planned |
@@ -71,7 +71,7 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Be
 
 ## Slice 3: Choose dashboard accounts
 
-### 4. Choose dashboard accounts · in-progress
+### 4. Choose dashboard accounts · done
 Let a user who can save Accounting Settings pick which leaf asset and liability accounts the balances card lists, from a Dashboard section in Accounting Settings. With none picked, the card falls back to every cash and bank account. Ported from develop's spec 0003.
 **Done when:** picked accounts show on the card in chart order. A duplicate or a non leaf, non asset, non liability pick is refused on save. A saved pick that later stops qualifying is skipped on the card and doesn't block saving other settings. The "Choose accounts" button shows only to users who can write Accounting Settings.
 spec [0003](../specs/0003-choose-dashboard-accounts/index.md)
