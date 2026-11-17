@@ -35,6 +35,7 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - Whitelisted methods must have type annotations (`require_type_annotated_api_methods = True`), or Frappe refuses them. Requests send a JSON body (`use_json_request_body = True`).
 - Server filled values come from a whitelisted `preview` method that fills and does not save. Mapped documents come from a whitelisted mapper in the source DocType's controller.
 - Labels, placeholders (use `placeholder`, not `description`), options, defaults and required live in the DocType JSON.
+- A message that warns without blocking the save is `frappe.msgprint(..., indicator="orange")` (red for something worse), so /books shows a toast that stays until closed. With no indicator it fades. When the user must act, throw instead (spec 0006).
 - Shared logic goes in the domain modules (`accounting/`, `inventory/`, `reports/`), not copied between controllers.
 - Reports read through `frappe.get_list` with dict aggregate fields (`{"SUM": "debit"}`, `{"SUB": [...], "as": "balance"}`) and link filters like `"account.root_type"`, so the caller's read rights apply. See `reports/dashboard.py`. No raw SQL, and no `ignore_permissions` in reports.
 - Tests use `frappe.tests.IntegrationTestCase` (or `UnitTestCase` when no database is needed).

@@ -33,6 +33,7 @@ yarn lint        # eslint .
 - Models extend `FrappeDoc` and carry no `formulas`, `defaults` or data code. Presentation only settings go in `static presentation`; see the "Where each part goes" table in the framework doc.
 - The schema name (for example `SalesInvoice`, `Item`) is the route key and the `frappeModels` key. Table rows use the child DocType name without `Books ` (for example `SalesInvoiceItem`).
 - Talk to the server through `src/frappe/` and `src/web/api.ts`. No raw `fetch` in components, and no `createResource`.
+- Screens never handle server messages. A `msgprint` sent with a successful write or `call()` shows as a toast through `src/frappe/serverMessages.ts`, which only `request()` in `src/frappe/api.ts` and the `serverMessagesHandler` set in `src/web/api.ts` call. The form's preview passes `quiet` (spec 0006).
 - No store library: shared state is the `fyo` singleton (`fyo.singles`, `fyo.observer`), refs in `src/utils/refs.ts`, and `provide`/`inject` with keys from `src/utils/injectionKeys.ts`.
 - Dashboard cards extend `src/pages/Dashboard/BaseDashboardChart.vue` (the `period` prop, `loadData` around their own `setData`, `cardClass` for phones) and show `ChartLoadError` on a failed load.
 - Charts come from `frappe-ui/charts`; check that frappe-ui 1.0.0 has a prop before you use it, since `develop` is on a newer frappe-ui.
