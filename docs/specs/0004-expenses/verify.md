@@ -1,4 +1,4 @@
-# Verify: Expenses · spec 0004 · updated 2026-11-12
+# Verify: Expenses · spec 0004 · updated 2026-11-17
 _Steps derived from spec 0004 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones._
 _Milestone 1 (server thread) has landed. The screen steps arrive with milestones 2 to 5; until then, check these through the API, `bench console` or Desk._
 
@@ -134,6 +134,22 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - [ ] Row picker options follow the save rule: turn an Expense leaf into a group, or change its root type → it drops out of the row picker, and a save with it is refused
 - [ ] Shown account names on a Books User's form come from the stored values: rename nothing, reload the submitted expense as a Books User → the same names show with no Books Account request in the network log
 
+## UI / manual (milestone 7, server messages, spec 0006)
+- [ ] Submit an expense for a supplier with reference R-7, then open a second draft with the same supplier and reference at /books, edit Remark and save → "EXP-.... saved" shows, and a warning toast "{first} already has reference R-7 for {supplier}." shows beside it → AC-7
+- [ ] Wait past the saved toast (a few seconds) → the warning toast is still there; click its close button → it goes → AC-7
+- [ ] Type in any field of an expense form that previews (change Paid From or an amount) → no server message toast appears while you type → AC-7 (spec 0006, preview stays quiet)
+- [ ] Finish the setup wizard on a fresh site → "RareBooks setup is complete." shows as an info toast that fades → spec 0006 (the `call()` path)
+- [ ] Save an expense that fails a rule (no rows) → only the error shows, no extra toast → spec 0006 (failed responses keep the error path)
+
+## Commands (milestone 7)
+- [ ] `cd frontend && node --test tests/server-messages.test.mjs` → 19 tests pass → AC-7
+- [ ] `bench --site <v16 site> run-tests --app frappe_books --module frappe_books.frappe_books.doctype.books_expense.test_books_expense` → 29 tests OK, the duplicate warning carries `indicator` orange and the title "Possible duplicate" → AC-7
+- [ ] `cd frontend && yarn test:ui tests/ui/expense.spec.ts -g "repeated supplier"` → passes → AC-7
+
+## Value sourcing checks (milestone 7)
+- [ ] The toast type comes from the message's `indicator`: orange or yellow → warning, red → error, green → success, missing or other → info (the node test covers each) → AC-7
+- [ ] The toast text is the server's `message` as sent, already translated: switch the user language and repeat the duplicate save → the warning shows in that language, not translated twice → AC-7
+
 ## Acceptance-criteria coverage
 - AC-1, AC-2: the milestone 2 sidebar, Cashier and list steps
 - AC-9, AC-10, AC-11, AC-12, AC-14: the milestone 4 steps (create menu, search, linked entries, import, Duplicate)
@@ -143,7 +159,7 @@ _Milestone 1 (server thread) has landed. The screen steps arrive with milestones
 - AC-4: the refusal steps for rows, row accounts, `paid_from` and party
 - AC-5: posting, summing, rounding and Top Expenses steps (General Ledger Ref Type comes in milestone 2)
 - AC-6: draft edit, read only after submit, cancel, no Amend action, and the server amend naming step
-- AC-7: the duplicate reference step (the client message comes in milestone 3)
+- AC-7: the duplicate reference step, and the milestone 7 toast, commands and value sourcing steps
 - AC-8: Books User, Books Manager and Books Cashier steps (the `paid_from` search 403 comes in milestone 3)
 - AC-13: the print step, and the milestone 4 Print step on the form
 - AC-16: the migrate command step
