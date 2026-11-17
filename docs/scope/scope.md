@@ -105,7 +105,7 @@ spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_boo
 - [x] Verify it: `/check verify expenses`
 - [x] Test it: `/test expenses`
 - [x] Review it (fresh model): `/check review expenses`
-- [ ] Document it: `/document expenses`
+- [x] Document it: `/document expenses`
 
 ## Slice 5: Subscription gating
 
