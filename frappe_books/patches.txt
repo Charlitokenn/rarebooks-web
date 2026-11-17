@@ -6,6 +6,7 @@
 # Patches added in this section will be executed after doctypes are migrated
 frappe_books.patches.grant_cashier_core_permissions
 frappe_books.patches.add_expense_number_series
+frappe_books.patches.start_subscription_trial
 
 [post_fixture_sync]
 # Patches added in this section will be executed after fixtures and customizations

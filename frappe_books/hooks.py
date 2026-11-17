@@ -49,6 +49,25 @@ before_tests = [
 	"frappe_books.tests.accounting.set_default_inventory_accounts",
 ]
 
+# Trial and read only lock (spec 0005): a locked site opens requests and jobs read only.
+before_request = ["frappe_books.subscription.lock_request"]
+before_job = ["frappe_books.subscription.lock_job"]
+_refuse_when_locked = "frappe_books.subscription.refuse_when_locked"
+doc_events = {
+	"*": {
+		event: _refuse_when_locked
+		for event in (
+			"before_insert",
+			"validate",
+			"before_submit",
+			"before_cancel",
+			"before_update_after_submit",
+			"on_trash",
+			"before_rename",
+		)
+	}
+}
+
 scheduler_events = {
 	"daily": ["frappe_books.commerce.loyalty.expire_programs_and_points"],
 }

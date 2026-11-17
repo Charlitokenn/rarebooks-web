@@ -6,6 +6,7 @@ from frappe.permissions import add_permission, update_permission_property
 from frappe_books.printing import default_print_format, set_default_print_format
 from frappe_books.series import NUMBER_SERIES
 from frappe_books.setup_service import complete_frappe_setup
+from frappe_books.subscription import start_trial
 
 DEFAULT_SERIES_START = 1001
 DEFAULT_PRINT_FORMATS = {
@@ -48,6 +49,7 @@ def bootstrap():
 		_insert_if_missing("Books Payment Method", method_type, {"type": method_type})
 	grant_core_permissions()
 	set_default_print_formats()
+	start_trial()
 
 
 def before_tests():

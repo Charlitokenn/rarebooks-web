@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "creation": "2026-11-17 12:00:00.000000",
+ "description": "The site's trial clock and subscription, set only by the billing control site.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "trial_started_on",
+  "paid_until",
+  "provider",
+  "billing_period",
+  "auto_renews",
+  "provider_reference",
+  "exempt",
+  "checkout_started_on",
+  "last_synced_on"
+ ],
+ "fields": [
+  {
+   "description": "UTC",
+   "fieldname": "trial_started_on",
+   "fieldtype": "Datetime",
+   "label": "Trial Started On",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "paid_until",
+   "fieldtype": "Date",
+   "label": "Paid Until",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "label": "Provider",
+   "options": "\nClickPesa\nPayPal",
+   "read_only": 1
+  },
+  {
+   "fieldname": "billing_period",
+   "fieldtype": "Select",
+   "label": "Billing Period",
+   "options": "\nMonthly\nYearly",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_renews",
+   "fieldtype": "Check",
+   "label": "Auto Renews",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provider_reference",
+   "fieldtype": "Data",
+   "label": "Provider Reference",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "exempt",
+   "fieldtype": "Check",
+   "label": "Exempt",
+   "read_only": 1
+  },
+  {
+   "description": "UTC",
+   "fieldname": "checkout_started_on",
+   "fieldtype": "Datetime",
+   "label": "Checkout Started On",
+   "read_only": 1
+  },
+  {
+   "description": "UTC",
+   "fieldname": "last_synced_on",
+   "fieldtype": "Datetime",
+   "label": "Last Synced On",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-17 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Books",
+ "name": "Books Subscription",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "role": "Books Manager"
+  },
+  {
+   "read": 1,
+   "role": "Books User"
+  },
+  {
+   "read": 1,
+   "role": "Books Cashier"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
