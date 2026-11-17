@@ -16,7 +16,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Account balances card | Slice 1 | in-progress |
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | in-progress |
-| 5 | Expenses | Slice 4 | in-progress |
+| 5 | Expenses | Slice 4 | done |
 | 6 | Trial and read only lock | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | planned |
 | 8 | Billing control site | Slice 5 | planned |
@@ -89,7 +89,7 @@ code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/
 
 ## Slice 4: Expenses
 
-### 5. Expenses · in-progress
+### 5. Expenses · done
 Let you record, view and change the money the business spends that isn't a purchase invoice (rent, utilities, fees). Expenses get their own list and form, reached from the sidebar under Purchases.
 **Done when:** a user with the right role can create, view, edit and list expenses from Purchases → Expenses in the sidebar. The server checks the caller's rights for every action. The list and form work on a phone.
 spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_books/doctype/books_expense/`, `frappe_books/accounting/accounts.py` and `frontend/models/baseModels/Expense/`
