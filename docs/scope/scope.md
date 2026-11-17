@@ -49,7 +49,7 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Ac
 - [x] Verify it: `/check verify account balances card`
 - [x] Test it: `/test account balances card`
 - [x] Review it (fresh model): `/check review account balances card`
-- [ ] Document it: `/document account balances card`
+- [x] Document it: `/document account balances card`
 
 ## Slice 2: Best sellers chart
 
