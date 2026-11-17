@@ -125,13 +125,12 @@ export async function showDialog(options: DialogOptions) {
 }
 
 export function showToast(options: ToastOptions) {
-  const duration =
-    options.duration === 'very_long'
-      ? Infinity
-      : {
-          short: 2_500,
-          long: 5_000,
-        }[options.duration ?? 'long'];
+  const duration = {
+    short: 2_500,
+    long: 5_000,
+    very_long: Infinity,
+    until_closed: Infinity,
+  }[options.duration ?? 'long'];
   const toastOptions = {
     id: options.id,
     duration,

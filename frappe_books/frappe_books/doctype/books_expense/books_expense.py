@@ -98,5 +98,7 @@ class BooksExpense(StatusMixin, SeriesNamingMixin, Document):
 			frappe.msgprint(
 				_("{0} already has reference {1} for {2}.").format(
 					other[0], self.reference_number, self.party
-				)
+				),
+				title=_("Possible duplicate"),
+				indicator="orange",
 			)

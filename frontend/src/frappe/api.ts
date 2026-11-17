@@ -7,6 +7,7 @@ import {
   leaveIfSessionExpired,
   reachServer,
 } from 'src/web/api';
+import { showServerMessages, type ServerMessage } from './serverMessages';
 
 /** A document or row as Frappe sends it: Frappe fieldnames and raw values. */
 export type DocValues = Record<string, unknown>;
@@ -27,6 +28,15 @@ type ResponseBody<T> = {
   data: T;
   docs?: DocValues[];
   errors?: { type?: string; message?: string }[];
+  /** `frappe.msgprint` entries, sent with a successful response too. */
+  messages?: ServerMessage[];
+};
+
+type RequestOptions = {
+  body?: object;
+  params?: Record<string, unknown>;
+  /** Shows no server messages, as for the form's preview, which runs on every change. */
+  quiet?: boolean;
 };
 
 export async function getDocument(
@@ -71,10 +81,12 @@ export async function deleteDocument(
 export async function runDocMethod(
   method: string,
   document: DocValues,
-  kwargs?: Record<string, unknown>
+  kwargs?: Record<string, unknown>,
+  options: Pick<RequestOptions, 'quiet'> = {}
 ): Promise<DocValues> {
   const running = request('POST', ['method', 'run_doc_method'], {
     body: { method, document, kwargs },
+    quiet: options.quiet,
   });
   const { docs } = await checkLatest(
     String(document.doctype),
@@ -167,7 +179,7 @@ export async function getCount(
 async function request<T>(
   method: string,
   path: string[],
-  options: { body?: object; params?: Record<string, unknown> } = {}
+  options: RequestOptions = {}
 ): Promise<ResponseBody<T>> {
   const url = `/api/v2/${path.map(encodeURIComponent).join('/')}`;
   const response = await reachServer(() =>
@@ -184,6 +196,10 @@ async function request<T>(
     const [error] = body.errors ?? [];
     const message = error?.message ?? error?.type ?? response.statusText;
     throw getServerError(message, error?.type, response.status);
+  }
+
+  if (method !== 'GET' && !options.quiet) {
+    void showServerMessages(body.messages);
   }
 
   return body;

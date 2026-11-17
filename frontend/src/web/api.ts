@@ -1,4 +1,8 @@
-import { call as frappeCall, type FrappeResourceError } from 'frappe-ui';
+import {
+  call as frappeCall,
+  setConfig,
+  type FrappeResourceError,
+} from 'frappe-ui';
 import {
   BaseError,
   ConflictError,
@@ -13,6 +17,10 @@ import type { BootUserPermissions } from 'fyo/utils/permissions';
 import type { DeskTheme } from 'src/utils/theme';
 import type { ChartOfAccounts } from 'utils/types';
 import { ref } from 'vue';
+import {
+  parseServerMessages,
+  showServerMessages,
+} from 'src/frappe/serverMessages';
 
 type ErrorClass = new (message: string, shouldStore?: boolean) => BaseError;
 
@@ -34,6 +42,11 @@ const errorClassByStatus: Record<number, ErrorClass | undefined> = {
 const CONNECTION_FAILURE = /failed to fetch|load failed|networkerror/i;
 
 const LOGIN_URL = `/login?redirect-to=${encodeURIComponent('/books')}`;
+
+// frappe-ui passes `_server_messages` from a successful `call()` here; set before any call.
+setConfig('serverMessagesHandler', (raw: string[]) => {
+  void showServerMessages(parseServerMessages(raw));
+});
 
 /** Whether the last request failed because the server could not be reached. */
 export const hasLostConnection = ref(false);

@@ -262,6 +262,48 @@ test("a supplier's Linked entries list the expense with its date and total", asy
   await expect(entry).toContainText(/35\.00/);
 });
 
+// covers: AC-7
+test('a repeated supplier reference saves and warns until you close the warning', async ({
+  page,
+}) => {
+  const supplier = `Duplicate Expense Supplier ${run}`;
+  const reference = `DUP ${run}`;
+  await insertDocument(page, 'Books Party', {
+    name: supplier,
+    role: 'Supplier',
+  });
+  const first = await submitExpense(page, reference, supplier);
+  // A draft with the same supplier and reference, saved again from the form.
+  const [rent] = await getLeafAccounts(page, 'Expense');
+  const second = await insertDocument(page, 'Books Expense', {
+    paid_from: await getCashAccount(page),
+    party: supplier,
+    reference_number: reference,
+    accounts: [{ account: rent, amount: 5 }],
+  });
+  await page.goto(`/books/edit/Expense/${second.name}`);
+  await waitForBooks(page);
+
+  await page.getByRole('textbox', { name: 'Remark' }).fill('Second copy');
+  // The remark commits when it loses focus, which makes the form unsaved.
+  await page.keyboard.press('Tab');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+
+  // The save goes through, and the server's warning shows beside it.
+  const saved = page.getByText(`${second.name} saved`);
+  await expect(saved).toBeVisible();
+  const warning = page.locator('[data-sonner-toast]').filter({
+    hasText: `${first} already has reference ${reference} for ${supplier}.`,
+  });
+  await expect(warning).toBeVisible();
+  // The saved toast fades after a few seconds; the warning stays until closed.
+  await expect(saved).toBeHidden({ timeout: 10_000 });
+  await expect(warning).toBeVisible();
+  await warning.getByRole('button', { name: 'Close toast' }).click();
+  await expect(warning).toBeHidden();
+});
+
 // covers: AC-1, AC-8
 test('a Books Cashier sees no Expenses and every expense call is refused', async ({
   page,

@@ -1116,7 +1116,10 @@ export class FrappeDoc extends Observable<DocValue | FrappeDoc[]> {
     kwargs?: Record<string, unknown>
   ): Promise<DocValues | undefined> {
     try {
-      return await api.runDocMethod(this.previewMethod!, document, kwargs);
+      // Quiet: the preview runs on every change, so its messages would repeat as the user types.
+      return await api.runDocMethod(this.previewMethod!, document, kwargs, {
+        quiet: true,
+      });
     } catch (error) {
       if (error instanceof ConflictError) {
         return;

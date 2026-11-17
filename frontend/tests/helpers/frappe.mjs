@@ -30,6 +30,10 @@ await build({
       export { getRowDetails } from './src/components/Controls/rowDetails';
       export { getRowSummary } from './src/components/Controls/rowSummary';
       export * as errors from './fyo/utils/errors';
+      export * as frappeApi from './src/frappe/api';
+      export { call } from './src/web/api';
+      export { parseServerMessages, showServerMessages } from './src/frappe/serverMessages';
+      export { toast } from 'frappe-ui';
       export { frappeModels, getRegionalFrappeModels } from './models';
       export { getLedgerLink, getStockTransferActions } from './models/helpers';
       export { createFilters, routeFilters } from './src/utils/filters';
@@ -165,6 +169,11 @@ export const {
   getRowDetails,
   getRowSummary,
   errors,
+  frappeApi,
+  call,
+  parseServerMessages,
+  showServerMessages,
+  toast,
   frappeModels,
   getRegionalFrappeModels,
   getMappedDoc,

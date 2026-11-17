@@ -37,7 +37,10 @@ import {
 export const toastDurationMap = {
   short: 2_500,
   long: 5_000,
+  /** The loading toast, for work still running. */
   very_long: Infinity,
+  /** A typed toast (a warning, an error) that stays until the user closes it. */
+  until_closed: Infinity,
 } as const;
 
 export async function openQuickEdit({

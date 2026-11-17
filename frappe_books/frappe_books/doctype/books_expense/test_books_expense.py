@@ -334,8 +334,15 @@ class IntegrationTestBooksExpense(IntegrationTestCase):
 		second = make_expense(self.cash.name, rows, party=supplier.name, reference_number="R-77")
 
 		self.assertTrue(second.name)
-		messages = [frappe.parse_json(message).get("message") for message in frappe.message_log]
-		self.assertIn(f"{first.name} already has reference R-77 for {supplier.name}.", messages)
+		entries = [frappe.parse_json(message) for message in frappe.message_log]
+		warning = next(
+			entry
+			for entry in entries
+			if entry.get("message") == f"{first.name} already has reference R-77 for {supplier.name}."
+		)
+		# Orange makes /books show it as a warning toast that stays until closed (spec 0006).
+		self.assertEqual(warning.get("indicator"), "orange")
+		self.assertEqual(warning.get("title"), "Possible duplicate")
 
 	def test_books_user_cannot_delete_but_a_manager_can(self):
 		expense = make_expense(self.cash.name, [{"account": self.rent.name, "amount": 10}])
