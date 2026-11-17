@@ -85,7 +85,7 @@ code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/
 - [x] Verify it: `/check verify choose dashboard accounts`
 - [x] Test it: `/test choose dashboard accounts`
 - [x] Review it (fresh model): `/check review choose dashboard accounts`
-- [ ] Document it: `/document choose dashboard accounts`
+- [x] Document it: `/document choose dashboard accounts`
 
 ## Slice 4: Expenses
 
