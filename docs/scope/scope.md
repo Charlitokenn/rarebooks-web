@@ -13,7 +13,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 |---|---------|-------|--------|
 | A | Dashboard (period picker, invoice cards, cashflow, profit and loss, top expenses) | Existing | existing |
 | 1 | Project context for version-16 | Foundation | done |
-| 2 | Account balances card | Slice 1 | in-progress |
+| 2 | Account balances card | Slice 1 | done |
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | done |
 | 5 | Expenses | Slice 4 | done |
@@ -35,7 +35,7 @@ version-16 has no `AGENTS.md`, so `/architect` and `/develop` have no project ru
 
 ## Slice 1: Account balances card
 
-### 2. Account balances card · in-progress
+### 2. Account balances card · done
 A dashboard card that lists each leaf cash and bank account's balance as of today, with the total. Each account links to the General Ledger for that account. Ported from develop's spec 0001.
 **Done when:** a ledger reader sees each cash and bank balance as of today and the total, the balances don't reload on a period change, a user without ledger read gets a permission error from the server and sees no card, and the card works on a phone.
 spec [0001](../specs/0001-account-balances-card/index.md)
