@@ -18,6 +18,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Choose dashboard accounts | Slice 3 | done |
 | 5 | Expenses | Slice 4 | done |
 | 6 | Trial and read only lock | Slice 5 | done |
+| 9 | Lock hardening | Slice 5 | planned |
 | 7 | Trial end export and site removal | Slice 5 | planned |
 | 8 | Billing control site | Slice 5 | planned |
 
@@ -128,6 +129,11 @@ spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_book
 - [x] Review it (fresh model): `/check review trial and read only lock`
 - [x] Document it: `/document trial and read only lock`
 
+### 9. Lock hardening · needs a decision
+Close the minor findings from the fresh model review of feature 6, so the paywall holds up under real traffic and real mistakes, and make its tests independent of what the test site was left in. (from review 2026-11-18-v16-dashboard-features-trial-lock)
+**Done when:** two pushes at once never answer 400 or log a false "bad value"; a checkout link is accepted only over https outside developer mode; a bad time zone in System Settings falls back to UTC and logs once instead of failing every request; Frappe's own maintenance mode no longer shows "Subscribe to make changes again"; the first refused write after a site turns read only shows the current phase's text; the time zone and concurrent push paths have tests; and the two order sensitive tests (`test_is_locked_reads_nothing_on_an_unmanaged_site`, `test_a_bad_value_answers_400_and_changes_nothing`) set their own starting state, with the Milestone 6 setup line in `verify.md` fixed.
+- [ ] Design it (spec): `/architect lock hardening` (most items update spec 0005: how concurrent pushes are serialized, the wording for a real maintenance mode, the time zone fallback, and whether the client waits for a fresh status before the first lock notice)
+
 ### 7. Trial end export and site removal · needs a decision
 On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
 **Done when:** an unsubscribed site gets warnings before day 30, then on day 30 the owner receives a zip of all their records and the site is removed. A site that subscribes at any point before the removal is never removed. A failed export or email stops the removal and gets flagged, it doesn't delete anyway.
@@ -139,6 +145,8 @@ A small central Frappe app of yours (`rarebooks_control`, its own repo) that kee
 - [ ] Design it (spec): `/architect billing control site` (settle the site registry and secret rotation, ClickPesa checkout links, its webhook checksum header and key, and its dashboard return URL, PayPal plans and webhook verification, how `paid_until` is computed (the paid period starts at trial end when someone pays early), push retries, and where it is hosted)
 
 ## Deferred
+
+- Small polish from the feature 6 review: clamp a future `issued_at` to now when storing `last_synced_on`, return `plans_error` as a typed object, and send `days_left` in the status so the client stops copying `LOCK_DAY` and `TRIAL_LAST_DAY` (from review 2026-11-18-v16-dashboard-features-trial-lock)
 
 - Tax on expenses (a Books Tax per row, posting to tax accounts), if input tax needs claiming back (from spec 0004)
 - Foreign currency expenses with an exchange rate, if foreign bills become common (from spec 0004)
