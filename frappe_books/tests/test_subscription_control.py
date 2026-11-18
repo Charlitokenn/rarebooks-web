@@ -21,6 +21,7 @@ from frappe_books.tests.subscription import (
 	lock_site,
 	make_user,
 	push,
+	reset_last_synced,
 	signed_push,
 	store_facts,
 	unlock_site,
@@ -43,7 +44,7 @@ class IntegrationTestReceiveState(SubscriptionTestMixin, IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
 		lock_site()
-		store_facts(last_synced_on=None)
+		reset_last_synced()
 
 	def test_a_signed_push_lifts_the_lock(self):
 		body, signature = signed_push({"paid_until": a_year_out(), "provider": "PayPal", "auto_renews": 1})
@@ -114,7 +115,7 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 	def setUp(self):
 		super().setUp()
 		unlock_site()
-		store_facts(last_synced_on=None)
+		reset_last_synced()
 
 	def test_the_return_refresh_pulls_fresh_state(self):
 		lock_site()

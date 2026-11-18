@@ -56,6 +56,13 @@ def store_facts(**values):
 	frappe.db.commit()
 
 
+def reset_last_synced(value=None):
+	"""Set `last_synced_on` straight in the database, since the controller only lets it move forward."""
+	frappe.db.set_single_value(DOCTYPE, "last_synced_on", value)
+	frappe.db.commit()
+	frappe.clear_document_cache(DOCTYPE, DOCTYPE)
+
+
 def lock_site():
 	"""An unpaid managed site on day 41 of its clock."""
 	store_facts(trial_started_on=utc_now() - timedelta(days=40), paid_until=None, exempt=0)
@@ -96,6 +103,7 @@ class SubscriptionTestMixin:
 		frappe.db.rollback()
 		frappe.set_user("Administrator")
 		store_facts(**self._saved_facts)
+		reset_last_synced(self._saved_facts["last_synced_on"])
 		super().tearDown()
 
 
