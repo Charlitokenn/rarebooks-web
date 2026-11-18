@@ -323,31 +323,50 @@ def error_log_count(title: str) -> int:
 class ControlStub:
 	"""Stands in for the control site: checks each request's signature and signs its answers.
 
+	`get_state` echoes the request's `issued_at`, as spec 0008 AC-2 says, unless `state` sets its own.
 	`error` is raised instead of answering (a timeout, a refused connection); `sign_with` signs the answer,
-	so a wrong secret gives a bad response signature.
+	so a wrong secret gives a bad response signature. `refusal` answers `create_checkout` with a 409 carrying
+	that code, in spec 0008's unwrapped signed body; `status` answers with another status instead.
 	"""
 
-	def __init__(self, state=None, plans=None, checkout_url=CHECKOUT_URL, error=None, sign_with=TEST_SECRET):
-		self.state = {"issued_at": iso_ago(seconds=1), **(state or {})}
+	def __init__(
+		self,
+		state=None,
+		plans=None,
+		checkout_url=CHECKOUT_URL,
+		error=None,
+		sign_with=TEST_SECRET,
+		refusal=None,
+		status=200,
+	):
+		self.state = state or {}
 		self.plans = PLANS if plans is None else plans
 		self.checkout_url = checkout_url
 		self.error = error
 		self.sign_with = sign_with
+		self.refusal = refusal
+		self.status = status
 		self.calls = []
 
 	def post(self, url, data, headers, timeout):
 		assert is_valid_signature(data, headers.get(SIGNATURE_HEADER), TEST_SECRET), "unsigned request"
 		assert timeout == 10
-		self.calls.append((url.rsplit("/", 1)[-1], json.loads(data)))
+		body = json.loads(data)
+		self.calls.append((url.rsplit("/", 1)[-1], body))
 		if self.error:
 			raise self.error
+		status = self.status
 		if url.endswith("get_state"):
-			message = {"state": self.state, "plans": self.plans}
+			content = {
+				"message": {"state": {"issued_at": body["issued_at"], **self.state}, "plans": self.plans}
+			}
+		elif self.refusal:
+			status, content = 409, {"refusal": self.refusal}
 		else:
-			message = {"checkout_url": self.checkout_url}
+			content = {"message": {"checkout_url": self.checkout_url}}
 		response = requests.Response()
-		response.status_code = 200
-		response._content = json.dumps({"message": message}).encode()
+		response.status_code = status
+		response._content = json.dumps(content).encode()
 		response.headers[SIGNATURE_HEADER] = sign(response._content, self.sign_with)
 		return response
 

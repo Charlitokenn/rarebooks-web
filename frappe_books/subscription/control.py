@@ -1,7 +1,9 @@
-"""The signed contract with the control site (spec 0005): signing, the `issued_at` window and outgoing calls.
+"""The signed contract with the control site (specs 0005 and 0008): signing, the `issued_at` window and
+outgoing calls.
 
 Every body is signed as `sha256=` + hex HMAC SHA256 of its exact bytes under `books_control_secret`,
-sent in the `X-Books-Signature` header both ways.
+sent in the `X-Books-Signature` header both ways. The control site signs its refusals and auth failures
+too, so the signature is checked before the status (spec 0008 AC-5, AC-21).
 """
 
 import hashlib
@@ -13,7 +15,8 @@ import frappe
 import requests
 from frappe import _
 
-from frappe_books.subscription.clock import utc_now
+from frappe_books.settings import company_name
+from frappe_books.subscription.clock import current_clock, utc_now
 
 SIGNATURE_HEADER = "X-Books-Signature"
 SIGNATURE_PREFIX = "sha256="
@@ -21,10 +24,19 @@ ISSUED_AT_WINDOW = timedelta(minutes=5)
 TIMEOUT_SECONDS = 10
 GET_STATE = "rarebooks_control.api.get_state"
 CREATE_CHECKOUT = "rarebooks_control.api.create_checkout"
+REFUSAL_STATUS = 409
 
 
 class ControlSiteUnreachable(frappe.ValidationError):
 	"""The control site timed out, failed, or answered without a valid signature (AC-16)."""
+
+
+class ControlRefusal(Exception):
+	"""A signed 409 from the control site: it heard the call and said no, with a `refusal` code (spec 0008 AC-5)."""
+
+	def __init__(self, code: str):
+		super().__init__(code)
+		self.code = code
 
 
 def unreachable_message() -> str:
@@ -68,9 +80,11 @@ def issued_now() -> str:
 
 
 def call_control(method: str, payload: dict) -> dict:
-	"""POST a signed body to the control site and return its verified response.
+	"""POST a signed body to the control site and return its verified answer.
 
-	Raises `ControlSiteUnreachable` on a connection error, a timeout, an error status or a bad signature.
+	`payload` may carry its own `issued_at`, so the caller can check the answer echoes it. Raises
+	`ControlRefusal` on a signed 409 that carries a `refusal` code, and `ControlSiteUnreachable` on a
+	connection error, a timeout, a bad signature, or any other status.
 	"""
 	url, secret = control_url(), site_secret()
 	if not url or not secret:
@@ -84,24 +98,43 @@ def call_control(method: str, payload: dict) -> dict:
 			headers={"Content-Type": "application/json", SIGNATURE_HEADER: sign(body, secret)},
 			timeout=TIMEOUT_SECONDS,
 		)
-		response.raise_for_status()
 	except requests.RequestException:
 		frappe.log_error(f"Books billing: {method} failed", defer_insert=True)
 		raise ControlSiteUnreachable(unreachable_message()) from None
 
+	# Before the status: an unsigned 409 is no refusal, just a failure.
 	if not is_valid_signature(response.content, response.headers.get(SIGNATURE_HEADER), secret):
 		frappe.log_error(f"Books billing: {method} answered without a valid signature", defer_insert=True)
 		raise ControlSiteUnreachable(unreachable_message())
 
-	try:
-		data = json.loads(response.content)
-	except ValueError:
-		raise ControlSiteUnreachable(unreachable_message()) from None
-	# A Frappe whitelisted method wraps its return value in `message`.
-	message = data.get("message", data) if isinstance(data, dict) else None
-	if not isinstance(message, dict):
+	message = _answer(response.content)
+	if response.status_code == REFUSAL_STATUS and message and isinstance(message.get("refusal"), str):
+		raise ControlRefusal(message["refusal"])
+	if response.status_code != 200 or message is None:
+		frappe.log_error(f"Books billing: {method} answered {response.status_code}", defer_insert=True)
 		raise ControlSiteUnreachable(unreachable_message())
 	return message
+
+
+def site_facts() -> dict:
+	"""The four facts the control site keeps for its dates and emails (spec 0008 AC-21), in every pull and checkout."""
+	return {
+		"trial_ends_on": current_clock().status()["trial_ends_on"],
+		"time_zone": frappe.get_system_settings("time_zone") or None,
+		"language": frappe.get_system_settings("language") or None,
+		"company_name": company_name(),
+	}
+
+
+def _answer(content: bytes) -> dict | None:
+	"""The JSON object of a verified answer, or None when it isn't one."""
+	try:
+		data = json.loads(content)
+	except ValueError:
+		return None
+	# A Frappe whitelisted method wraps its return value in `message`; spec 0008's signed answers don't.
+	message = data.get("message", data) if isinstance(data, dict) else None
+	return message if isinstance(message, dict) else None
 
 
 def control_url() -> str | None:

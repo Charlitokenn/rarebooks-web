@@ -17,4 +17,18 @@ def books_removal_run():
 	sys.exit(run(log=click.echo))
 
 
-commands = [books_removal_run]
+@click.command("books-register-site")
+@click.argument("site")
+@click.option("--owner-email", required=True, help="The site owner's email, for receipts")
+@click.option("--site-url", required=True, help="The site's public https:// URL")
+def books_register_site(site, owner_email, site_url):
+	"""Register a site of this bench with the control site and store its secret (spec 0008).
+
+	Signs with this bench's runner secret from config/books-runner.json. Running it again changes nothing.
+	"""
+	from frappe_books.subscription.registration import register
+
+	sys.exit(register(site, owner_email, site_url, log=click.echo))
+
+
+commands = [books_removal_run, books_register_site]

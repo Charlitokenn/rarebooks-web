@@ -15,12 +15,15 @@ from frappe_books.subscription.control import (
 	CREATE_CHECKOUT,
 	GET_STATE,
 	SIGNATURE_HEADER,
+	ControlRefusal,
 	ControlSiteUnreachable,
 	call_control,
 	is_fresh,
 	is_trusted_link,
 	is_valid_signature,
+	issued_now,
 	parse_issued_at,
+	site_facts,
 	site_secret,
 	unreachable_message,
 )
@@ -87,13 +90,25 @@ def start_checkout(billing_period: Literal["Monthly", "Yearly"]) -> dict:
 	return {"checkout_url": checkout_url}
 
 
+def _refusal_message(code: str, billing_period: str) -> str:
+	"""The message for each spec 0008 AC-5 refusal code. An unknown code is logged and reads as an outage."""
+	if code == "plan_not_offered":
+		return _("{0} billing isn't offered for this site.").format(_(billing_period))
+	if code == "already_subscribed":
+		return _("You already have an active PayPal subscription. Change your plan from your PayPal account.")
+	if code == "being_removed":
+		return _("This site is being removed, so it can't be paid for here. Contact support.")
+	frappe.log_error("Books billing: create_checkout refused with an unknown code", code, defer_insert=True)
+	return unreachable_message()
+
+
 def _request_checkout(provider: str, billing_period: str) -> str:
 	"""The control site's checkout link. Its failure is thrown with a message the user sees (AC-16)."""
+	payload = {"provider": provider, "billing_period": billing_period, "return_url": get_url(RETURN_PATH)}
 	try:
-		response = call_control(
-			CREATE_CHECKOUT,
-			{"provider": provider, "billing_period": billing_period, "return_url": get_url(RETURN_PATH)},
-		)
+		response = call_control(CREATE_CHECKOUT, {**payload, **site_facts()})
+	except ControlRefusal as refusal:
+		frappe.throw(_refusal_message(refusal.code, billing_period))
 	except ControlSiteUnreachable:
 		response = None
 
@@ -147,12 +162,20 @@ def pull_state():
 
 	Raises `ControlSiteUnreachable` when the control site can't be reached or answers badly.
 	"""
-	response = call_control(GET_STATE, {})
+	sent = issued_now()
+	try:
+		response = call_control(GET_STATE, {"issued_at": sent, **site_facts()})
+	except ControlRefusal:
+		# get_state has no refusals (spec 0008 AC-2), so one is a broken answer.
+		frappe.log_error("Books billing: get_state answered with a refusal", defer_insert=True)
+		raise ControlSiteUnreachable(unreachable_message()) from None
 	state, plans = response.get("state"), response.get("plans")
-	issued_at = parse_issued_at(state.get("issued_at")) if isinstance(state, dict) else None
-	# The same 5 minute window as a push, so an old or far future signed answer can't be applied.
-	if not issued_at or not is_fresh(issued_at) or not isinstance(plans, list):
+	# The answer must echo this request's own `issued_at` (spec 0008 AC-21), so a replayed or older signed
+	# answer can't be applied. The echo is this site's own clock, so it is always inside the 5 minute window.
+	echoed = state.get("issued_at") if isinstance(state, dict) else None
+	if echoed != sent or not isinstance(plans, list):
 		raise ControlSiteUnreachable(unreachable_message())
+	issued_at = parse_issued_at(sent)
 
 	try:
 		applied = apply_synced_state(state, issued_at)

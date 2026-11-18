@@ -1,6 +1,7 @@
 """The control site contract (spec 0005, milestone 3): the signed push, the pull and checkout."""
 
 import json
+import os
 import time
 from contextlib import contextmanager
 from datetime import timedelta
@@ -12,10 +13,11 @@ import requests
 from frappe.tests import IntegrationTestCase, UnitTestCase
 from frappe.utils import add_days, get_datetime, getdate
 
+from frappe_books.settings import company_name
 from frappe_books.subscription import get_subscription, start_checkout
 from frappe_books.subscription.api import LAST_PULL_KEY, _claim_pull_window
 from frappe_books.subscription.clock import DOCTYPE, current_clock, utc_now
-from frappe_books.subscription.control import parse_issued_at, sign
+from frappe_books.subscription.control import is_valid_signature, parse_issued_at, sign
 from frappe_books.subscription.state import mark_checkout_started, set_facts
 from frappe_books.tests.subscription import (
 	CHECKOUT_URL,
@@ -46,6 +48,9 @@ BAD_PUSH_LOG = "Books billing: receive_state refused a bad value"
 BAD_PULL_LOG = "Books billing: get_state sent a bad value"
 BAD_LINK_LOG = "Books billing: create_checkout sent a link that isn't https"
 NO_LINK_LOG = "Books billing: create_checkout sent no checkout link"
+UNKNOWN_REFUSAL_LOG = "Books billing: create_checkout refused with an unknown code"
+FACTS = ("trial_ends_on", "time_zone", "language", "company_name")
+VECTORS_PATH = os.path.join(os.path.dirname(__file__), "signing_vectors.json")
 
 
 def a_year_out() -> str:
@@ -328,10 +333,10 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 			get_subscription()
 		self.assertEqual(len(stub.calls), 1)
 
-	def test_a_stale_or_future_pull_response_changes_nothing(self):
-		# covers: AC-11, AC-12. The pull keeps the push's 5 minute issued_at window.
+	def test_a_pull_answer_that_does_not_echo_its_request_changes_nothing(self):
+		# covers: AC-11, AC-12, spec 0008 AC-21. Even a fresh answer must echo this request's issued_at.
 		lock_site()
-		for issued_at in (iso_ago(minutes=10), iso_ago(minutes=-30)):
+		for issued_at in (iso_ago(minutes=10), iso_ago(minutes=-30), iso_ago(seconds=1)):
 			with self.subTest(issued_at=issued_at):
 				reset_last_synced(utc_now() - timedelta(days=1))
 				stub = ControlStub(state={"issued_at": issued_at, "paid_until": a_year_out()})
@@ -497,6 +502,103 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 		self.assertIsNone(facts().checkout_started_on)
 		# Thrown, not raised, so /books shows the message instead of a generic server error.
 		self.assertIn("Couldn't reach billing", str(frappe.get_message_log()))
+
+
+class IntegrationTestSpec0008Contract(SubscriptionTestMixin, IntegrationTestCase):
+	"""This repo's side of spec 0008 build task 5: the four site facts, the echo, and signed refusals."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		make_user(BOOKS_MANAGER, "Books Manager")
+
+	def setUp(self):
+		super().setUp()
+		lock_site()
+		reset_last_synced()
+		frappe.set_user(BOOKS_MANAGER)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		super().tearDown()
+
+	def expected_facts(self) -> dict:
+		return {
+			"trial_ends_on": current_clock().status()["trial_ends_on"],
+			"time_zone": frappe.get_system_settings("time_zone") or None,
+			"language": frappe.get_system_settings("language") or None,
+			"company_name": company_name(),
+		}
+
+	def test_the_pull_and_the_checkout_send_the_four_site_facts(self):
+		# covers: spec 0008 AC-21
+		stub = ControlStub()
+		with control_site(stub):
+			get_subscription(refresh=True)
+			start_checkout("Yearly")
+		self.assertEqual(
+			[method.rsplit(".", 1)[-1] for method, _body in stub.calls], ["get_state", "create_checkout"]
+		)
+		for _method, body in stub.calls:
+			self.assertEqual({key: body[key] for key in FACTS}, self.expected_facts())
+		self.assertIsNotNone(stub.calls[0][1]["trial_ends_on"])
+
+	def test_an_echoed_pull_answer_is_applied(self):
+		# covers: spec 0008 AC-2, AC-21
+		with control_site(ControlStub(state={"paid_until": a_year_out()})):
+			status = get_subscription(refresh=True)
+		self.assertIsNone(status["plans_error"])
+		self.assertFalse(status["locked"])
+
+	def test_each_refusal_code_shows_its_message_and_starts_no_checkout(self):
+		# covers: spec 0008 AC-5, AC-21
+		for code, text in (
+			("plan_not_offered", "Yearly billing isn't offered"),
+			("already_subscribed", "already have an active PayPal subscription"),
+			("being_removed", "being removed"),
+		):
+			with self.subTest(code=code):
+				with control_site(ControlStub(refusal=code)):
+					self.assertRaisesRegex(frappe.ValidationError, text, start_checkout, "Yearly")
+				self.assertIsNone(facts().checkout_started_on)
+
+	def test_an_unknown_refusal_code_reads_as_an_outage_and_is_logged(self):
+		before = error_log_count(UNKNOWN_REFUSAL_LOG)
+		with control_site(ControlStub(refusal="something_new")):
+			self.assertRaisesRegex(frappe.ValidationError, UNREACHABLE, start_checkout, "Yearly")
+		self.assertEqual(error_log_count(UNKNOWN_REFUSAL_LOG), before + 1)
+
+	def test_an_unsigned_refusal_or_another_status_is_an_outage(self):
+		# covers: spec 0008 AC-21 (the signature is checked before the status), spec 0005 AC-16
+		for stub in (
+			ControlStub(refusal="already_subscribed", sign_with=b"another-secret"),
+			ControlStub(status=500),
+			ControlStub(status=401),
+		):
+			with self.subTest(status=stub.status, refusal=stub.refusal):
+				with control_site(stub):
+					self.assertRaisesRegex(frappe.ValidationError, UNREACHABLE, start_checkout, "Yearly")
+				self.assertIsNone(facts().checkout_started_on)
+
+	def test_a_signed_error_status_on_the_pull_gives_the_retry_state(self):
+		with control_site(ControlStub(status=500, state={"paid_until": a_year_out()})):
+			status = get_subscription(refresh=True)
+		self.assertEqual(status["plans_error"], UNREACHABLE)
+		self.assertTrue(status["locked"])
+
+
+class UnitTestSigningVectors(UnitTestCase):
+	def test_every_golden_vector_signs_to_its_header(self):
+		# covers: spec 0008 build task 3 (the same file is tested in rarebooks_control)
+		with open(VECTORS_PATH, encoding="utf-8") as handle:
+			vectors = json.load(handle)["vectors"]
+		self.assertGreaterEqual(len(vectors), 5)
+		for vector in vectors:
+			with self.subTest(vector["name"]):
+				body, secret = vector["body"].encode(), vector["secret"].encode()
+				self.assertEqual(sign(body, secret), vector["signature"])
+				self.assertTrue(is_valid_signature(body, vector["signature"], secret))
+				self.assertFalse(is_valid_signature(body + b" ", vector["signature"], secret))
 
 
 class UnitTestSigning(UnitTestCase):

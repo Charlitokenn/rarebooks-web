@@ -140,7 +140,8 @@ def read_mode(bench_path: str) -> str:
 	return mode if mode in MODES else "off"
 
 
-def load_config(bench_path: str) -> RunnerConfig:
+def load_config(bench_path: str, need_storage: bool = True) -> RunnerConfig:
+	"""The runner secrets file. `need_storage=False` is for `books-register-site`, which uploads nothing."""
 	path = os.path.join(bench_path, SECRETS_FILE)
 	try:
 		info = os.stat(path)
@@ -163,7 +164,7 @@ def load_config(bench_path: str) -> RunnerConfig:
 		raise RunnerConfigError(f"runner_secret must be at least {MIN_SECRET_LENGTH} characters")
 	if not control_url.startswith("https://"):
 		raise RunnerConfigError("control_url must start with https://")
-	missing = [key for key in R2Storage.KEYS if not storage.get(key)]
+	missing = [key for key in R2Storage.KEYS if not storage.get(key)] if need_storage else []
 	if missing:
 		raise RunnerConfigError(f"export_storage is missing {', '.join(missing)}")
 	return RunnerConfig(
@@ -431,34 +432,7 @@ class Runner:
 		self.note(site, f"drop {case} {how}")
 
 	def call(self, method: str, payload: dict) -> dict:
-		"""A signed POST to the control site. Acts only on an answer signed with this bench's secret that
-		echoes this request's `issued_at` (AC-15)."""
-		issued_at = issued_now()
-		body = json.dumps(
-			{"bench": self.config.runner_name, "issued_at": issued_at, **payload}, default=str
-		).encode()
-		secret = self.config.runner_secret
-		try:
-			response = requests.post(
-				f"{self.config.control_url}/api/method/{METHOD_PREFIX}{method}",
-				data=body,
-				headers={"Content-Type": "application/json", SIGNATURE_HEADER: sign(body, secret)},
-				timeout=TIMEOUT_SECONDS,
-			)
-			response.raise_for_status()
-		except requests.RequestException as error:
-			raise ControlRefused(f"{method} failed: {type(error).__name__}") from None
-
-		if not is_valid_signature(response.content, response.headers.get(SIGNATURE_HEADER), secret):
-			raise ControlRefused(f"{method} answered without a valid signature")
-		try:
-			data = json.loads(response.content)
-		except ValueError:
-			raise ControlRefused(f"{method} answered with invalid JSON") from None
-		message = data.get("message", data) if isinstance(data, dict) else None
-		if not isinstance(message, dict) or message.get("issued_at") != issued_at:
-			raise ControlRefused(f"{method} answer doesn't echo this request")
-		return message
+		return signed_call(self.config, METHOD_PREFIX + method, payload)
 
 	def note(self, site: str, text: str):
 		self.notes.setdefault(site, []).append(text)
@@ -498,6 +472,38 @@ class R2Storage:
 			multipart_threshold=UPLOAD_PART_BYTES, multipart_chunksize=UPLOAD_PART_BYTES
 		)
 		client.upload_file(path, self.conf["bucket"], key, Config=transfer)
+
+
+def signed_call(config: RunnerConfig, method: str, payload: dict) -> dict:
+	"""A signed POST from this bench to the control site. Acts only on an answer signed with this bench's
+	secret that echoes this request's `issued_at` (AC-15). `method` is the full dotted path."""
+	issued_at = issued_now()
+	body = json.dumps({"bench": config.runner_name, "issued_at": issued_at, **payload}, default=str).encode()
+	secret = config.runner_secret
+	name = method.rsplit(".", 1)[-1]
+	try:
+		response = requests.post(
+			f"{config.control_url}/api/method/{method}",
+			data=body,
+			headers={"Content-Type": "application/json", SIGNATURE_HEADER: sign(body, secret)},
+			timeout=TIMEOUT_SECONDS,
+		)
+		response.raise_for_status()
+	except requests.HTTPError as error:
+		raise ControlRefused(f"{name} answered HTTP {error.response.status_code}") from None
+	except requests.RequestException as error:
+		raise ControlRefused(f"{name} failed: {type(error).__name__}") from None
+
+	if not is_valid_signature(response.content, response.headers.get(SIGNATURE_HEADER), secret):
+		raise ControlRefused(f"{name} answered without a valid signature")
+	try:
+		data = json.loads(response.content)
+	except ValueError:
+		raise ControlRefused(f"{name} answered with invalid JSON") from None
+	message = data.get("message", data) if isinstance(data, dict) else None
+	if not isinstance(message, dict) or message.get("issued_at") != issued_at:
+		raise ControlRefused(f"{name} answer doesn't echo this request")
+	return message
 
 
 def make_storage(conf: dict) -> R2Storage:
