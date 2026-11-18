@@ -168,6 +168,38 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 			get_subscription()
 		self.assertEqual(len(stub.calls), 1)
 
+	def test_a_stale_or_future_pull_response_changes_nothing(self):
+		# covers: AC-11, AC-12. The pull keeps the push's 5 minute issued_at window.
+		lock_site()
+		for issued_at in (iso_ago(minutes=10), iso_ago(minutes=-30)):
+			with self.subTest(issued_at=issued_at):
+				reset_last_synced(utc_now() - timedelta(days=1))
+				stub = ControlStub(state={"issued_at": issued_at, "paid_until": a_year_out()})
+				with control_site(stub):
+					status = get_subscription(refresh=True)
+				self.assertEqual(status["plans_error"], UNREACHABLE)
+				self.assertTrue(status["locked"])
+				frappe.clear_document_cache(DOCTYPE, DOCTYPE)
+				self.assertIsNone(facts().paid_until)
+
+	def test_only_a_subscriber_can_ask_for_a_pull(self):
+		frappe.set_user(BOOKS_USER)
+		stub = ControlStub(state={"paid_until": a_year_out()})
+		with control_site(stub):
+			get_subscription(refresh=True)
+		self.assertEqual(stub.calls, [])
+
+	def test_repeated_refreshes_pull_at_most_once_in_a_short_interval(self):
+		# A loop of refreshes, or of page opens while billing is down, must not tie up workers.
+		lock_site()
+		for stub in (ControlStub(), ControlStub(error=requests.Timeout())):
+			with self.subTest(error=stub.error), control_site(stub):
+				first = get_subscription(refresh=True)
+				for _ in range(3):
+					again = get_subscription(refresh=True)
+				self.assertEqual(len(stub.calls), 1)
+				self.assertEqual(again["plans_error"], first["plans_error"])
+
 	def test_a_books_user_gets_no_plans(self):
 		frappe.set_user(BOOKS_USER)
 		with control_site(ControlStub()):

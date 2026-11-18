@@ -26,6 +26,10 @@ from frappe_books.subscription.state import apply_synced_state, mark_checkout_st
 
 PLANS_CACHE_KEY = "books_subscription_plans"
 PLANS_CACHE_SECONDS = 60 * 60
+# One pull per site in this window: a loop of refreshes, or of page opens while billing is down,
+# reuses the last result instead of tying up a worker for the 10 second timeout each time.
+LAST_PULL_KEY = "books_subscription_last_pull"
+PULL_INTERVAL_SECONDS = 10
 RETURN_PATH = "/books/subscription?checkout=returned"
 UNSUBSCRIBABLE_PHASES = ("unmanaged", "exempt")
 
@@ -43,7 +47,7 @@ def get_subscription(refresh: bool = False) -> dict:
 	"""
 	frappe.has_permission(DOCTYPE, "read", throw=True)
 	pull_error = None
-	if refresh and clock.is_managed():
+	if refresh and clock.is_managed() and clock.can_subscribe():
 		pull_error = _pull_and_report()
 
 	status = current_clock().status()
@@ -132,7 +136,8 @@ def pull_state():
 	response = call_control(GET_STATE, {})
 	state, plans = response.get("state"), response.get("plans")
 	issued_at = parse_issued_at(state.get("issued_at")) if isinstance(state, dict) else None
-	if not issued_at or not isinstance(plans, list):
+	# The same 5 minute window as a push, so an old or far future signed answer can't be applied.
+	if not issued_at or not is_fresh(issued_at) or not isinstance(plans, list):
 		raise ControlSiteUnreachable(unreachable_message())
 
 	try:
@@ -148,13 +153,22 @@ def pull_state():
 
 
 def _pull_and_report() -> str | None:
-	"""Pull, and return the Retry message instead of raising, so the stored state still shows (AC-16)."""
+	"""Pull, and return the Retry message instead of raising, so the stored state still shows (AC-16).
+
+	Within `PULL_INTERVAL_SECONDS` of the last pull, answer with its result and don't call billing again.
+	"""
+	last = frappe.cache.get_value(LAST_PULL_KEY)
+	if last is not None:
+		return last or None
+
+	error = None
 	try:
 		pull_state()
 	except ControlSiteUnreachable:
 		frappe.clear_messages()
-		return unreachable_message()
-	return None
+		error = unreachable_message()
+	frappe.cache.set_value(LAST_PULL_KEY, error or "", expires_in_sec=PULL_INTERVAL_SECONDS)
+	return error
 
 
 def _valid_plans(plans: list) -> list[dict]:

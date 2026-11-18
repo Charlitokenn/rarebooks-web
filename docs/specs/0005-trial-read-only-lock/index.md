@@ -1,7 +1,7 @@
 # 0005. Trial clock and read only lock
 
-**Date**: 2026-11-12
-**Status**: In Progress
+**Date**: 2026-11-12 (updated 2026-11-18: fail closed without a trial start, pull limits, "Renews on" date)
+**Status**: Accepted
 
 Decision history: [rationale.md](rationale.md).
 
@@ -26,7 +26,7 @@ Each hosted site gets a 30 day clock that starts when the site is created. Days 
 - **AC-5**: From day 26 with no payment (and in the lapsed state of AC-14), the server refuses every web request that would write, on /books and /app alike, for every user including Administrator. A document insert or rename is refused with `SiteLockedError` (HTTP 403) and the message "This site is read only. Subscribe to make changes again." A save, submit, cancel, update after submit or delete of an existing document, and any other write (a whitelisted method, `db.set_value`, raw SQL), is refused by the read only transaction with `frappe.InReadOnlyMode` (HTTP 503, Frappe's own code). Frappe 16 takes a row lock (`SELECT ... FOR UPDATE`) on an existing document before any `doc_events` hook runs, and MariaDB refuses that lock inside a read only transaction. In every case nothing is written, and the client shows the same lock notice for both types (AC-8).
 - **AC-6**: On a locked site every read keeps working: the dashboard, lists, forms, reports, the search palette, the print view, PDF download, the list Export wizard (CSV) and the report exports.
 - **AC-7**: On a locked site these requests still run normally: login (including its two factor step, which goes through `login`), logout, `frappe.sessions.clear`, the email login link (`frappe.www.login.send_login_link`, `login_via_key`, `login_via_token`), social login callbacks (`frappe.integrations.oauth2_logins.*`), password reset (`reset_password` and `update_password`), the Books setup wizard's `complete_setup` (so a site that wasn't set up by day 26 can still finish setup and then pay), `get_subscription`, `start_checkout` and `receive_state`.
-- **AC-8**: On a locked site the banner can't be dismissed. On the unpaid trial path it says "Your books are read only. Subscribe by {0} to keep your data." where {0} is the day 30 date. In the lapsed phase it says "Your books are read only. Renew to make changes again." Both show the Subscribe button to System Managers and Books Managers, and "Ask your administrator to subscribe." to everyone else. Every refused write, of either type, shows the locked banner's text for the current phase (the unpaid trial or the lapsed wording above, with the AC-15 note when it applies) instead of a generic error. The client treats a response as the lock notice when its type (`exc_type` in v1, `errors[0].type` in v2) is `SiteLockedError` or `InReadOnlyMode`, never by HTTP status alone: a 503 of any other type is a real outage and shows the generic error. The session check runs first, so a logged out caller's 403 still goes to login. On /app (desk) the site shows Frappe's own read only banner, and this feature adds nothing there.
+- **AC-8**: On a locked site the banner can't be dismissed. On the unpaid trial path it says "Your books are read only. Subscribe by {0} to keep your data." where {0} is the day 30 date. In the lapsed phase it says "Your books are read only. Renew to make changes again." On a site locked because it has no trial start (the state table below), it says "Your books are read only. Contact support.", shows no dates, and the Subscription page never says "Free trial". Both show the Subscribe button to System Managers and Books Managers, and "Ask your administrator to subscribe." to everyone else. Every refused write, of either type, shows the locked banner's text for the current phase (the unpaid trial or the lapsed wording above, with the AC-15 note when it applies) instead of a generic error. The client treats a response as the lock notice when its type (`exc_type` in v1, `errors[0].type` in v2) is `SiteLockedError` or `InReadOnlyMode`, never by HTTP status alone: a 503 of any other type is a real outage and shows the generic error. The session check runs first, so a logged out caller's 403 still goes to login. On /app (desk) the site shows Frappe's own read only banner, and this feature adds nothing there.
 - **AC-9**: On a locked site, scheduled jobs (those run through Frappe's `run_scheduled_job`) run normally. Every other background job runs in a read only transaction, so a job a user queued fails on its first write and nothing it would have written is stored.
 - **AC-10**: On the Subscription page, a System Manager or Books Manager sees the plans the control site offers this site, with prices. A site whose company country is Tanzania is offered only ClickPesa Yearly, and every other site only PayPal Monthly and PayPal Yearly. Choosing a plan calls `start_checkout`, stores `checkout_started_on`, and sends the browser to the returned checkout URL. Any other user calling `start_checkout` gets `frappe.PermissionError` (403). It is refused with a `ValidationError` when the period isn't offered to this site, when the phase is `active` ("Your subscription is active. Change your plan from your PayPal account."), when the phase is `unmanaged` or `exempt`, or when the company has no country yet ("Finish setup first.").
 - **AC-11**: `receive_state` applies a push only when its `X-Books-Signature` is a valid HMAC SHA256 of the raw body under this site's `books_control_secret`, its `site` is this site, and its `issued_at` (an ISO 8601 timestamp that must carry a time zone; a naive one is refused) is within 5 minutes of now. Otherwise it answers 401 and changes nothing. A valid push whose `issued_at` is not strictly newer than `last_synced_on` is ignored (200, `ignored`), so a replayed or late push can't undo a newer one. A signed push with a bad value (an unknown `provider` or `billing_period`, or a bad date) answers 400, is logged to the Error Log, and changes nothing. Unknown keys are ignored. The method is rate limited per IP.
@@ -81,23 +81,24 @@ Books Subscription: a Single doctype in module Frappe Books, `track_changes: 1`.
 | `renew_soon` | `paid_until` ≥ today, not `auto_renews`, `paid_until` minus today ≤ 14 days | no | renew (AC-13) |
 | `grace` | today is 1 to 7 days after `paid_until` | no | renew by (AC-14) |
 | `lapsed` | today is more than 7 days after `paid_until` | yes | lock, renew text (AC-8) |
+| `locked` | no `paid_until` and no `trial_started_on` (install and the patch both missed it); `lock_reason` is `no_trial_start` | yes | lock, "Contact support." with no dates (AC-8) |
 | `trial` | no `paid_until`, day 1 to 21 | no | none |
 | `prompt` | no `paid_until`, day 22 to 25 | no | days left (AC-4) |
 | `locked` | no `paid_until`, day 26 or later | yes | lock with the day 30 date (AC-8) |
 
-The rows are checked top to bottom, and the first match wins. A payment during the trial gets a `paid_until` past the trial end (the control site starts the paid period when the trial ends), so it reads as `active`. Once a site has any `paid_until`, it never returns to the trial rows: a lapsed site stays `lapsed` until a newer `paid_until` arrives.
+The rows are checked top to bottom, and the first match wins. A payment during the trial gets a `paid_until` past the trial end (the control site starts the paid period when the trial ends), so it reads as `active`. A hosted site with no `trial_started_on` fails closed: it reads as `locked`, never as a new day 1 every day, until an operator runs `bench --site <site> execute frappe_books.subscription.start_trial` (in `state.py`; it writes only when the value is empty, so running it twice is safe). Exempt and paid sites match earlier rows, so they are unaffected, and such a site can still pay: `start_checkout` works as on any locked site, and the `paid_until` that arrives wins. Once a site has any `paid_until`, it never returns to the trial rows: a lapsed site stays `lapsed` until a newer `paid_until` arrives.
 
 **API surface** (customer site, module `frappe_books/subscription.py`; every method is type annotated):
 
 | Endpoint | Method | Key inputs | Key outputs | Auth | Key errors |
 |---|---|---|---|---|---|
-| `frappe_books.subscription.get_subscription` | GET | `refresh: bool = False` | the status dict (below); `plans` and `plans_error` when the caller can subscribe | logged in, read on Books Subscription | 403 without read |
+| `frappe_books.subscription.get_subscription` | GET | `refresh: bool = False`. It pulls only for a caller who can subscribe (System Manager, Books Manager); for anyone else it is ignored. A site (not each user) pulls at most once per 10 seconds (`PULL_INTERVAL_SECONDS`). The caller first claims the window with an atomic set if absent on the cache key, then pulls and stores the result there. A call inside the window, including one while that pull is still running, makes no call to the control site: it reuses the stored result, or gets the Retry state while the pull is pending. An applied push deletes the key, so the next call pulls fresh | the status dict (below); `plans` and `plans_error` when the caller can subscribe | logged in, read on Books Subscription | 403 without read |
 | `frappe_books.subscription.start_checkout` | POST | `billing_period: Literal["Monthly", "Yearly"]` (req). The provider is not an input: the server sends `offered_provider` | `checkout_url` | System Manager or Books Manager (`frappe.only_for`) | 403 other roles; 417 plan not offered, phase `active`, unmanaged or exempt, no company country, control site unreachable |
 | `frappe_books.subscription.receive_state` | POST | raw JSON body read with `frappe.request.get_data()` (the signature covers these exact bytes; never re-serialize `form_dict`): `site`, `issued_at`, `paid_until`, `provider`, `billing_period`, `auto_renews`, `provider_reference`, `exempt`; header `X-Books-Signature: sha256=<hex>` | `{"result": "applied"}` or `{"result": "ignored"}` | guest, HMAC signature, `@rate_limit(limit=60, seconds=60)` | 401 bad signature, wrong site or stale `issued_at`; 400 bad value after a valid signature |
 | `frappe_books.subscription.apply_state` | `bench execute` only (not whitelisted) | `state: dict` (same fields as the push, no signature) | none | bench operator | ValidationError on a bad value |
 | boot (`extend_bootinfo`) | n/a | none | `bootinfo.books.subscription` = the status dict, without plans | session | none |
 
-Status dict: `phase`, `locked`, `today`, `day_number`, `trial_ends_on`, `lock_starts_on`, `removal_on` (unpaid trial path only), `paid_until`, `grace_ends_on`, `provider`, `billing_period`, `auto_renews`, `payment_pending`, `can_subscribe`, `offered_provider`, `offered_periods`. Dates are ISO dates in the site's time zone.
+Status dict: `phase`, `locked`, `today`, `day_number`, `trial_ends_on`, `lock_starts_on`, `removal_on` (unpaid trial path only), `paid_until`, `grace_ends_on`, `provider`, `billing_period`, `auto_renews`, `payment_pending`, `can_subscribe`, `offered_provider`, `offered_periods`, `lock_reason` (`no_trial_start` on a site locked for having no trial start, otherwise null). On that site `day_number`, `trial_ends_on`, `lock_starts_on` and `removal_on` are null, since there is no day 1. Dates are ISO dates in the site's time zone.
 
 Control site contract (built in the control site spec; the customer site calls these):
 
@@ -107,7 +108,7 @@ Control site contract (built in the control site spec; the customer site calls t
 | `POST {books_control_url}/api/method/rarebooks_control.api.create_checkout` | `site`, `issued_at`, `provider`, `billing_period`, `return_url` | `checkout_url` |
 | The control site calls `receive_state` on each change | as above | as above |
 
-Signing: `sha256=` + hex HMAC SHA256 of the exact raw body bytes under `books_control_secret`, compared with `hmac.compare_digest`. Requests carry it in the `X-Books-Signature` header, and the control site's responses carry it in the same header over the raw response body. `issued_at` is an ISO 8601 timestamp with a time zone, parsed with `datetime.fromisoformat` and converted to UTC; a naive one is refused. Both servers must keep their clocks in sync (NTP), since the window is 5 minutes. One secret per site, so a leaked secret exposes one site only. `exempt` is trusted from the control site by design.
+Signing: `sha256=` + hex HMAC SHA256 of the exact raw body bytes under `books_control_secret`, compared with `hmac.compare_digest`. Requests carry it in the `X-Books-Signature` header, and the control site's responses carry it in the same header over the raw response body. `issued_at` is an ISO 8601 timestamp with a time zone, and both a push and a pull answer's `state.issued_at` must be within 5 minutes of now (a pull answer outside the window gives the Retry state and changes nothing). It is parsed with `datetime.fromisoformat` and converted to UTC; a naive one is refused. Both servers must keep their clocks in sync (NTP), since the window is 5 minutes. One secret per site, so a leaked secret exposes one site only. `exempt` is trusted from the control site by design.
 
 **Lock enforcement** (hooks in `hooks.py`):
 - `before_request`: `frappe_books.subscription.lock_request`. If the phase is locked and the request is not on the allowlist, set `frappe.flags.read_only = True` and `frappe.flags.books_site_locked = True`, then `frappe.db.begin(read_only=True)`. That's the same pair Frappe's maintenance mode sets in `frappe.app.setup_read_only_mode`, so Frappe defers its own view and access logs to Redis. The allowlist matches `/api/method/<name>` and `/api/v2/method/<name>` for the methods in AC-7: `login`, `logout`, `frappe.sessions.clear`, `frappe.www.login.send_login_link`, `frappe.www.login.login_via_key`, `frappe.www.login.login_via_token`, every `frappe.integrations.oauth2_logins.*`, `frappe.core.doctype.user.user.reset_password`, `frappe.core.doctype.user.user.update_password`, `frappe_books.frappe_books.doctype.books_setup_wizard.books_setup_wizard.complete_setup` and the three `frappe_books.subscription` methods. The legacy `cmd=` route isn't matched, so it fails closed. The hook runs before Frappe's API key and OAuth auth (`validate_auth`), so it must not depend on the user. The phase check doesn't.
@@ -140,6 +141,10 @@ Signing: `sha256=` + hex HMAC SHA256 of the exact raw body bytes under `books_co
 | `receive_state`, pull | `paid_until` and the paid period start (trial end when paid early) | computed by the control site from the provider's confirmation; the site stores it as given |
 | `receive_state` | which site the push is for | body `site` must equal `frappe.local.site` |
 | `receive_state` | replay order | body `issued_at` compared with `last_synced_on` |
+| pull | freshness and replay order | the answer's `state.issued_at`: within 5 minutes of now, then compared with `last_synced_on` |
+| pull | whether to call the control site | the caller can subscribe, and this call wins the atomic set if absent on `frappe.cache` key `books_subscription_last_pull` (kept 10 seconds, deleted by an applied push) |
+| banner, page (AC-8) | `lock_reason` | `no_trial_start` when the phase is `locked` because `trial_started_on` is empty, otherwise null |
+| page (AC-13) | "Renews on" (auto renewing) and "Paid until" dates | Books Subscription `paid_until`, in the user's date format |
 | all signed calls | the secret, the control URL | `frappe.conf.books_control_secret`, `frappe.conf.books_control_url` |
 
 **Key invariants**:
@@ -153,6 +158,7 @@ Signing: `sha256=` + hex HMAC SHA256 of the exact raw body bytes under `books_co
 **Security model**:
 - Read: every Books role and System Manager can read Books Subscription and call `get_subscription`. Only System Manager and Books Manager get `plans` and may call `start_checkout`, which the server checks with `frappe.only_for`.
 - Write: no role. Administrator is refused by the controller guard (AC-17).
+- The pull is not a guest call, but it costs a worker up to 10 seconds when billing is slow, so only subscribers can ask for one and a site makes at most one per 10 seconds.
 - `receive_state` is a guest endpoint. It is protected by the per site HMAC secret, the 5 minute `issued_at` window, the site name check, forward only `last_synced_on` and a rate limit. Every failure answers 401 with no detail.
 - Outgoing calls go over HTTPS only. The site refuses a `books_control_url` that isn't `https://` unless `developer_mode` is on. Responses must carry a valid signature before the site applies them.
 - Payment data: no card, wallet or phone number reaches the customer site. It is out of PCI scope. `provider_reference` is an opaque id.
@@ -179,6 +185,8 @@ Signing: `sha256=` + hex HMAC SHA256 of the exact raw body bytes under `books_co
 - Lifecycle: `paid_until` = today is `active`, +1 day is `grace`, +8 days is `lapsed` and locked; a ClickPesa site 14 days out is `renew_soon`. Verifies **AC-13**, **AC-14**.
 - Unmanaged: with no `books_control_url`, day 40 is not locked and shows no banner. Verifies **AC-2**.
 - Control site down: a stub that times out gives the Retry state, and the lock is unchanged. Verifies **AC-16**.
+- No trial start: a hosted, unpaid site with an empty `trial_started_on` is `locked` on any day; exempt and paid sites are not. Verifies **AC-1**, **AC-5**.
+- Pull limits: a signed pull answer 10 minutes old or 30 minutes ahead changes nothing and gives the Retry state; a Books User's `refresh=True` makes no call; four refreshes in a row make one call, whether billing answers or times out. Verifies **AC-11**, **AC-12**, **AC-16**.
 
 ## Build plan
 
@@ -213,11 +221,15 @@ Tracer Bullet: the first slice proves the read only lock end to end on a real re
 **Milestone 5: Phone and the full browser suite**
 19. Phone layout of the banner, the lock notice and the page, plus the full Playwright suite on desktop and phone (trial, prompt, locked, paid, grace, lapsed, unmanaged). Satisfies **AC-19** and rechecks **AC-2** to **AC-16**.
 
+**Milestone 6: Review follow ups (added 2026-11-18)**
+20. `lock_reason` in the status dict; null trial dates and `day_number` when there is no trial start; banner and page text "Your books are read only. Contact support." with no dates and no "Free trial". Node and Python tests. Satisfies **AC-8**.
+21. Claim the pull window with an atomic set if absent before calling the control site, give callers in the window the stored result or the Retry state, and delete the key when a push is applied. Python tests for two pulls at once and for a push clearing the key. Satisfies **AC-12**, **AC-16**.
+
 ## Consequences
 
 **Positive**:
 - The lock holds for every write path, including ones written later, because the database refuses the write, not a list of checks.
-- The lock starts and ends on its own: no scheduler job flips it, and a missed push heals on the next pull.
+- The lock starts and ends on its own: no scheduler job flips it, and a missed push heals on the next pull (while both clocks are in sync).
 - No provider secret or payment data lives on a customer site, and a leaked site secret affects one site only.
 - Self hosted and dev sites are untouched.
 
@@ -230,7 +242,9 @@ Tracer Bullet: the first slice proves the read only lock end to end on a real re
 - Deferred inserts (access and view logs) sit in Redis until a scheduled flush, so a Redis restart can drop a few log rows from a locked site.
 - Frappe doesn't extend sessions in read only mode, so on a locked site users are logged out at their session's original expiry and must log in again (login stays allowed).
 - File uploads (`upload_file`) and attachments fail on a locked site by design.
-- The push window needs both servers' clocks in sync (NTP). A site clock off by more than 5 minutes refuses every push until it's fixed, though the pull still heals it.
+- A hosted site whose trial start was never written locks at once instead of getting a trial. That is the safe failure for a paywall, but a broken install locks a real customer until an operator runs `start_trial`.
+- After billing comes back, a Retry within 10 seconds of the failed pull still shows "Couldn't reach billing". The next try after that works.
+- The push window needs both servers' clocks in sync (NTP). A site clock off by more than 5 minutes refuses every push and every pull until it's fixed, so the page shows the Retry state for good. Operators should keep NTP running on both servers and check it first when billing never answers.
 
 **Neutral**:
 - `bench migrate`, `bench console`, backups and patches run outside a web request, so a locked site can still be upgraded and repaired.
@@ -246,4 +260,5 @@ Tracer Bullet: the first slice proves the read only lock end to end on a real re
 - [ ] The `hookdeck/webhook-skills@paypal-webhooks` skill didn't install (the clone failed: `github.com` couldn't be resolved). Install it before the control site build: `npx skills add hookdeck/webhook-skills --skill paypal-webhooks -y`.
 - [ ] PayPal's official MCP server (PayPal Agent Toolkit, npm `@paypal/mcp`, with a sandbox endpoint) would help the control site build create plans and inspect sandbox subscriptions. Connect it then, with sandbox credentials only, since its write tools run without asking.
 - [ ] `paypal-best-practices` is installed but not in any `AGENTS.md`. Its conventions belong in the control site repo's `AGENTS.md`, not in this repo's root (this repo makes no PayPal call). Record it for `/sync`.
+- [ ] In the control site spec, have `get_state` echo the request's `issued_at` in its signed answer, so the site can check the answer belongs to its own request and not to an earlier one inside the 5 minute window.
 - [ ] Your provisioning script must write `books_control_url` and a fresh `books_control_secret` into each new hosted site's `site_config.json`, and register both on the control site.
