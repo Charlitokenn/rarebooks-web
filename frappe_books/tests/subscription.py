@@ -46,6 +46,8 @@ PLANS = [
 	},
 ]
 TEST_CLIENT = get_test_client()
+# The cached plans and the last pull result; each control_site block starts with neither.
+PULL_CACHE_KEYS = ["books_subscription_plans", "books_subscription_last_pull"]
 
 
 def store_facts(**values):
@@ -285,6 +287,6 @@ def control_site(stub: ControlStub, country: str | None = "Kenya"):
 		patch("frappe_books.subscription.control.requests.post", stub.post),
 		patch("frappe_books.subscription.clock.company_country", return_value=country),
 	):
-		frappe.cache.delete_value("books_subscription_plans")
+		frappe.cache.delete_value(PULL_CACHE_KEYS)
 		yield stub
-		frappe.cache.delete_value("books_subscription_plans")
+		frappe.cache.delete_value(PULL_CACHE_KEYS)

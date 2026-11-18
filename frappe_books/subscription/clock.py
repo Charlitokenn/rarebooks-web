@@ -63,6 +63,10 @@ class SubscriptionClock:
 			return "exempt"
 		if self.paid_until:
 			return self._paid_phase()
+		if not self.facts.trial_started_on:
+			# Install and the patch always set it, so a hosted site without one is broken: fail closed,
+			# rather than read as a new day 1 every day. `bench execute frappe_books.subscription.start_trial` fixes it.
+			return "locked"
 		if self.day_number <= TRIAL_LAST_DAY:
 			return "trial"
 		if self.day_number < LOCK_DAY:

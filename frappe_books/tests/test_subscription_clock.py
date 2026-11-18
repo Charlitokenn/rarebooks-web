@@ -120,6 +120,16 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		self.assertEqual((in_utc.phase, in_utc.locked), ("grace", False))
 		self.assertEqual((in_dar.phase, in_dar.locked), ("lapsed", True))
 
+	def test_a_hosted_site_with_no_trial_start_is_locked(self):
+		# A missing trial start must not read as a fresh day 1 every day (free access forever).
+		for now in (on_day(1), on_day(60)):
+			with self.subTest(now=now):
+				self.assertEqual(clock(now, trial_started_on=None).phase, "locked")
+		self.assertEqual(clock(on_day(60), trial_started_on=None, exempt=1).phase, "exempt")
+		paid = clock(on_day(60), trial_started_on=None, paid_until=on_day(200).date(), auto_renews=1)
+		self.assertEqual(paid.phase, "active")
+		self.assertEqual(clock(on_day(60), managed=False, trial_started_on=None).phase, "unmanaged")
+
 	def test_unmanaged_and_exempt_sites_are_never_locked(self):
 		self.assertEqual(clock(on_day(40), managed=False).phase, "unmanaged")
 		self.assertEqual(clock(on_day(40), exempt=1).phase, "exempt")
