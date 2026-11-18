@@ -14,6 +14,8 @@ const { getLockNotice, getSubscriptionBanner, getTrialDaysLeft, isManaged } =
   subscription;
 
 const READ_ONLY = 'This site is read only. Subscribe to make changes again.';
+const TRIAL_LOCK =
+  'Your books are read only. Subscribe by 30/11/2026 to keep this site. After that it is removed and a copy of your data is emailed to the owner.';
 
 /** A status dict as `get_subscription` sends it, for day `day` of an unpaid trial. */
 function trialStatus(day, overrides = {}) {
@@ -26,6 +28,8 @@ function trialStatus(day, overrides = {}) {
     trial_ends_on: '2026-11-21',
     lock_starts_on: '2026-11-26',
     removal_on: '2026-11-30',
+    export_sent_on: null,
+    removal_hold_until: null,
     paid_until: null,
     grace_ends_on: null,
     provider: null,
@@ -82,8 +86,7 @@ test('only System Managers and Books Managers get the Subscribe button', () => {
 test('a locked trial shows the day 30 date and ignores the dismissal', () => {
   const banner = getSubscriptionBanner(trialStatus(27), '2026-11-18');
   assert.deepEqual(banner, {
-    message:
-      'Your books are read only. Subscribe by 30/11/2026 to keep your data.',
+    message: TRIAL_LOCK,
     dismissible: false,
     canSubscribe: true,
   });
@@ -109,7 +112,7 @@ test('a site locked with no trial start says to contact support, with no dates',
   assert.deepEqual(details.rows, []);
 });
 
-test('a lapsed site asks to renew, with no removal date', () => {
+test('a lapsed site with no removal date asks to renew', () => {
   const status = trialStatus(90, {
     phase: 'lapsed',
     locked: true,
@@ -122,11 +125,62 @@ test('a lapsed site asks to renew, with no removal date', () => {
   );
 });
 
+test('a lapsed site names its removal date', () => {
+  // covers: spec 0007 AC-2
+  const status = trialStatus(90, {
+    phase: 'lapsed',
+    locked: true,
+    removal_on: '2027-01-15',
+    paid_until: '2026-11-09',
+  });
+  const banner = getSubscriptionBanner(status, '2026-11-18');
+  assert.equal(
+    banner.message,
+    'Your books are read only. Renew by 15/01/2027 to keep this site. After that it is removed and a copy of your data is emailed to the owner.'
+  );
+  assert.equal(banner.dismissible, false);
+});
+
+test('once the export is emailed the banner names the removal date', () => {
+  // covers: spec 0007 AC-8, AC-19 (the date goes through the date formatter)
+  const held = {
+    export_sent_on: '2026-11-30',
+    removal_hold_until: '2026-12-03',
+  };
+  const expected =
+    'Your books are read only. A copy of your data was emailed to the owner. This site will be removed after 03/12/2026.';
+  for (const status of [
+    trialStatus(30, held),
+    paidStatus('lapsed', { ...held, removal_on: '2026-11-30' }),
+  ]) {
+    const banner = getSubscriptionBanner(status, null);
+    assert.equal(banner.message, expected);
+    assert.equal(banner.canSubscribe, true);
+  }
+
+  appFyo.singles.SystemSettings = { date_format: 'MM/dd/yyyy' };
+  try {
+    assert.match(getLockNotice(trialStatus(30, held)), /after 12\/03\/2026\.$/);
+  } finally {
+    appFyo.singles.SystemSettings = { date_format: 'dd/MM/yyyy' };
+  }
+});
+
+test('the hold text needs both hold dates', () => {
+  // covers: spec 0007 AC-8 ("while both are set")
+  for (const held of [
+    { export_sent_on: '2026-11-30' },
+    { removal_hold_until: '2026-12-03' },
+  ]) {
+    assert.equal(getLockNotice(trialStatus(30, held)), TRIAL_LOCK);
+  }
+});
+
 test('a pending payment adds its note to the lock notice', () => {
   const status = trialStatus(27, { payment_pending: true });
   assert.match(
     getLockNotice(status),
-    /keep your data\. Payment pending\. The lock lifts as soon as your payment is confirmed\.$/
+    /emailed to the owner\. Payment pending\. The lock lifts as soon as your payment is confirmed\.$/
   );
 });
 
@@ -244,6 +298,24 @@ test('grace shows when it ended and the renew by date', () => {
   ]);
 });
 
+test('lapsed with a removal date shows a Removal on row', () => {
+  // covers: spec 0007 AC-2
+  const status = paidStatus('lapsed', { removal_on: '2027-02-05' });
+  assert.deepEqual(detailRows(status), [
+    ['ended-on', 'Ended on', '30/11/2026'],
+    ['removal-on', 'Removal on', '05/02/2027'],
+  ]);
+});
+
+test('an open trial shows no Removal on row', () => {
+  // covers: spec 0007 AC-2 (only locked or lapsed)
+  for (const day of [5, 23]) {
+    assert.ok(
+      !detailRows(trialStatus(day)).some(([testid]) => testid === 'removal-on')
+    );
+  }
+});
+
 test('lapsed reads as read only with no removal or renew by date', () => {
   const status = paidStatus('lapsed');
   assert.equal(getSubscriptionDetails(status).heading, 'Read only');
@@ -261,7 +333,7 @@ test('the trial page rows are unchanged', () => {
   assert.equal(getSubscriptionDetails(trialStatus(27)).heading, 'Read only');
   assert.deepEqual(
     detailRows(trialStatus(27)).map(([testid]) => testid),
-    ['trial-ends-on', 'lock-starts-on']
+    ['trial-ends-on', 'lock-starts-on', 'removal-on']
   );
 });
 
@@ -325,10 +397,7 @@ test('a 403 SiteLockedError gives the lock notice, not ForbiddenError', async ()
   const error = await insertDocument('ToDo', {}).catch((error) => error);
   assert.ok(error instanceof errors.SiteLockedError);
   assert.ok(!(error instanceof errors.ForbiddenError));
-  assert.equal(
-    error.message,
-    'Your books are read only. Subscribe by 30/11/2026 to keep your data.'
-  );
+  assert.equal(error.message, TRIAL_LOCK);
   assert.equal(error.shouldStore, false);
 });
 
@@ -362,10 +431,7 @@ test('the first refusal after the lock starts waits for the status and shows the
   const statusCalls = refuseWith(403, 'SiteLockedError', trialStatus(26));
   const error = await insertDocument('ToDo', {}).catch((error) => error);
   assert.ok(error instanceof errors.SiteLockedError);
-  assert.equal(
-    error.message,
-    'Your books are read only. Subscribe by 30/11/2026 to keep your data.'
-  );
+  assert.equal(error.message, TRIAL_LOCK);
   assert.deepEqual(statusCalls, [{ with_plans: false }]);
   assert.equal(subscriptionStatus.value.phase, 'locked');
 });
@@ -404,10 +470,7 @@ test('a SiteLockedError on a site the browser knows is locked needs no status ca
   subscriptionStatus.value = trialStatus(27);
   const statusCalls = refuseWith(403, 'SiteLockedError', trialStatus(5));
   const error = await insertDocument('ToDo', {}).catch((error) => error);
-  assert.equal(
-    error.message,
-    'Your books are read only. Subscribe by 30/11/2026 to keep your data.'
-  );
+  assert.equal(error.message, TRIAL_LOCK);
   assert.deepEqual(statusCalls, []);
 });
 

@@ -116,12 +116,62 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		# Paid early in the trial, then lapsed long ago: still lapsed, never "trial".
 		self.assertEqual(clock(on_day(5), paid_until=on_day(-30).date()).phase, "lapsed")
 
-	def test_paid_status_has_grace_end_and_no_removal(self):
+	def test_paid_status_has_grace_end_and_a_lapsed_removal(self):
+		# covers: spec 0007 AC-2 (lapsed now carries removal_on, which spec 0005 left empty)
 		status = clock(on_day(100), paid_until=on_day(90).date(), provider="PayPal").status()
 		self.assertEqual(status["phase"], "lapsed")
 		self.assertEqual(status["grace_ends_on"], on_day(97).date().isoformat())
-		self.assertIsNone(status["removal_on"])
+		self.assertEqual(status["removal_on"], on_day(157).date().isoformat())
 		self.assertEqual(status["provider"], "PayPal")
+
+	def test_removal_on_is_day_30_for_an_unpaid_trial(self):
+		# covers: spec 0007 AC-1
+		for day in (1, 22, 26, 30, 45):
+			with self.subTest(day=day):
+				subject = clock(on_day(day))
+				self.assertEqual(subject.removal_on, on_day(30).date())
+				self.assertEqual(subject.removal_kind, "Trial")
+
+	def test_removal_on_is_paid_until_plus_67_days_for_a_lapsed_site(self):
+		# covers: spec 0007 AC-1 (grace end plus 60), across a month end
+		paid_until = datetime(2031, 1, 31).date()
+		subject = clock(datetime(2031, 2, 8, 12), paid_until=paid_until)
+		self.assertEqual(subject.phase, "lapsed")
+		self.assertEqual(subject.removal_on, datetime(2031, 4, 8).date())
+		self.assertEqual(subject.removal_kind, "Lapsed")
+
+	def test_only_unpaid_trials_and_lapsed_sites_have_a_removal_date(self):
+		# covers: spec 0007 AC-1
+		today = on_day(100)
+		never_removed = {
+			"grace": clock(today, paid_until=on_day(95).date()),
+			"active": clock(today, paid_until=on_day(300).date(), auto_renews=1),
+			"renew_soon": clock(today, paid_until=on_day(105).date()),
+			"exempt": clock(today, exempt=1),
+			"unmanaged": clock(today, managed=False),
+			"no_trial_start": clock(today, trial_started_on=None),
+		}
+		for name, subject in never_removed.items():
+			with self.subTest(site=name):
+				self.assertIsNone(subject.removal_on)
+				self.assertIsNone(subject.removal_kind)
+				self.assertIsNone(subject.status()["removal_on"])
+
+	def test_the_hold_date_is_shown_in_the_site_time_zone(self):
+		# covers: spec 0007 AC-8. 22:30 UTC on 3 February is already 4 February in Dar es Salaam (UTC+3).
+		values = {
+			"export_sent_on": datetime(2031, 1, 31, 22, 30),
+			"removal_hold_until": datetime(2031, 2, 3, 22, 30),
+		}
+		utc = clock(on_day(32), **values).status()
+		self.assertEqual((utc["export_sent_on"], utc["removal_hold_until"]), ("2031-01-31", "2031-02-03"))
+		dar = clock(on_day(32), time_zone="Africa/Dar_es_Salaam", **values).status()
+		self.assertEqual((dar["export_sent_on"], dar["removal_hold_until"]), ("2031-02-01", "2031-02-04"))
+
+	def test_no_hold_fields_read_as_none(self):
+		status = clock(on_day(27)).status()
+		self.assertIsNone(status["export_sent_on"])
+		self.assertIsNone(status["removal_hold_until"])
 
 	def test_grace_end_rolls_into_the_next_month(self):
 		# covers: AC-14 (Renew by is paid_until plus 7 days, across a month end)

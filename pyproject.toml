@@ -10,6 +10,8 @@ dynamic = ["version"]
 dependencies = [
     # Frappe version-16 is installed and managed by bench.
     "Babel>=2.16.0,<3",
+    # Uploads the trial end exports to Cloudflare R2 (spec 0007).
+    "boto3>=1.35,<2",
 ]
 
 [build-system]

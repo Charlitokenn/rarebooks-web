@@ -13,7 +13,9 @@
   "provider_reference",
   "exempt",
   "checkout_started_on",
-  "last_synced_on"
+  "last_synced_on",
+  "export_sent_on",
+  "removal_hold_until"
  ],
  "fields": [
   {
@@ -77,12 +79,26 @@
    "fieldtype": "Datetime",
    "label": "Last Synced On",
    "read_only": 1
+  },
+  {
+   "description": "UTC. When the trial end export email was sent",
+   "fieldname": "export_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Export Sent On",
+   "read_only": 1
+  },
+  {
+   "description": "UTC. The site is removed after this",
+   "fieldname": "removal_hold_until",
+   "fieldtype": "Datetime",
+   "label": "Removal Hold Until",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-17 12:00:00.000000",
+ "modified": "2026-11-18 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Books",
  "name": "Books Subscription",

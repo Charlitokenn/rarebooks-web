@@ -27,8 +27,10 @@ const LAYOUTS = [
 ];
 
 const LOCKED =
-  /^Your books are read only\. Subscribe by .+ to keep your data\.$/;
-const LAPSED = 'Your books are read only. Renew to make changes again.';
+  /^Your books are read only\. Subscribe by .+ to keep this site\. After that it is removed and a copy of your data is emailed to the owner\.$/;
+// A lapsed site names its removal date too (spec 0007 AC-2).
+const LAPSED =
+  /^Your books are read only\. Renew by .+ to keep this site\. After that it is removed and a copy of your data is emailed to the owner\.$/;
 const PENDING =
   'Payment pending. The lock lifts as soon as your payment is confirmed.';
 const ASK = 'Ask your administrator to subscribe.';

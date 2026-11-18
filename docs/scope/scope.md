@@ -19,7 +19,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 5 | Expenses | Slice 4 | done |
 | 6 | Trial and read only lock | Slice 5 | done |
 | 9 | Lock hardening | Slice 5 | in-progress |
-| 7 | Trial end export and site removal | Slice 5 | planned |
+| 7 | Trial end export and site removal | Slice 5 | in-progress |
 | 8 | Billing control site | Slice 5 | planned |
 
 ## Already built
@@ -143,10 +143,21 @@ spec [0007](../specs/0007-lock-hardening/index.md) · code in `frappe_books/subs
 - [ ] Review it (fresh model): `/check review lock hardening`
 - [ ] Document it: `/document lock hardening`
 
-### 7. Trial end export and site removal · needs a decision
+### 7. Trial end export and site removal · in-progress
 On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
 **Done when:** an unsubscribed site gets warnings before day 30, then on day 30 the owner receives a zip of all their records and the site is removed. A site that subscribes at any point before the removal is never removed. A failed export or email stops the removal and gets flagged, it doesn't delete anyway.
-- [ ] Design it (spec): `/architect trial end export and site removal` (settle what runs the removal, since a site can't safely remove itself, what the zip holds and in what format, how a large zip reaches the owner, the warning schedule, retries and a safety hold, and what is kept for legal or audit reasons; spec 0005 gives the day 30 `removal_on` date and the `lapsed` phase, and suggests the billing control site as the runner)
+spec [0007](../specs/0007-trial-end-export-removal/index.md) · code in `frappe_books/subscription/removal.py`, `frappe_books/subscription/runner.py`, `frappe_books/commands.py`, and the `rarebooks_control` repo (Milestone 4)
+- [x] Design it (spec): `/architect trial end export and site removal` (settle what runs the removal, since a site can't safely remove itself, what the zip holds and in what format, how a large zip reaches the owner, the warning schedule, retries and a safety hold, and what is kept for legal or audit reasons; spec 0005 gives the day 30 `removal_on` date and the `lapsed` phase, and suggests the billing control site as the runner)
+- [ ] Build it: `/develop trial end export and site removal`
+  - [x] One export end to end against stubs: lapsed `removal_on`, the two Books Subscription fields, `removal.py`, `build_export`, the `books-removal-run` command with its secrets file and signed calls, the new banner texts (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8, AC-15, AC-18, AC-19)
+  - [x] Cancel and failure paths: `clear`, `step_failed` with secret scrubbing, deferred exports, control site down (AC-11, AC-12, AC-15)
+  - [ ] The drop behind dry run: local and remote checks, Frappe's in process drop with the case's archived path, repeat safe, phone layout and Playwright (AC-9, AC-10, AC-14, AC-19)
+  - [ ] Control site removal side, in `rarebooks_control` (needs feature 8): hosting bench, removal case and warnings, signed endpoints, emails, download link, approval, cap, kill switch, alerts (AC-4, AC-5, AC-7, AC-9, AC-11 to AC-17, AC-20, AC-21)
+  - [ ] Rollout: R2 bucket and lifecycle rules, host config and cron, a dry run cycle, then live with approval on (AC-3, AC-14, AC-16, AC-20)
+- [ ] Verify it: `/check verify trial end export and site removal`
+- [ ] Test it: `/test trial end export and site removal`
+- [ ] Review it (fresh model): `/check review trial end export and site removal`
+- [ ] Document it: `/document trial end export and site removal`
 
 ### 8. Billing control site · needs a decision
 A small central Frappe app of yours (`rarebooks_control`, its own repo) that keeps the list of hosted sites and their per site secrets, takes payment (ClickPesa yearly for Tanzania, PayPal Subscriptions monthly or yearly for everyone else), and pushes each change to the customer site through the signed contract in spec 0005. Production use of feature 6 waits on it. (from spec 0005)
@@ -154,6 +165,8 @@ A small central Frappe app of yours (`rarebooks_control`, its own repo) that kee
 - [ ] Design it (spec): `/architect billing control site` (settle the site registry and secret rotation, ClickPesa checkout links, its webhook checksum header and key, and its dashboard return URL, PayPal plans and webhook verification, how `paid_until` is computed (the paid period starts at trial end when someone pays early), push retries, and where it is hosted)
 
 ## Deferred
+
+- Delete a dropped site's own TLS certificate in the runner, or move the hosting bench to a wildcard certificate; and a "Removed" page so a removed site's URL explains what happened (from spec 0007)
 
 - Small polish from the feature 6 review: clamp a future `issued_at` to now when storing `last_synced_on`, return `plans_error` as a typed object, and send `days_left` in the status so the client stops copying `LOCK_DAY` and `TRIAL_LAST_DAY` (from review 2026-11-18-v16-dashboard-features-trial-lock)
 

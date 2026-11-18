@@ -29,6 +29,8 @@ FACT_FIELDS = (
 	"exempt",
 	"checkout_started_on",
 	"last_synced_on",
+	"export_sent_on",
+	"removal_hold_until",
 )
 LOCK_TYPES = ("SiteLockedError", "InReadOnlyMode")
 TEST_SECRET = b"books-test-secret-0123456789abcdef0123"
