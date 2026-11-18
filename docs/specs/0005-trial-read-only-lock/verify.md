@@ -96,3 +96,32 @@ Setup: a hosted site with `books_control_url` and `books_control_secret` in `sit
 
 ### Coverage
 - AC-10 · checkout and plans tests, manual steps · AC-11 · push tests, rate limit and Error Log steps · AC-12 · pull test, node refresh test, return step · AC-15 · checkout marks payment pending · AC-16 · unreachable tests, Retry step
+
+## Milestone 4: paid lifecycle (added 2026-11-18)
+Setup: a hosted site as above, set up with dates in dd/MM/yyyy. Set the paid facts with `bench --site <site> console`: `from frappe_books.tests.subscription import store_facts; from frappe_books.subscription.clock import current_clock; from datetime import timedelta; today = current_clock().today; store_facts(paid_until=today + timedelta(days=D), auto_renews=A, provider=P)`, then reload /books.
+
+### UI / manual
+- [ ] PayPal, `auto_renews=1`, `paid_until` today + 30: no banner; the page heading says "Subscribed" and shows "Renews on" with the `paid_until` date; no Plans section → AC-13
+- [ ] PayPal, `auto_renews=1`, `paid_until` today: still no banner (auto renew never shows the renew banner) → AC-13
+- [ ] ClickPesa, `auto_renews=0`, `paid_until` today + 15: no banner, the page shows "Paid until" → AC-13
+- [ ] ClickPesa, `auto_renews=0`, `paid_until` today + 14: banner "Your subscription ends on {paid_until}. Renew to keep full access." with Subscribe for a manager, "Ask your administrator to subscribe." for a Books User; the page shows "Paid until" and the plans → AC-13
+- [ ] The same with PayPal and `auto_renews=0` (a cancelled but still paid subscription): the same renew banner, since the rule keys on `auto_renews`, not the provider → AC-13
+- [ ] `paid_until` today − 1: an amber banner "Your subscription ended on {paid_until}. Renew by {paid_until + 7} to keep full access."; saving a Party works; the page heading says "Subscription ended" with "Ended on" and "Renew by" → AC-14
+- [ ] `paid_until` today − 7: the same grace banner, and saves still work → AC-14
+- [ ] Renew or grace banner: dismiss it, reload → hidden; store yesterday's date in `books_subscription_banner_dismissed`, reload → it shows again → AC-4 (dismissal rule), AC-13, AC-14
+- [ ] `paid_until` today − 8: a red banner "Your books are read only. Renew to make changes again." with no dismiss button and no removal date; the page heading says "Read only" with only "Ended on"; creating a Currency is refused with the same text → AC-14, AC-5, AC-8
+
+### Commands
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK (`paid_lifecycle_boundaries`: today with auto renew is active, +15 active, +14 and +0 without auto renew are renew_soon, −1 and −7 grace, −8 lapsed and locked) → AC-13, AC-14
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (`test_grace_keeps_access_and_the_day_after_locks_as_lapsed`: an insert on the last grace day succeeds over HTTP, the next day it gets `SiteLockedError` 403) → AC-14, AC-5
+- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK (no banner for active either way, renew soon and grace texts with their dates, both dismissible for the site day, lapsed ignores the dismissal, page heading and rows per paid phase) → AC-13, AC-14
+
+### Value sourcing
+- [ ] "Ends on" / "Ended on" / "Paid until" / "Renews on" date: equals Books Subscription `paid_until`, shown in the user's date format; change System Settings `date_format` to mm-dd-yyyy, reload → the dates follow → AC-13, AC-14, AC-19
+- [ ] "Renew by" date: `paid_until` + 7 days (the status dict's `grace_ends_on`); set `paid_until` to the last day of a month and check the date rolls into the next month → AC-14
+- [ ] Phase boundary in the site's time zone: set System Settings `time_zone` to Africa/Dar_es_Salaam with `paid_until` = yesterday − 7 (local), and check at 23:30 UTC that the site is already lapsed (local midnight passed) → AC-14, AC-18
+- [ ] `auto_renews` drives the rule, not `provider`: PayPal with `auto_renews=0` 10 days out shows the renew banner; ClickPesa with `auto_renews=1` (not a real case, but the rule) shows none → AC-13
+
+### Coverage
+- AC-13 · clock boundary test, node banner and page tests, manual steps · AC-14 · clock boundary test, HTTP lock test, node tests, manual steps
+- Note: the "Renews on" date is `paid_until` (decided during this build, not yet in the spec's Value sourcing table; `/architect` should record it)

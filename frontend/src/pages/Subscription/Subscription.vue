@@ -102,10 +102,9 @@ import { t } from 'fyo';
 import PageHeader from 'src/components/PageHeader.vue';
 import { subscriptionStatus } from 'src/utils/refs';
 import {
-  formatDate,
   formatPlanPrice,
   getPlanLabel,
-  getTrialDaysLeft,
+  getSubscriptionDetails,
   isCheckoutReturn,
   isManaged,
   refreshSubscriptionStatus,
@@ -114,8 +113,6 @@ import {
 } from 'src/utils/subscription';
 import { computed, onActivated, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
-type Row = { label: string; value: string; testid: string };
 
 const route = useRoute();
 const router = useRouter();
@@ -136,57 +133,11 @@ const showPlans = computed(
 const billingError = computed(
   () => loadError.value ?? status.value?.plans_error ?? null
 );
-const unpaidTrial = computed(() =>
-  ['trial', 'prompt', 'locked'].includes(status.value?.phase ?? '')
+const details = computed(() =>
+  status.value ? getSubscriptionDetails(status.value) : null
 );
-
-const heading = computed(() => {
-  if (status.value?.locked) {
-    return t`Read only`;
-  }
-
-  return unpaidTrial.value ? t`Free trial` : t`Subscribed`;
-});
-
-const rows = computed<Row[]>(() => {
-  const current = status.value;
-  if (!current) {
-    return [];
-  }
-
-  if (!unpaidTrial.value) {
-    return [
-      {
-        label: t`Paid until`,
-        value: formatDate(current.paid_until),
-        testid: 'paid-until',
-      },
-    ];
-  }
-
-  const rows: Row[] = [];
-  if (current.phase !== 'locked') {
-    rows.push({
-      label: t`Days left in the trial`,
-      value: String(getTrialDaysLeft(current)),
-      testid: 'trial-days-left',
-    });
-  }
-
-  rows.push(
-    {
-      label: t`Trial ends on`,
-      value: formatDate(current.trial_ends_on),
-      testid: 'trial-ends-on',
-    },
-    {
-      label: t`Read only from`,
-      value: formatDate(current.lock_starts_on),
-      testid: 'lock-starts-on',
-    }
-  );
-  return rows;
-});
+const heading = computed(() => details.value?.heading ?? '');
+const rows = computed(() => details.value?.rows ?? []);
 
 async function refresh(pull = false) {
   isRefreshing.value = true;

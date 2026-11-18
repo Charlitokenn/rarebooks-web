@@ -6,6 +6,7 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from frappe_books.subscription import apply_state
+from frappe_books.subscription.clock import current_clock
 from frappe_books.subscription.lock import ALLOWED_METHODS, is_allowed_path
 from frappe_books.tests.accounting import make_account, make_invoice, make_item, make_party
 from frappe_books.tests.subscription import (
@@ -17,6 +18,7 @@ from frappe_books.tests.subscription import (
 	login_sid,
 	make_user,
 	managed_site,
+	store_facts,
 )
 
 MANAGER = "books-manager-lock@example.com"
@@ -187,6 +189,18 @@ class IntegrationTestReadOnlyLock(SubscriptionTestMixin, IntegrationTestCase):
 			response = self.post("/api/v2/document/ToDo", insert)
 		self.assertEqual(response.status_code, 200, response.json)
 		frappe.delete_doc("ToDo", response.json["data"]["name"])
+
+	def test_grace_keeps_access_and_the_day_after_locks_as_lapsed(self):
+		today = current_clock().today
+		insert = {"doctype": "ToDo", "description": "in grace"}
+		with managed_site():
+			store_facts(paid_until=today - timedelta(days=7))
+			in_grace = self.post("/api/v2/document/ToDo", insert)
+			store_facts(paid_until=today - timedelta(days=8))
+			lapsed = self.post("/api/v2/document/ToDo", insert)
+		self.assertEqual(in_grace.status_code, 200, in_grace.json)
+		frappe.delete_doc("ToDo", in_grace.json["data"]["name"])
+		self.assertEqual((lapsed.status_code, exc_type(lapsed)), (403, "SiteLockedError"), lapsed.json)
 
 	def test_an_unmanaged_site_on_day_41_is_not_locked(self):
 		with managed_site(False):

@@ -85,13 +85,116 @@ export function getSubscriptionBanner(
     return { message: getLockNotice(status), dismissible: false, canSubscribe };
   }
 
-  if (status.phase === 'prompt' && dismissedOn !== status.today) {
-    const daysLeft = LOCK_DAY - status.day_number;
-    const message = t`${daysLeft} days left to subscribe before your books turn read only.`;
+  // The open banners share the dismissal key, so each hides until the next site day (AC-4).
+  const message = getOpenBannerMessage(status);
+  if (message && dismissedOn !== status.today) {
     return { message, dismissible: true, canSubscribe };
   }
 
   return null;
+}
+
+/** The text of a banner that still leaves full access: the trial prompt, renew soon or grace. */
+function getOpenBannerMessage(status: SubscriptionStatus): string | null {
+  if (status.phase === 'prompt') {
+    const daysLeft = LOCK_DAY - status.day_number;
+    return t`${daysLeft} days left to subscribe before your books turn read only.`;
+  }
+
+  const paidUntil = formatDate(status.paid_until);
+  if (status.phase === 'renew_soon') {
+    return t`Your subscription ends on ${paidUntil}. Renew to keep full access.`;
+  }
+
+  if (status.phase === 'grace') {
+    const graceEndsOn = formatDate(status.grace_ends_on);
+    return t`Your subscription ended on ${paidUntil}. Renew by ${graceEndsOn} to keep full access.`;
+  }
+
+  return null;
+}
+
+export interface SubscriptionDetailRow {
+  label: string;
+  value: string;
+  testid: string;
+}
+
+export interface SubscriptionDetails {
+  heading: string;
+  rows: SubscriptionDetailRow[];
+}
+
+const UNPAID_TRIAL_PHASES: SubscriptionPhase[] = ['trial', 'prompt', 'locked'];
+
+/** The Subscription page's heading and date rows for a hosted site's phase (AC-3, AC-13, AC-14). */
+export function getSubscriptionDetails(
+  status: SubscriptionStatus
+): SubscriptionDetails {
+  if (UNPAID_TRIAL_PHASES.includes(status.phase)) {
+    return {
+      heading: status.locked ? t`Read only` : t`Free trial`,
+      rows: getTrialRows(status),
+    };
+  }
+
+  return { heading: getPaidHeading(status), rows: getPaidRows(status) };
+}
+
+function getTrialRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
+  const rows: SubscriptionDetailRow[] = [];
+  if (status.phase !== 'locked') {
+    rows.push({
+      label: t`Days left in the trial`,
+      value: String(getTrialDaysLeft(status)),
+      testid: 'trial-days-left',
+    });
+  }
+
+  rows.push(
+    {
+      label: t`Trial ends on`,
+      value: formatDate(status.trial_ends_on),
+      testid: 'trial-ends-on',
+    },
+    {
+      label: t`Read only from`,
+      value: formatDate(status.lock_starts_on),
+      testid: 'lock-starts-on',
+    }
+  );
+  return rows;
+}
+
+function getPaidHeading(status: SubscriptionStatus): string {
+  if (status.locked) {
+    return t`Read only`;
+  }
+
+  return status.phase === 'grace' ? t`Subscription ended` : t`Subscribed`;
+}
+
+function getPaidRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
+  const paidUntil = formatDate(status.paid_until);
+  if (status.phase === 'active' && status.auto_renews) {
+    // The renewal date is paid_until, as the renew banner's end date is.
+    return [{ label: t`Renews on`, value: paidUntil, testid: 'renews-on' }];
+  }
+
+  if (status.phase === 'active' || status.phase === 'renew_soon') {
+    return [{ label: t`Paid until`, value: paidUntil, testid: 'paid-until' }];
+  }
+
+  const rows = [{ label: t`Ended on`, value: paidUntil, testid: 'ended-on' }];
+  if (status.phase === 'grace') {
+    rows.push({
+      label: t`Renew by`,
+      value: formatDate(status.grace_ends_on),
+      testid: 'renew-by',
+    });
+  }
+
+  return rows;
 }
 
 /** The locked banner's text, which every refused write shows too (AC-8, with the AC-15 note). */

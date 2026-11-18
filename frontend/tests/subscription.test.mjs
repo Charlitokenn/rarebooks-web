@@ -121,6 +121,130 @@ test('paid, unmanaged and exempt sites show no banner here', () => {
   assert.equal(isManaged(null), false);
 });
 
+/** A status dict for a paid site in `phase`, with `paid_until` and its grace end. */
+function paidStatus(phase, overrides = {}) {
+  return trialStatus(100, {
+    phase,
+    locked: phase === 'lapsed',
+    removal_on: null,
+    paid_until: '2026-11-30',
+    grace_ends_on: '2026-12-07',
+    provider: 'ClickPesa',
+    billing_period: 'Yearly',
+    ...overrides,
+  });
+}
+
+const { getSubscriptionDetails } = subscription;
+
+test('an active site shows no banner, renewing or not', () => {
+  for (const auto_renews of [true, false]) {
+    assert.equal(
+      getSubscriptionBanner(paidStatus('active', { auto_renews }), null),
+      null
+    );
+  }
+});
+
+test('renew soon names the last paid day and can be dismissed', () => {
+  assert.deepEqual(getSubscriptionBanner(paidStatus('renew_soon'), null), {
+    message: 'Your subscription ends on 30/11/2026. Renew to keep full access.',
+    dismissible: true,
+    canSubscribe: true,
+  });
+});
+
+test('grace names the end and the renew by date, and can be dismissed', () => {
+  const status = paidStatus('grace', {
+    paid_until: '2026-11-15',
+    grace_ends_on: '2026-11-22',
+  });
+  assert.deepEqual(getSubscriptionBanner(status, null), {
+    message:
+      'Your subscription ended on 15/11/2026. Renew by 22/11/2026 to keep full access.',
+    dismissible: true,
+    canSubscribe: true,
+  });
+  assert.equal(getSubscriptionBanner(status, status.today), null);
+  assert.ok(getSubscriptionBanner(status, '2026-11-17'));
+});
+
+test('renew banners tell other users to ask', () => {
+  for (const phase of ['renew_soon', 'grace']) {
+    const status = paidStatus(phase, { can_subscribe: false });
+    assert.equal(getSubscriptionBanner(status, null).canSubscribe, false);
+  }
+});
+
+test('a lapsed banner ignores the dismissal', () => {
+  const banner = getSubscriptionBanner(paidStatus('lapsed'), '2026-11-18');
+  assert.equal(banner.dismissible, false);
+  assert.equal(
+    banner.message,
+    'Your books are read only. Renew to make changes again.'
+  );
+});
+
+const detailRows = (status) =>
+  getSubscriptionDetails(status).rows.map(({ testid, label, value }) => [
+    testid,
+    label,
+    value,
+  ]);
+
+test('an auto renewing site shows the renewal date', () => {
+  const status = paidStatus('active', {
+    provider: 'PayPal',
+    auto_renews: true,
+  });
+  assert.equal(getSubscriptionDetails(status).heading, 'Subscribed');
+  assert.deepEqual(detailRows(status), [
+    ['renews-on', 'Renews on', '30/11/2026'],
+  ]);
+});
+
+test('a site that does not renew on its own shows the paid until date', () => {
+  for (const phase of ['active', 'renew_soon']) {
+    assert.equal(
+      getSubscriptionDetails(paidStatus(phase)).heading,
+      'Subscribed'
+    );
+    assert.deepEqual(detailRows(paidStatus(phase)), [
+      ['paid-until', 'Paid until', '30/11/2026'],
+    ]);
+  }
+});
+
+test('grace shows when it ended and the renew by date', () => {
+  const status = paidStatus('grace');
+  assert.equal(getSubscriptionDetails(status).heading, 'Subscription ended');
+  assert.deepEqual(detailRows(status), [
+    ['ended-on', 'Ended on', '30/11/2026'],
+    ['renew-by', 'Renew by', '07/12/2026'],
+  ]);
+});
+
+test('lapsed reads as read only with no removal or renew by date', () => {
+  const status = paidStatus('lapsed');
+  assert.equal(getSubscriptionDetails(status).heading, 'Read only');
+  assert.deepEqual(detailRows(status), [
+    ['ended-on', 'Ended on', '30/11/2026'],
+  ]);
+});
+
+test('the trial page rows are unchanged', () => {
+  assert.equal(getSubscriptionDetails(trialStatus(5)).heading, 'Free trial');
+  assert.deepEqual(
+    detailRows(trialStatus(5)).map(([testid]) => testid),
+    ['trial-days-left', 'trial-ends-on', 'lock-starts-on']
+  );
+  assert.equal(getSubscriptionDetails(trialStatus(27)).heading, 'Read only');
+  assert.deepEqual(
+    detailRows(trialStatus(27)).map(([testid]) => testid),
+    ['trial-ends-on', 'lock-starts-on']
+  );
+});
+
 test('trial days left count today, as the banner does', () => {
   assert.equal(getTrialDaysLeft(trialStatus(1)), 21);
   assert.equal(getTrialDaysLeft(trialStatus(21)), 1);
