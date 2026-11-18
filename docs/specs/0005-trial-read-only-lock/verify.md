@@ -125,3 +125,28 @@ Setup: a hosted site as above, set up with dates in dd/MM/yyyy. Set the paid fac
 ### Coverage
 - AC-13 · clock boundary test, node banner and page tests, manual steps · AC-14 · clock boundary test, HTTP lock test, node tests, manual steps
 - Note: the "Renews on" date is `paid_until` (decided during this build, not yet in the spec's Value sourcing table; `/architect` should record it)
+
+## Milestone 5: phone and the full browser suite (added 2026-11-18)
+Setup: a hosted test site with the Books setup wizard completed. Set a phase with `bench --site <site> execute frappe_books.tests.subscription.set_hosted_phase --kwargs '{"phase": "<trial|prompt|locked|pending|active|renew_soon|grace|lapsed|exempt>"}'`. For phone checks use a 390 x 844 touch viewport (or a real phone, and the installed PWA).
+
+### UI / manual
+- [ ] Each phase at phone width: the banner wraps inside the screen, its Subscribe button is fully visible, and no page scrolls sideways on the dashboard or the Subscription page → AC-19
+- [ ] Locked, at phone width: edit an existing Party (Tax ID) and save from the footer → the "Read only" dialog shows the locked banner's text and fits the screen → AC-5, AC-8, AC-19
+- [ ] Locked: a Books User who has never opened Books logs in and opens /books → the app loads (no server error), with "Ask your administrator to subscribe." and no Subscribe button → AC-6, AC-7, AC-8
+- [ ] Locked, as a manager, with the control site unreachable: choose a plan → the page shows "Couldn't reach billing. Try again." (not "Internal Server Error") → AC-16
+- [ ] Phone nav sheet: the Subscription item shows on a hosted site and is gone on an exempt or self hosted site → AC-2, AC-19
+- [ ] The texts and dates are the same on desktop and phone, in the user's date format → AC-19
+
+### Commands
+- [ ] `BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` (in `frontend/`) → 17 passed: trial, prompt and dismissal, locked reads and refused writes (insert on desktop, edit on phone), Books User, payment pending, plans and the checkout return, paid phases, exempt, each on desktop and phone, then self hosted → AC-2 to AC-16, AC-19
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK, including `test_a_first_boot_after_login_works_on_a_locked_site` → AC-6, AC-7
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK; `test_checkout_on_an_unreachable_control_site` checks the message is thrown, not only raised → AC-16
+
+### Value sourcing
+- [ ] Prompt countdown: day 23 shows "3 days left", 26 minus the day number from `trial_started_on` in the site's time zone → AC-4, AC-18
+- [ ] Banner and page dates match: the renew soon banner's date equals the page's "Paid until", and the grace banner's dates equal "Ended on" and "Renew by" → AC-13, AC-14, AC-19
+
+### Coverage
+- AC-19 · the phone half of the suite and the manual phone steps · AC-2 to AC-16 · rechecked by the suite on desktop and phone
+- Not automated: the installed PWA (`display-mode: standalone`) and right to left languages. The PWA uses the same mobile shell, so check it once by hand.
+- Found and fixed during this build: a user's first boot on a locked site failed (Frappe writes `User.last_known_versions`), now saved at login by an `on_session_creation` hook; and `start_checkout` showed "Internal Server Error" instead of the billing message.
