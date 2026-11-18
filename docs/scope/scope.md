@@ -90,7 +90,7 @@ code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/
 ## Slice 4: Expenses
 
 ### 5. Expenses · done
-Let you record, view and change the money the business spends that isn't a purchase invoice (rent, utilities, fees). Expenses get their own list and form, reached from the sidebar under Purchases.
+Let you record, view and change the money the business spends that isn't a purchase invoice (rent, utilities, fees). Expenses get their own list and form, reached from the sidebar under Purchases. Bulk upload goes through the Import Wizard: Managers only, and each expense is saved as a draft (AC-12).
 **Done when:** a user with the right role can create, view, edit and list expenses from Purchases → Expenses in the sidebar. The server checks the caller's rights for every action. The list and form work on a phone.
 spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_books/doctype/books_expense/`, `frappe_books/accounting/accounts.py` and `frontend/models/baseModels/Expense/`
 - [x] Design it (spec): `/architect expenses` (settle the data model, whether an expense posts to the ledger and feeds the dashboard's Top Expenses, which roles can record or change one, and what editing means once it is submitted)
