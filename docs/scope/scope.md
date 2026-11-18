@@ -125,7 +125,7 @@ spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_book
 - [x] Verify it: `/check verify trial and read only lock`
 - [x] Test it: `/test trial and read only lock`
 - [x] Review it (fresh model): `/check review trial and read only lock`
-- [ ] Document it: `/document trial and read only lock`
+- [x] Document it: `/document trial and read only lock`
 
 ### 7. Trial end export and site removal · needs a decision
 On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
