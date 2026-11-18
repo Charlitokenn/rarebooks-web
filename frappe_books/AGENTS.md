@@ -8,7 +8,8 @@ The server side of Books: 68 `books_*` DocTypes with their controllers, plus pla
 
 | File | Owns |
 |---|---|
-| `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags |
+| `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags, and the subscription lock hooks (`before_request`, `before_job`, `on_session_creation`, wildcard `doc_events`) |
+| `subscription/` | Trial clock, subscription state and the read only lock ([subscription/AGENTS.md](subscription/AGENTS.md)) |
 | `frappe_books/doctype/books_*/` | One DocType each: `.json`, `.py` controller, optional `.js`, `test_*.py` |
 | `frappe_books/report/`, `print_format/`, `workspace/` | "Books " script reports, print formats, the workspace |
 | `accounting/`, `inventory/`, `commerce/` | Shared domain logic the controllers call (ledger, settlement, stock posting, FIFO valuation, POS, pricing, loyalty) |
@@ -50,7 +51,7 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - `Sum` comes back as a Decimal on MariaDB: wrap it with `as_decimal` and `rounded` before comparing or returning.
 - To read child table fields through a parent's `frappe.get_list`, qualify them with the table name, for example `` `tabBooks Sales Invoice Item`.amount `` (see `SALES_ITEM` in `reports/dashboard.py`).
 - Rows a test writes stay visible to the later tests in its `IntegrationTestCase` class, so each dashboard test keeps its invoices in its own months of 2031.
-- There are no `doc_events`; the search index updates through Frappe's `sqlite_search` hook.
+- The only `doc_events` are the wildcard (`"*"`) lock guard from `subscription/`; the search index updates through Frappe's `sqlite_search` hook.
 - The test site must have the setup wizard completed (`books_setup_wizard.complete_setup`) before the Playwright tests run.
 - No ERPNext doctypes exist. Do not add links, checks or fallbacks for them.
 
