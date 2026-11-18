@@ -1,10 +1,10 @@
-"""The only writers of Books Subscription: install, the patch, `apply_state` and (later) the control site sync."""
+"""The only writers of Books Subscription: install, the patch, `apply_state` and the control site sync."""
 
 from contextlib import contextmanager
 
 import frappe
 from frappe import _
-from frappe.utils import getdate
+from frappe.utils import get_datetime, getdate
 
 from frappe_books.subscription.clock import DOCTYPE, utc_now
 
@@ -28,6 +28,27 @@ def apply_state(state: dict):
 	"""
 	facts = frappe.get_single(DOCTYPE)
 	set_facts(facts, state)
+	save_facts(facts)
+
+
+def apply_synced_state(state: dict, issued_at) -> bool:
+	"""Apply a verified push or pull. One not strictly newer than the last applied one is ignored (AC-11).
+
+	Returns whether it was applied. Raises `frappe.ValidationError` on a bad value, before anything changes.
+	"""
+	facts = frappe.get_single(DOCTYPE)
+	if facts.last_synced_on and issued_at <= get_datetime(facts.last_synced_on):
+		return False
+	set_facts(facts, state)
+	facts.last_synced_on = issued_at
+	save_facts(facts)
+	return True
+
+
+def mark_checkout_started():
+	"""Drives the payment pending note (AC-15) until a newer `paid_until` arrives."""
+	facts = frappe.get_single(DOCTYPE)
+	facts.checkout_started_on = utc_now()
 	save_facts(facts)
 
 

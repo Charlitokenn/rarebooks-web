@@ -217,3 +217,83 @@ test("a logged out caller's 403 still goes to login, lock type or not", async ()
   assert.equal(settled, false);
   assert.equal(window.location.href, '/login?redirect-to=%2Fbooks');
 });
+
+test('the return refresh asks the server to pull from billing and updates the shared status', async () => {
+  subscriptionStatus.value = trialStatus(27);
+  const bodies = [];
+  globalThis.fetch = async (url, init) => {
+    bodies.push([String(url), JSON.parse(init?.body ?? '{}')]);
+    return Response.json({
+      message: trialStatus(27, {
+        phase: 'active',
+        locked: false,
+        paid_until: '2027-11-18',
+        removal_on: null,
+      }),
+    });
+  };
+  await subscription.refreshSubscriptionStatus(true);
+  const [url, body] = bodies[0];
+  assert.ok(url.includes('frappe_books.subscription.get_subscription'));
+  assert.equal(body.refresh, true);
+  assert.equal(subscriptionStatus.value.phase, 'active');
+  assert.equal(getSubscriptionBanner(subscriptionStatus.value, null), null);
+});
+
+test('a plain refresh does not ask for a pull', async () => {
+  const bodies = [];
+  globalThis.fetch = async (_url, init) => {
+    bodies.push(JSON.parse(init?.body ?? '{}'));
+    return Response.json({ message: trialStatus(5) });
+  };
+  await subscription.refreshSubscriptionStatus();
+  assert.equal(bodies[0].refresh, undefined);
+});
+
+test('checkout sends the chosen period and returns the link', async () => {
+  const bodies = [];
+  globalThis.fetch = async (url, init) => {
+    bodies.push([String(url), JSON.parse(init?.body ?? '{}')]);
+    return Response.json({
+      message: { checkout_url: 'https://pay.example.com/abc' },
+    });
+  };
+  const url = await subscription.startCheckout('Yearly');
+  assert.equal(url, 'https://pay.example.com/abc');
+  assert.ok(bodies[0][0].includes('frappe_books.subscription.start_checkout'));
+  assert.equal(bodies[0][1].billing_period, 'Yearly');
+});
+
+test('a refused checkout carries the server message', async () => {
+  respondV1(417, 'ValidationError');
+  const error = await subscription
+    .startCheckout('Monthly')
+    .catch((error) => error);
+  assert.equal(error.message, 'Server says no');
+});
+
+test('plans read as a price per period', () => {
+  const monthly = {
+    provider: 'PayPal',
+    billing_period: 'Monthly',
+    amount: 9,
+    currency: 'USD',
+    label: null,
+  };
+  assert.match(subscription.formatPlanPrice(monthly), /9\.00 a month$/);
+  assert.match(
+    subscription.formatPlanPrice({ ...monthly, billing_period: 'Yearly' }),
+    / a year$/
+  );
+  assert.equal(subscription.getPlanLabel(monthly), 'Monthly');
+  assert.equal(
+    subscription.getPlanLabel({ ...monthly, label: 'Starter' }),
+    'Starter'
+  );
+});
+
+test('only ?checkout=returned counts as the return from checkout', () => {
+  assert.equal(subscription.isCheckoutReturn({ checkout: 'returned' }), true);
+  assert.equal(subscription.isCheckoutReturn({ checkout: 'cancelled' }), false);
+  assert.equal(subscription.isCheckoutReturn({}), false);
+});

@@ -26,6 +26,67 @@
               </dd>
             </div>
           </dl>
+          <p
+            v-if="status.payment_pending"
+            class="mt-4 text-base text-ink-gray-7"
+            data-testid="payment-pending"
+          >
+            {{
+              t`Payment pending. The lock lifts as soon as your payment is confirmed.`
+            }}
+          </p>
+        </section>
+        <section
+          v-if="showPlans"
+          class="rounded-6 border border-outline-gray-1 p-4 text-ink-gray-8"
+          data-testid="subscription-plans"
+        >
+          <h2 class="text-lg-semibold">{{ t`Plans` }}</h2>
+          <div
+            v-if="billingError"
+            role="alert"
+            class="mt-4 flex flex-wrap items-center justify-between gap-3 text-base"
+          >
+            <p class="text-ink-red-6">{{ billingError }}</p>
+            <FrappeButton
+              :label="t`Retry`"
+              :loading="isRefreshing"
+              @click="refresh(true)"
+            />
+          </div>
+          <p
+            v-else-if="!status?.offered_provider"
+            class="mt-4 text-base text-ink-gray-7"
+          >
+            {{ t`Finish setup first.` }}
+          </p>
+          <ul v-else class="mt-4 space-y-3">
+            <li
+              v-for="plan in status?.plans ?? []"
+              :key="plan.billing_period"
+              class="flex flex-wrap items-center justify-between gap-3"
+              :data-testid="`plan-${plan.billing_period}`"
+            >
+              <div class="min-w-0 text-base">
+                <p class="font-medium">{{ getPlanLabel(plan) }}</p>
+                <p class="text-ink-gray-6">{{ formatPlanPrice(plan) }}</p>
+              </div>
+              <FrappeButton
+                variant="solid"
+                :label="t`Subscribe`"
+                :loading="checkoutPeriod === plan.billing_period"
+                :disabled="!!checkoutPeriod"
+                @click="subscribe(plan)"
+              />
+            </li>
+          </ul>
+          <p
+            v-if="checkoutError"
+            role="alert"
+            class="mt-3 text-base text-ink-red-6"
+          >
+            {{ checkoutError }}
+          </p>
         </section>
       </div>
     </FrappeScrollArea>
@@ -33,21 +94,48 @@
 </template>
 
 <script setup lang="ts">
-import { ScrollArea as FrappeScrollArea } from 'frappe-ui';
+import {
+  Button as FrappeButton,
+  ScrollArea as FrappeScrollArea,
+} from 'frappe-ui';
 import { t } from 'fyo';
 import PageHeader from 'src/components/PageHeader.vue';
 import { subscriptionStatus } from 'src/utils/refs';
 import {
   formatDate,
+  formatPlanPrice,
+  getPlanLabel,
   getTrialDaysLeft,
+  isCheckoutReturn,
   isManaged,
   refreshSubscriptionStatus,
+  startCheckout,
+  type SubscriptionPlan,
 } from 'src/utils/subscription';
-import { computed, onActivated } from 'vue';
+import { computed, onActivated, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 type Row = { label: string; value: string; testid: string };
 
+const route = useRoute();
+const router = useRouter();
 const status = subscriptionStatus;
+const isRefreshing = ref(false);
+const loadError = ref<string | null>(null);
+const checkoutPeriod = ref<SubscriptionPlan['billing_period'] | null>(null);
+const checkoutError = ref<string | null>(null);
+
+// An active plan is changed with the provider, so only the other phases offer plans.
+const showPlans = computed(
+  () =>
+    !!status.value &&
+    isManaged(status.value) &&
+    status.value.can_subscribe &&
+    status.value.phase !== 'active'
+);
+const billingError = computed(
+  () => loadError.value ?? status.value?.plans_error ?? null
+);
 const unpaidTrial = computed(() =>
   ['trial', 'prompt', 'locked'].includes(status.value?.phase ?? '')
 );
@@ -100,8 +188,38 @@ const rows = computed<Row[]>(() => {
   return rows;
 });
 
-// The page is kept alive, so it fetches the status again each time it opens.
+async function refresh(pull = false) {
+  isRefreshing.value = true;
+  try {
+    await refreshSubscriptionStatus(pull);
+    loadError.value = null;
+  } catch {
+    loadError.value = t`Couldn't reach billing. Try again.`;
+  } finally {
+    isRefreshing.value = false;
+  }
+}
+
+async function subscribe(plan: SubscriptionPlan) {
+  checkoutPeriod.value = plan.billing_period;
+  checkoutError.value = null;
+  try {
+    window.location.href = await startCheckout(plan.billing_period);
+  } catch (error) {
+    checkoutError.value = (error as Error).message;
+    checkoutPeriod.value = null;
+  }
+}
+
+// The page is kept alive, so it fetches the status again each time it opens. Back from checkout,
+// the server pulls fresh state from billing, and the shared ref clears the banner without a reload (AC-12).
 onActivated(() => {
-  void refreshSubscriptionStatus().catch(() => undefined);
+  checkoutPeriod.value = null;
+  const returned = isCheckoutReturn(route.query);
+  if (returned) {
+    void router.replace({ query: {} });
+  }
+
+  void refresh(returned);
 });
 </script>

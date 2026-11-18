@@ -32,6 +32,19 @@ export interface SubscriptionStatus {
   can_subscribe: boolean;
   offered_provider: string | null;
   offered_periods: string[];
+  /** Only for System Managers and Books Managers on a hosted site, from `get_subscription`. */
+  plans?: SubscriptionPlan[];
+  /** "Couldn't reach billing. Try again." when the control site couldn't be reached (AC-16). */
+  plans_error?: string | null;
+}
+
+/** A plan the control site offers this site, with its price. */
+export interface SubscriptionPlan {
+  provider: string;
+  billing_period: 'Monthly' | 'Yearly';
+  amount: number;
+  currency: string;
+  label: string | null;
 }
 
 export interface SubscriptionBanner {
@@ -110,12 +123,55 @@ export function setSubscriptionStatus(status: SubscriptionStatus | undefined) {
   subscriptionStatus.value = status ?? null;
 }
 
-/** Fetches the status again, as after a refused write shows the site turned read only overnight. */
-export async function refreshSubscriptionStatus(): Promise<void> {
+/**
+ * Fetches the status again, as after a refused write shows the site turned read only overnight.
+ * `refresh` has the server pull fresh state from billing first, as on the return from checkout (AC-12).
+ */
+export async function refreshSubscriptionStatus(
+  refresh = false
+): Promise<SubscriptionStatus> {
   const { call } = await import('src/web/api');
-  subscriptionStatus.value = await call<SubscriptionStatus>(
-    'frappe_books.subscription.get_subscription'
+  const status = await call<SubscriptionStatus>(
+    'frappe_books.subscription.get_subscription',
+    refresh ? { refresh: true } : {}
   );
+  subscriptionStatus.value = status;
+  return status;
+}
+
+/** Asks the server for a checkout link for the chosen period; the caller sends the browser there. */
+export async function startCheckout(
+  billingPeriod: SubscriptionPlan['billing_period']
+): Promise<string> {
+  const { call } = await import('src/web/api');
+  const { checkout_url } = await call<{ checkout_url: string }>(
+    'frappe_books.subscription.start_checkout',
+    { billing_period: billingPeriod }
+  );
+  return checkout_url;
+}
+
+/** The plan's price per period, for example "USD 9.00 a month". */
+export function formatPlanPrice(plan: SubscriptionPlan): string {
+  const amount = new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: plan.currency,
+  }).format(plan.amount);
+  return plan.billing_period === 'Monthly'
+    ? t`${amount} a month`
+    : t`${amount} a year`;
+}
+
+/** The plan's name: the control site's label, else the period. */
+export function getPlanLabel(plan: SubscriptionPlan): string {
+  return (
+    plan.label || (plan.billing_period === 'Monthly' ? t`Monthly` : t`Yearly`)
+  );
+}
+
+/** The return URL the control site sends the browser back to after checkout. */
+export function isCheckoutReturn(query: Record<string, unknown>): boolean {
+  return query.checkout === 'returned';
 }
 
 /** The site day the prompt banner was dismissed on, if the browser kept it. */

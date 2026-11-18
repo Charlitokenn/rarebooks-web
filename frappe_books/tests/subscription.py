@@ -1,11 +1,13 @@
 """Helpers for the trial and read only lock tests (spec 0005)."""
 
+import json
 from contextlib import contextmanager
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Thread
 from unittest.mock import patch
 
 import frappe
+import requests
 from frappe.auth import CookieManager, LoginManager
 from frappe.installer import update_site_config
 from frappe.tests.test_api import make_request
@@ -14,6 +16,7 @@ from frappe.utils.background_jobs import execute_job
 from frappe.utils.password import update_password
 
 from frappe_books.subscription.clock import DOCTYPE, utc_now
+from frappe_books.subscription.control import SIGNATURE_HEADER, is_valid_signature, sign
 from frappe_books.subscription.state import save_facts
 
 FACT_FIELDS = (
@@ -28,6 +31,20 @@ FACT_FIELDS = (
 	"last_synced_on",
 )
 LOCK_TYPES = ("SiteLockedError", "InReadOnlyMode")
+TEST_SECRET = b"books-test-secret-0123456789abcdef0123"
+CONTROL_URL = "https://control.example.com"
+CHECKOUT_URL = "https://pay.example.com/checkout/abc"
+PLANS = [
+	{"provider": "PayPal", "billing_period": "Monthly", "amount": 9, "currency": "USD", "label": "Monthly"},
+	{"provider": "PayPal", "billing_period": "Yearly", "amount": 90, "currency": "USD", "label": "Yearly"},
+	{
+		"provider": "ClickPesa",
+		"billing_period": "Yearly",
+		"amount": 200000,
+		"currency": "TZS",
+		"label": "Yearly",
+	},
+]
 TEST_CLIENT = get_test_client()
 
 
@@ -161,3 +178,74 @@ def write_after_commit_job(todo: str):
 
 def scheduled_write_job():
 	frappe.db.sql("update `tabToDo` set description = 'job wrote' where description = 'scheduled marker'")
+
+
+def iso_ago(**delta) -> str:
+	"""An aware ISO 8601 timestamp, `delta` before now."""
+	return (datetime.now(UTC) - timedelta(**delta)).isoformat()
+
+
+def signed_push(state: dict, secret: bytes = TEST_SECRET) -> tuple[bytes, str]:
+	"""A push body for this site and its signature header value."""
+	body = json.dumps({"site": frappe.local.site, "issued_at": iso_ago(seconds=1), **state}).encode()
+	return body, sign(body, secret)
+
+
+def push(body: bytes, signature: str | None):
+	"""POST a push to `receive_state` over real HTTP, as the control site would, with no session."""
+	headers = {SIGNATURE_HEADER: signature} if signature else {}
+	with (
+		managed_site(),
+		patch("frappe_books.subscription.api.site_secret", return_value=TEST_SECRET),
+	):
+		return make_request(
+			target=TEST_CLIENT.post,
+			args=(get_url("/api/method/frappe_books.subscription.receive_state"),),
+			kwargs={"data": body, "headers": headers, "content_type": "application/json"},
+		)
+
+
+class ControlStub:
+	"""Stands in for the control site: checks each request's signature and signs its answers.
+
+	`error` is raised instead of answering (a timeout, a refused connection); `sign_with` signs the answer,
+	so a wrong secret gives a bad response signature.
+	"""
+
+	def __init__(self, state=None, plans=None, checkout_url=CHECKOUT_URL, error=None, sign_with=TEST_SECRET):
+		self.state = {"issued_at": iso_ago(seconds=1), **(state or {})}
+		self.plans = PLANS if plans is None else plans
+		self.checkout_url = checkout_url
+		self.error = error
+		self.sign_with = sign_with
+		self.calls = []
+
+	def post(self, url, data, headers, timeout):
+		assert is_valid_signature(data, headers.get(SIGNATURE_HEADER), TEST_SECRET), "unsigned request"
+		assert timeout == 10
+		self.calls.append((url.rsplit("/", 1)[-1], json.loads(data)))
+		if self.error:
+			raise self.error
+		if url.endswith("get_state"):
+			message = {"state": self.state, "plans": self.plans}
+		else:
+			message = {"checkout_url": self.checkout_url}
+		response = requests.Response()
+		response.status_code = 200
+		response._content = json.dumps({"message": message}).encode()
+		response.headers[SIGNATURE_HEADER] = sign(response._content, self.sign_with)
+		return response
+
+
+@contextmanager
+def control_site(stub: ControlStub, country: str | None = "Kenya"):
+	"""A managed site that talks to `stub`, for a company in `country`."""
+	conf = {"books_control_url": CONTROL_URL, "books_control_secret": TEST_SECRET.decode()}
+	with (
+		patch.dict(frappe.conf, conf),
+		patch("frappe_books.subscription.control.requests.post", stub.post),
+		patch("frappe_books.subscription.clock.company_country", return_value=country),
+	):
+		frappe.cache.delete_value("books_subscription_plans")
+		yield stub
+		frappe.cache.delete_value("books_subscription_plans")

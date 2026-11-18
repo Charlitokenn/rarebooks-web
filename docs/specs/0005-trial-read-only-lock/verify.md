@@ -65,3 +65,34 @@ Setup: a hosted site as above. Move the clock with `bench --site <site> console`
 
 ### Coverage
 - AC-2 · unmanaged boot test, manual step · AC-3 · Subscription page step · AC-4 · node banner tests, manual steps · AC-5, AC-8 · node error mapping tests, Playwright test, manual steps
+
+## Milestone 3: the control site contract (added 2026-11-18)
+Setup: a hosted site with `books_control_url` and `books_control_secret` in `site_config.json`. Until the control site exists, a small stub that signs its answers with the same secret stands in (the Python tests use `ControlStub` in `frappe_books/tests/subscription.py`). Sign a push by hand with `from frappe_books.subscription.control import sign; sign(body, secret.encode())`.
+
+### UI / manual
+- [ ] Locked site, as Administrator on a Kenya company: the Subscription page lists PayPal Monthly and Yearly with their prices, each with a Subscribe button → AC-10
+- [ ] Same, on a Tanzania company: only ClickPesa Yearly is listed → AC-10
+- [ ] As a Books User: the page shows no plans → AC-10
+- [ ] Click Subscribe on a plan → the browser goes to the stub's checkout URL; come back to /books → the lock notice adds "Payment pending. The lock lifts as soon as your payment is confirmed." and the lock stays → AC-10, AC-15
+- [ ] Have the stub answer `paid_until` a year out, then open `/books/subscription?checkout=returned` → the red banner clears without a reload, the `?checkout` query is gone, and the next save works → AC-12
+- [ ] Stop the stub (or make it wait 11 seconds), then open the page → "Couldn't reach billing. Try again." with a Retry button, the banner and lock unchanged; start the stub and press Retry → plans show → AC-16
+- [ ] Stub down, press Subscribe → the same message under the plans → AC-16
+
+### Commands
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK (a signed push lifts the lock; a missing, wrong or truncated signature, another site, a 6 minute old, naive or bad `issued_at` each answer 401; an older replay and the same push again are `ignored`; a bad provider, period or date answers 400 and changes nothing; unknown keys are ignored; a newer `paid_until` clears `checkout_started_on`; the return pull applies state; plans per country and cached; a Books User gets no plans and 403 on checkout; checkout refusals for Tanzania Monthly, no country and an active plan; timeout, refused connection and a bad response signature give the Retry state) → AC-10, AC-11, AC-12, AC-15, AC-16
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_status` → still OK (`get_subscription` now also takes a POST) → AC-2, AC-3
+- [ ] `curl -i -X POST <site>/api/method/frappe_books.subscription.receive_state -H 'Content-Type: application/json' -d '{}'` 61 times in a minute → the 61st is rate limited → AC-11
+- [ ] Error Log after a signed push with `"provider": "Stripe"` → one "Books billing: receive_state refused a bad value" row (it may take a scheduler tick, the insert is deferred) → AC-11
+- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK (the return refresh sends `refresh: true` and clears the banner, a plain refresh doesn't, checkout sends the period and returns the link, a refused checkout carries the server message, plan prices per period) → AC-10, AC-12
+
+### Value sourcing
+- [ ] Plans: the prices and labels shown equal the stub's `plans`, and a plan the stub lists for another provider is not shown → AC-10
+- [ ] Plans cache: change the stub's prices, reload the page within the hour → old prices; after `bench --site <site> clear-cache` → new prices → AC-10
+- [ ] `site` sent to the control site: the stub sees `frappe.local.site`, and a push whose `site` is another name is refused → AC-11
+- [ ] `return_url`: the stub receives `<site url>/books/subscription?checkout=returned` (check behind a proxy that `host_name` gives the public URL) → AC-12
+- [ ] `checkout_url`: the browser lands on exactly the stub's link → AC-10
+- [ ] `paid_until`: stored exactly as the push gave it; a pull with an `issued_at` older than `last_synced_on` changes nothing → AC-11, AC-12
+- [ ] Secret and URL: an `http://` control URL is refused (Retry state) unless `developer_mode` is on → security model
+
+### Coverage
+- AC-10 · checkout and plans tests, manual steps · AC-11 · push tests, rate limit and Error Log steps · AC-12 · pull test, node refresh test, return step · AC-15 · checkout marks payment pending · AC-16 · unreachable tests, Retry step

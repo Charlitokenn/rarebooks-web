@@ -3,7 +3,7 @@
 Hooks and `bench execute` reach these through `frappe_books.subscription.<name>`.
 """
 
-from frappe_books.subscription.api import get_subscription
+from frappe_books.subscription.api import get_subscription, receive_state, start_checkout
 from frappe_books.subscription.clock import current_clock, is_locked
 from frappe_books.subscription.lock import (
 	SiteLockedError,
@@ -21,6 +21,8 @@ __all__ = [
 	"is_locked",
 	"lock_job",
 	"lock_request",
+	"receive_state",
 	"refuse_when_locked",
+	"start_checkout",
 	"start_trial",
 ]
