@@ -52,6 +52,7 @@ before_tests = [
 # Trial and read only lock (spec 0005): a locked site opens requests and jobs read only.
 before_request = ["frappe_books.subscription.lock_request"]
 before_job = ["frappe_books.subscription.lock_job"]
+on_session_creation = ["frappe_books.subscription.save_known_versions"]
 _refuse_when_locked = "frappe_books.subscription.refuse_when_locked"
 doc_events = {
 	"*": {

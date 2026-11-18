@@ -1,7 +1,10 @@
 """The read only lock: a locked site opens every request and job in a read only database transaction."""
 
+import json
+
 import frappe
 from frappe import _
+from frappe.utils.change_log import get_versions
 
 from frappe_books.subscription.clock import is_locked
 
@@ -63,6 +66,17 @@ def refuse_when_locked(doc, method: str | None = None, *args, **kwargs):
 	"""Wildcard `doc_events` hook: a clear message before the database refuses the write."""
 	if frappe.flags.books_site_locked and doc.doctype not in UNGUARDED_DOCTYPES:
 		frappe.throw(_("This site is read only. Subscribe to make changes again."), SiteLockedError)
+
+
+def save_known_versions(login_manager):
+	"""`on_session_creation` hook. A user's first desk or /books boot saves their known app versions, which a
+	locked site's read only boot can't, so the page would fail. Login still runs normally (AC-7), so save them here.
+	"""
+	if frappe.db.get_value("User", login_manager.user, "last_known_versions"):
+		return
+	frappe.db.set_value(
+		"User", login_manager.user, "last_known_versions", json.dumps(get_versions()), update_modified=False
+	)
 
 
 def is_allowed_path(path: str) -> bool:

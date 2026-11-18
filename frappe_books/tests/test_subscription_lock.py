@@ -158,6 +158,23 @@ class IntegrationTestReadOnlyLock(SubscriptionTestMixin, IntegrationTestCase):
 				self.assertEqual(response.status_code, 200, response.json)
 		type(self).sids[MANAGER] = login_sid(MANAGER)
 
+	def test_a_first_boot_after_login_works_on_a_locked_site(self):
+		# Frappe's first boot for a user saves their known versions; the login does it instead (AC-6, AC-7).
+		user = make_user("books-first-boot-lock@example.com", "Books User", PASSWORD)
+		frappe.db.set_value("User", user, "last_known_versions", None, update_modified=False)
+		frappe.db.commit()
+		with managed_site():
+			login = call("post", "/api/method/login", "", {"usr": user, "pwd": PASSWORD})
+			self.assertEqual(login.status_code, 200, login.json)
+			sid = next(
+				cookie.split(";")[0].removeprefix("sid=")
+				for cookie in login.headers.getlist("Set-Cookie")
+				if cookie.startswith("sid=")
+			)
+			books = call("get", "/books", sid)
+		self.assertEqual(books.status_code, 200, books.data[:500])
+		self.assertTrue(frappe.db.get_value("User", user, "last_known_versions"))
+
 	def test_the_allowlist_matches_v1_and_v2_method_paths_only(self):
 		for name in ALLOWED_METHODS | {"frappe.integrations.oauth2_logins.login_via_google"}:
 			for prefix in ("/api/method/", "/api/v2/method/"):

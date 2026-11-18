@@ -10,6 +10,7 @@ from frappe_books.subscription.lock import (
 	lock_job,
 	lock_request,
 	refuse_when_locked,
+	save_known_versions,
 )
 from frappe_books.subscription.state import apply_state, start_trial
 
@@ -23,6 +24,7 @@ __all__ = [
 	"lock_request",
 	"receive_state",
 	"refuse_when_locked",
+	"save_known_versions",
 	"start_checkout",
 	"start_trial",
 ]
