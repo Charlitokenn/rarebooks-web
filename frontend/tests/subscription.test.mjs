@@ -89,6 +89,26 @@ test('a locked trial shows the day 30 date and ignores the dismissal', () => {
   });
 });
 
+test('a site locked with no trial start says to contact support, with no dates', () => {
+  const status = trialStatus(27, {
+    lock_reason: 'no_trial_start',
+    day_number: null,
+    trial_ends_on: null,
+    lock_starts_on: null,
+    removal_on: null,
+  });
+  const banner = getSubscriptionBanner(status, '2026-11-18');
+  assert.deepEqual(banner, {
+    message: 'Your books are read only. Contact support.',
+    dismissible: false,
+    canSubscribe: true,
+  });
+  assert.equal(getLockNotice(status), banner.message);
+  const details = subscription.getSubscriptionDetails(status);
+  assert.equal(details.heading, 'Read only');
+  assert.deepEqual(details.rows, []);
+});
+
 test('a lapsed site asks to renew, with no removal date', () => {
   const status = trialStatus(90, {
     phase: 'lapsed',

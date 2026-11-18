@@ -130,6 +130,14 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		self.assertEqual(paid.phase, "active")
 		self.assertEqual(clock(on_day(60), managed=False, trial_started_on=None).phase, "unmanaged")
 
+	def test_a_lock_with_no_trial_start_has_a_reason_and_no_trial_dates(self):
+		# covers: AC-8. No day 1, so no day number or trial dates, and the client can tell this lock apart.
+		status = clock(on_day(60), trial_started_on=None).status()
+		self.assertEqual((status["phase"], status["lock_reason"]), ("locked", "no_trial_start"))
+		for field in ("day_number", "trial_ends_on", "lock_starts_on", "removal_on"):
+			self.assertIsNone(status[field], field)
+		self.assertIsNone(clock(on_day(27)).status()["lock_reason"])
+
 	def test_unmanaged_and_exempt_sites_are_never_locked(self):
 		self.assertEqual(clock(on_day(40), managed=False).phase, "unmanaged")
 		self.assertEqual(clock(on_day(40), exempt=1).phase, "exempt")

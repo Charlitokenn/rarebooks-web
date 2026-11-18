@@ -1,6 +1,7 @@
 """Whitelisted methods for the subscription: the status, checkout, and the control site's push (spec 0005)."""
 
 import json
+import pickle
 from typing import Literal
 
 import frappe
@@ -30,6 +31,7 @@ PLANS_CACHE_SECONDS = 60 * 60
 # reuses the last result instead of tying up a worker for the 10 second timeout each time.
 LAST_PULL_KEY = "books_subscription_last_pull"
 PULL_INTERVAL_SECONDS = 10
+PULL_PENDING = "pending"
 RETURN_PATH = "/books/subscription?checkout=returned"
 UNSUBSCRIBABLE_PHASES = ("unmanaged", "exempt")
 
@@ -125,6 +127,9 @@ def receive_state() -> dict:
 		applied = apply_synced_state(state, issued_at)
 	except frappe.ValidationError as error:
 		_reject_push(str(error))
+	if applied:
+		# The next page open pulls fresh, rather than showing a Retry from before this push.
+		frappe.cache.delete_value(LAST_PULL_KEY)
 	return {"result": "applied" if applied else "ignored"}
 
 
@@ -155,10 +160,14 @@ def pull_state():
 def _pull_and_report() -> str | None:
 	"""Pull, and return the Retry message instead of raising, so the stored state still shows (AC-16).
 
-	Within `PULL_INTERVAL_SECONDS` of the last pull, answer with its result and don't call billing again.
+	One pull per site per `PULL_INTERVAL_SECONDS`: the caller claims the window atomically first, so calls
+	that arrive together, or while that pull waits on a slow control site, never call billing again.
+	They get the last result, or the Retry message while the pull is still pending.
 	"""
-	last = frappe.cache.get_value(LAST_PULL_KEY)
-	if last is not None:
+	if not _claim_pull_window():
+		last = frappe.cache.get_value(LAST_PULL_KEY, expires=True, use_local_cache=False)
+		if last is None or last == PULL_PENDING:
+			return unreachable_message()
 		return last or None
 
 	error = None
@@ -169,6 +178,13 @@ def _pull_and_report() -> str | None:
 		error = unreachable_message()
 	frappe.cache.set_value(LAST_PULL_KEY, error or "", expires_in_sec=PULL_INTERVAL_SECONDS)
 	return error
+
+
+def _claim_pull_window() -> bool:
+	"""Set the last pull key to pending only if it is absent (Redis SET NX), so one caller wins the window."""
+	key = frappe.cache.make_key(LAST_PULL_KEY)
+	value = pickle.dumps(PULL_PENDING)
+	return bool(frappe.cache.set(key, value, ex=PULL_INTERVAL_SECONDS, nx=True))
 
 
 def _valid_plans(plans: list) -> list[dict]:

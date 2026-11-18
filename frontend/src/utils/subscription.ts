@@ -18,8 +18,11 @@ export type SubscriptionPhase =
 export interface SubscriptionStatus {
   phase: SubscriptionPhase;
   locked: boolean;
+  /** `no_trial_start` when a hosted site is locked because its trial start was never written (AC-8). */
+  lock_reason: 'no_trial_start' | null;
   today: string;
-  day_number: number;
+  /** Null when there is no trial start, and so no day 1 to count from. */
+  day_number: number | null;
   trial_ends_on: string | null;
   lock_starts_on: string | null;
   removal_on: string | null;
@@ -97,7 +100,7 @@ export function getSubscriptionBanner(
 /** The text of a banner that still leaves full access: the trial prompt, renew soon or grace. */
 function getOpenBannerMessage(status: SubscriptionStatus): string | null {
   if (status.phase === 'prompt') {
-    const daysLeft = LOCK_DAY - status.day_number;
+    const daysLeft = LOCK_DAY - (status.day_number ?? 0);
     return t`${daysLeft} days left to subscribe before your books turn read only.`;
   }
 
@@ -143,6 +146,11 @@ export function getSubscriptionDetails(
 
 function getTrialRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
   const rows: SubscriptionDetailRow[] = [];
+  if (status.lock_reason === 'no_trial_start') {
+    // No day 1, so there are no trial dates to show (AC-8).
+    return rows;
+  }
+
   if (status.phase !== 'locked') {
     rows.push({
       label: t`Days left in the trial`,
@@ -199,12 +207,7 @@ function getPaidRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
 
 /** The locked banner's text, which every refused write shows too (AC-8, with the AC-15 note). */
 export function getLockNotice(status: SubscriptionStatus | null): string {
-  const notice =
-    status?.phase === 'locked' && status.removal_on
-      ? t`Your books are read only. Subscribe by ${formatDate(status.removal_on)} to keep your data.`
-      : status?.phase === 'lapsed'
-        ? t`Your books are read only. Renew to make changes again.`
-        : t`This site is read only. Subscribe to make changes again.`;
+  const notice = getLockText(status);
   if (!status?.payment_pending) {
     return notice;
   }
@@ -212,9 +215,25 @@ export function getLockNotice(status: SubscriptionStatus | null): string {
   return `${notice} ${t`Payment pending. The lock lifts as soon as your payment is confirmed.`}`;
 }
 
+function getLockText(status: SubscriptionStatus | null): string {
+  if (status?.lock_reason === 'no_trial_start') {
+    return t`Your books are read only. Contact support.`;
+  }
+
+  if (status?.phase === 'locked' && status.removal_on) {
+    return t`Your books are read only. Subscribe by ${formatDate(status.removal_on)} to keep your data.`;
+  }
+
+  if (status?.phase === 'lapsed') {
+    return t`Your books are read only. Renew to make changes again.`;
+  }
+
+  return t`This site is read only. Subscribe to make changes again.`;
+}
+
 /** Days left in the free trial, today included, as the banner counts its days (AC-3). */
 export function getTrialDaysLeft(status: SubscriptionStatus): number {
-  return Math.max(TRIAL_LAST_DAY + 1 - status.day_number, 0);
+  return Math.max(TRIAL_LAST_DAY + 1 - (status.day_number ?? 0), 0);
 }
 
 export function formatDate(isoDate: string | null): string {

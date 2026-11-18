@@ -82,14 +82,17 @@ class SubscriptionClock:
 		phase = self.phase
 		offered_provider, offered_periods = offered_plan()
 		unpaid_trial = phase in ("trial", "prompt", "locked")
+		# Without a trial start there is no day 1, so no day number or trial dates to show (AC-8).
+		has_day_one = bool(self.facts.trial_started_on)
 		return {
 			"phase": phase,
 			"locked": phase in LOCKED_PHASES,
+			"lock_reason": "no_trial_start" if phase == "locked" and not has_day_one else None,
 			"today": _iso(self.today),
-			"day_number": self.day_number,
-			"trial_ends_on": _iso(self._trial_day(TRIAL_LAST_DAY)),
-			"lock_starts_on": _iso(self._trial_day(LOCK_DAY)),
-			"removal_on": _iso(self._trial_day(REMOVAL_DAY)) if unpaid_trial else None,
+			"day_number": self.day_number if has_day_one else None,
+			"trial_ends_on": _iso(self._trial_day(TRIAL_LAST_DAY)) if has_day_one else None,
+			"lock_starts_on": _iso(self._trial_day(LOCK_DAY)) if has_day_one else None,
+			"removal_on": _iso(self._trial_day(REMOVAL_DAY)) if unpaid_trial and has_day_one else None,
 			"paid_until": _iso(self.paid_until),
 			"grace_ends_on": _iso(self.paid_until + timedelta(days=GRACE_DAYS)) if self.paid_until else None,
 			"provider": self.facts.provider or None,

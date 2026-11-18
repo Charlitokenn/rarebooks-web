@@ -10,6 +10,7 @@ from frappe.tests import IntegrationTestCase, UnitTestCase
 from frappe.utils import add_days, getdate
 
 from frappe_books.subscription import get_subscription, start_checkout
+from frappe_books.subscription.api import LAST_PULL_KEY, _claim_pull_window
 from frappe_books.subscription.clock import DOCTYPE, current_clock, utc_now
 from frappe_books.subscription.control import parse_issued_at, sign
 from frappe_books.tests.subscription import (
@@ -115,6 +116,13 @@ class IntegrationTestReceiveState(SubscriptionTestMixin, IntegrationTestCase):
 		self.assertEqual(set(codes[:60]), {401})
 		self.assertEqual(codes[60], 429)
 
+	def test_an_applied_push_clears_the_last_pull_result(self):
+		# covers: AC-12. A Retry from before the push must not hide the new state for 10 seconds.
+		frappe.cache.set_value(LAST_PULL_KEY, UNREACHABLE, expires_in_sec=10)
+		body, signature = signed_push({"paid_until": a_year_out()})
+		self.assertEqual(push(body, signature).json["message"]["result"], "applied")
+		self.assertIsNone(frappe.cache.get_value(LAST_PULL_KEY, use_local_cache=False))
+
 	def test_unknown_keys_are_ignored(self):
 		body, signature = signed_push({"paid_until": a_year_out(), "colour": "blue"})
 		self.assertEqual(push(body, signature).json["message"]["result"], "applied")
@@ -199,6 +207,18 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 					again = get_subscription(refresh=True)
 				self.assertEqual(len(stub.calls), 1)
 				self.assertEqual(again["plans_error"], first["plans_error"])
+
+	def test_a_pull_already_running_elsewhere_is_not_repeated(self):
+		# covers: AC-16. Another worker holds the window while its pull waits: this call shows Retry, no call.
+		lock_site()
+		stub = ControlStub(state={"paid_until": a_year_out()})
+		with control_site(stub):
+			self.assertTrue(_claim_pull_window())
+			self.assertFalse(_claim_pull_window())
+			status = get_subscription(refresh=True)
+		self.assertEqual(stub.calls, [])
+		self.assertEqual(status["plans_error"], UNREACHABLE)
+		self.assertTrue(status["locked"])
 
 	def test_a_books_user_gets_no_plans(self):
 		frappe.set_user(BOOKS_USER)
