@@ -11,7 +11,7 @@ Setup for a managed site: add `"books_control_url": "https://control.example.com
 - [ ] Remove `books_control_url` from site_config while the clock reads day 41 → saves work again, nothing is locked → AC-2
 
 ## Commands
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (spike, every write path for Books Manager and Administrator, reads and exports, allowlist, setup wizard, payment lifts the lock, unmanaged) → AC-2, AC-5, AC-6, AC-7, AC-12
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (spike, every write path for Books Manager and Administrator: insert and rename give `SiteLockedError` 403, set_value, submit and delete give `InReadOnlyMode` 503, nothing written; reads and exports, allowlist, setup wizard, payment lifts the lock, unmanaged) → AC-2, AC-5, AC-6, AC-7, AC-12
 - [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK (days 21, 22, 25, 26, 30; Dar es Salaam at 23:30 UTC on day 25 is day 26; empty time zone is UTC; paid lifecycle; unmanaged and exempt) → AC-1, AC-2, AC-3, AC-4, AC-13, AC-14, AC-18
 - [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_jobs` → OK (a queued job writes nothing even after a commit, a scheduled job runs, the next unlocked job in the same worker writes) → AC-9
 - [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_state` → OK (guard, read only roles, track changes, start trial once, apply_state rules, last_synced_on forward only) → AC-1, AC-12, AC-17
@@ -34,5 +34,5 @@ Setup for a managed site: add `"books_control_url": "https://control.example.com
 - AC-1 · test_subscription_clock, test_subscription_state, migrate step · AC-2 · unmanaged tests and manual step · AC-3, AC-4 · clock tests (the banner itself is milestone 2) · AC-5 · write path tests and manual steps (see the open point below) · AC-6 · reads test · AC-7 · login, allowlist and setup wizard tests · AC-9 · job tests · AC-12 · apply_state lifts the lock · AC-13, AC-14 · clock lifecycle tests · AC-17 · guard tests · AC-18 · time zone tests
 - AC-8, AC-10, AC-11, AC-15, AC-16, AC-19: later milestones
 
-## Open point for /architect
-- AC-5 says a document save, submit, cancel or delete is refused with `SiteLockedError` (403). On Frappe 16 these take a row lock (`SELECT ... FOR UPDATE`) before any `before_*` hook runs, and MariaDB refuses that inside the read only transaction. So they come back as `InReadOnlyMode` (HTTP 503). Insert and rename do get `SiteLockedError` (403). Nothing is written in any case, and AC-8 already maps both types to the lock notice.
+## AC-5 error types (settled by /architect, 2026-11-18)
+- [ ] On a locked site, an insert or rename answers `SiteLockedError` with 403; a save, submit, cancel or delete of an existing document answers `InReadOnlyMode` with 503; nothing is written in any case → AC-5
