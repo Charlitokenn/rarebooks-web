@@ -43,3 +43,9 @@ Setup: a hosted site (`bench --site <site> set-config books_control_url https://
 - AC-6 … awaited status, fallback and shared call node tests, the first refusal manual steps
 - AC-7 … `test_a_status_only_call_never_pulls`, kept plans node test
 - AC-8 … the isolation run, `clear_trial_start`, spec 0005 verify.md Milestone 6 setup line
+
+## Review follow ups (review 2026-11-18-v16-dashboard-features-lock-hardening, updated 2026-11-18)
+- [ ] Make a pull fail with something other than an unreachable control site (a patched deadlock in `save_facts`), then call `get_subscription(refresh=True)` again at once → the second call pulls again, and doesn't get the Retry message from a `pending` window → AC-2
+- [ ] Run `bench --site <site> execute frappe_books.subscription.apply_state` while a slow push holds the row lock → it waits for the push to commit, then saves, with no timestamp mismatch → AC-1
+- [ ] Have the control site answer `create_checkout` with no `checkout_url` (or `null`, `""`, a number) → "Couldn't reach billing. Try again.", one Error Log row "Books billing: create_checkout sent no checkout link", no "isn't https" row, `checkout_started_on` unchanged → AC-3
+- [ ] `bench --site <site> run-tests --module frappe_books.tests.test_subscription_control` → 37 tests pass, including `test_an_answer_with_no_usable_link_is_logged_as_no_link` → AC-1, AC-2, AC-3
