@@ -124,7 +124,7 @@ spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_book
   - [x] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
 - [x] Verify it: `/check verify trial and read only lock`
 - [x] Test it: `/test trial and read only lock`
-- [ ] Review it (fresh model): `/check review trial and read only lock`
+- [x] Review it (fresh model): `/check review trial and read only lock`
 - [ ] Document it: `/document trial and read only lock`
 
 ### 7. Trial end export and site removal · needs a decision
