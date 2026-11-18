@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getFilterFields } from './helpers/accounting.mjs';
 import {
   frappeModels,
   fyo,
+  getFilterFields,
   getLedgerLink,
   getModel,
   getSchema,
@@ -218,4 +218,38 @@ test("a submitted expense's accounting entries open on its date", () => {
   const [ledger] = Expense.getActions(fyo);
   assert.equal(ledger.label, 'Accounting entries');
   assert.equal(ledger.condition(expense), false, 'not before it is submitted');
+});
+
+test('a forced filter cannot expose an account the user cannot read', (t) => {
+  t.after(() => {
+    fyo.store.permissions = previous;
+  });
+  const previous = fyo.store.permissions;
+  fyo.store.permissions = {
+    doctypes: { Account: 'Books Account', Party: 'Books Party' },
+    user: { can_read: ['Books Party'], can_write: ['Books Account'] },
+  };
+  const fields = [
+    {
+      fieldname: 'paid_from',
+      fieldtype: 'Link',
+      target: 'Account',
+      filter: true,
+    },
+    { fieldname: 'party', fieldtype: 'Link', target: 'Party', filter: true },
+    { fieldname: 'reference_number', fieldtype: 'Data' },
+  ];
+
+  assert.deepEqual(
+    getFilterFields(fields).map(({ fieldname }) => fieldname),
+    ['party', 'reference_number']
+  );
+
+  fyo.store.permissions.user.can_read.push('Books Account');
+  assert.deepEqual(getFilterFields(fields), fields);
+  assert.equal(
+    fields[0].filter,
+    true,
+    'permission checks do not mutate metadata'
+  );
 });
