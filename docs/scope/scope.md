@@ -172,7 +172,7 @@ spec [0008](../specs/0008-billing-control-site/index.md) · code in the `rareboo
   - [ ] Rollout: `control` user and bench on the hosting server, Redis passwords, nginx and TLS, R2 backups, Resend, ClickPesa and PayPal live setup, the TZS 1,000 launch check (AC-3, AC-4, AC-19, AC-22, AC-23)
 - [ ] Verify it: `/check verify billing control site`
 - [ ] Test it: `/test billing control site`
-- [ ] Review it (fresh model): `/check review billing control site`
+- [x] Review it (fresh model): `/check review billing control site`
 - [ ] Document it: `/document billing control site`
 
 ## Deferred
