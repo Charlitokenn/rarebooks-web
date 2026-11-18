@@ -20,10 +20,12 @@ class BooksSubscription(Document):
 		billing_period: DF.Literal["", "Monthly", "Yearly"]
 		checkout_started_on: DF.Datetime | None
 		exempt: DF.Check
+		export_sent_on: DF.Datetime | None
 		last_synced_on: DF.Datetime | None
 		paid_until: DF.Date | None
 		provider: DF.Literal["", "ClickPesa", "PayPal"]
 		provider_reference: DF.Data | None
+		removal_hold_until: DF.Datetime | None
 		trial_started_on: DF.Datetime
 	# end: auto-generated types
 

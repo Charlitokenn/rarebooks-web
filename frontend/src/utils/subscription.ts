@@ -25,7 +25,12 @@ export interface SubscriptionStatus {
   day_number: number | null;
   trial_ends_on: string | null;
   lock_starts_on: string | null;
+  /** Day 30 of an unpaid trial, or `paid_until` plus 67 days once lapsed (spec 0007 AC-1). */
   removal_on: string | null;
+  /** The site date the export email was sent, once it was (spec 0007 AC-8). */
+  export_sent_on: string | null;
+  /** The site date the site is removed after, once the export email was sent (spec 0007 AC-8). */
+  removal_hold_until: string | null;
   paid_until: string | null;
   grace_ends_on: string | null;
   provider: string | null;
@@ -171,7 +176,22 @@ function getTrialRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
       testid: 'lock-starts-on',
     }
   );
-  return rows;
+  return [...rows, ...getRemovalRows(status)];
+}
+
+/** "Removal on" while a locked or lapsed site has a removal date (spec 0007 AC-2). */
+function getRemovalRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
+  if (!status.locked || !status.removal_on) {
+    return [];
+  }
+
+  return [
+    {
+      label: t`Removal on`,
+      value: formatDate(status.removal_on),
+      testid: 'removal-on',
+    },
+  ];
 }
 
 function getPaidHeading(status: SubscriptionStatus): string {
@@ -202,7 +222,7 @@ function getPaidRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
     });
   }
 
-  return rows;
+  return [...rows, ...getRemovalRows(status)];
 }
 
 /**
@@ -231,8 +251,18 @@ function getLockText(status: SubscriptionStatus | null): string {
     return t`Your books are read only. Contact support.`;
   }
 
-  if (status?.phase === 'locked' && status.removal_on) {
-    return t`Your books are read only. Subscribe by ${formatDate(status.removal_on)} to keep your data.`;
+  if (status?.locked && status.export_sent_on && status.removal_hold_until) {
+    const removedAfter = formatDate(status.removal_hold_until);
+    return t`Your books are read only. A copy of your data was emailed to the owner. This site will be removed after ${removedAfter}.`;
+  }
+
+  const removalOn = formatDate(status?.removal_on ?? null);
+  if (status?.phase === 'locked' && removalOn) {
+    return t`Your books are read only. Subscribe by ${removalOn} to keep this site. After that it is removed and a copy of your data is emailed to the owner.`;
+  }
+
+  if (status?.phase === 'lapsed' && removalOn) {
+    return t`Your books are read only. Renew by ${removalOn} to keep this site. After that it is removed and a copy of your data is emailed to the owner.`;
   }
 
   if (status?.phase === 'lapsed') {

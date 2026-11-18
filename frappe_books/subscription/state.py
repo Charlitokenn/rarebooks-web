@@ -58,11 +58,27 @@ def mark_checkout_started():
 	save_facts(facts)
 
 
+def set_removal_hold(export_sent_on, removal_hold_until):
+	"""Write, or with both None clear, the removal runner's two fields (spec 0007 AC-8, AC-11). Safe to repeat."""
+	facts = _locked_facts()
+	stored = (_datetime_or_none(facts.export_sent_on), _datetime_or_none(facts.removal_hold_until))
+	if stored == (_datetime_or_none(export_sent_on), _datetime_or_none(removal_hold_until)):
+		return
+	facts.export_sent_on = export_sent_on
+	facts.removal_hold_until = removal_hold_until
+	save_facts(facts)
+
+
 def set_facts(facts, state: dict):
-	"""Copy validated push fields onto the single. A newer `paid_until` clears the pending checkout."""
+	"""Copy validated push fields onto the single.
+
+	A newer `paid_until` clears the pending checkout and any removal hold (spec 0007 AC-11).
+	"""
 	values = _validated(state)
 	if "paid_until" in values and _is_newer(values["paid_until"], facts.paid_until):
 		facts.checkout_started_on = None
+		facts.export_sent_on = None
+		facts.removal_hold_until = None
 	facts.update(values)
 
 
@@ -128,6 +144,10 @@ def _check(value, field: str) -> int:
 	if value not in (0, 1, True, False):
 		frappe.throw(_("{0} is not a valid {1}.").format(frappe.bold(value), field), InvalidPushError)
 	return int(value)
+
+
+def _datetime_or_none(value):
+	return get_datetime(value) if value else None
 
 
 def _is_newer(new_paid_until, old_paid_until) -> bool:
