@@ -17,7 +17,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | done |
 | 5 | Expenses | Slice 4 | done |
-| 6 | Trial and read only lock | Slice 5 | done |
+| 6 | Trial and read only lock | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | planned |
 | 8 | Billing control site | Slice 5 | planned |
 
@@ -111,7 +111,7 @@ spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_boo
 
 A new site gets a 30 day clock: days 1 to 21 are the free trial, and days 22 to 30 are the window to pay. A site that hasn't subscribed by day 26 turns read only. On day 30 the data is sent to the owner and the site is removed.
 
-### 6. Trial and read only lock · done
+### 6. Trial and read only lock · in-progress
 Track each site's trial clock and subscription state. Show how many days are left and how to subscribe. From day 26, without a subscription, the site turns read only: you can still view and export your records, but you can't add or change anything. Paying lifts the lock at once.
 **Done when:** a new site has full access on days 1 to 25, sees a subscribe prompt from day 22, and from day 26 without a subscription the server refuses every create, edit, submit, cancel and delete (no matter the role) while viewing and export still work. A subscribed site is never locked. The prompt and the lock notice work on a phone.
 spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_books/subscription/` and `frappe_books/frappe_books/doctype/books_subscription/`
@@ -122,6 +122,7 @@ spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_book
   - [x] Control site contract: signing helpers, `receive_state` with rate limit and replay rule, signed pull, `start_checkout`, plans and the return refresh, payment pending and Retry states, the control stub and tests (AC-10, AC-11, AC-12, AC-15, AC-16)
   - [x] Paid lifecycle: active, renew soon, grace and lapsed texts and boundary tests (AC-13, AC-14)
   - [x] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
+  - [ ] Review follow ups (spec 0005 milestone 6): `lock_reason` and no dates for a site locked with no trial start, and an atomic claim of the 10 second pull window that a push clears (AC-8, AC-12, AC-16)
 - [x] Verify it: `/check verify trial and read only lock`
 - [x] Test it: `/test trial and read only lock`
 - [x] Review it (fresh model): `/check review trial and read only lock`
