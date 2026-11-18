@@ -12,6 +12,7 @@ export type TestPhase =
   | 'prompt'
   | 'locked'
   | 'pending'
+  | 'holding'
   | 'active'
   | 'renew_soon'
   | 'grace'
@@ -24,6 +25,7 @@ const SERVER_PHASE: Record<TestPhase, string> = {
   prompt: 'prompt',
   locked: 'locked',
   pending: 'locked',
+  holding: 'locked',
   active: 'active',
   renew_soon: 'renew_soon',
   grace: 'grace',

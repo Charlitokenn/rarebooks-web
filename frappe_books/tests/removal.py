@@ -29,14 +29,26 @@ class RemovalControlStub:
 	"""Stands in for the control site's removal endpoints. Checks each request's signature, records it, and
 	answers signed, echoing its `issued_at`.
 
-	`instructions` are what `report_sites` answers. `sign_with` and `echo` break the answer on purpose.
+	`instructions` are what `report_sites` answers, and `answers` adds values to a method's answer (such as
+	`{"drop_starting": {"proceed": True}}`). `sign_with` and `echo` break every answer on purpose,
+	`badly_signed` only the answers of the methods it names.
 	"""
 
-	def __init__(self, instructions=None, sign_with=RUNNER_SECRET, echo=True, error=None):
+	def __init__(
+		self,
+		instructions=None,
+		sign_with=RUNNER_SECRET,
+		echo=True,
+		error=None,
+		answers=None,
+		badly_signed=(),
+	):
 		self.instructions = instructions or []
 		self.sign_with = sign_with
 		self.echo = echo
 		self.error = error
+		self.answers = answers or {}
+		self.badly_signed = badly_signed
 		self.calls = []
 
 	def post(self, url, data, headers, timeout):
@@ -49,11 +61,16 @@ class RemovalControlStub:
 		message = {"issued_at": body["issued_at"] if self.echo else iso_ago(seconds=5), "status": "ok"}
 		if method == "report_sites":
 			message["instructions"] = self.instructions
+		message.update(self.answers.get(method, {}))
 		response = requests.Response()
 		response.status_code = 200
 		response._content = json.dumps({"message": message}).encode()
-		response.headers[SIGNATURE_HEADER] = sign(response._content, self.sign_with)
+		secret = b"not-the-runner-secret" * 2 if method in self.badly_signed else self.sign_with
+		response.headers[SIGNATURE_HEADER] = sign(response._content, secret)
 		return response
+
+	def methods(self) -> list[str]:
+		return [name for name, _body in self.calls]
 
 	def bodies(self, method: str) -> list[dict]:
 		return [body for name, body in self.calls if name == method]

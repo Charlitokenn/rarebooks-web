@@ -102,7 +102,8 @@ def unlock_self_hosted_site():
 def set_hosted_phase(phase: str):
 	"""For the browser tests: `bench execute` this with `--kwargs '{"phase": "grace"}'` to show a phase.
 
-	`pending` is the unpaid lock with a checkout started an hour ago (AC-15).
+	`pending` is the unpaid lock with a checkout started an hour ago (AC-15). `holding` is the unpaid lock after
+	the export email went out an hour ago, held for 72 hours (spec 0007 AC-8).
 	"""
 	today = _local_date(utc_now(), site_zone())
 	unpaid = {"paid_until": None, "provider": None, "billing_period": None, "auto_renews": 0}
@@ -124,10 +125,18 @@ def set_hosted_phase(phase: str):
 		values = {**facts["locked"], "checkout_started_on": utc_now() - timedelta(hours=1)}
 	elif phase == "exempt":
 		values = {**facts["locked"], "exempt": 1}
+	elif phase == "holding":
+		sent_on = utc_now() - timedelta(hours=1)
+		values = {
+			**facts["locked"],
+			"export_sent_on": sent_on,
+			"removal_hold_until": sent_on + timedelta(hours=72),
+		}
 	else:
 		values = facts[phase]
 	update_site_config("books_control_url", CONTROL_URL)
-	store_facts(**{"exempt": 0, "checkout_started_on": None, **values})
+	no_hold = {"export_sent_on": None, "removal_hold_until": None}
+	store_facts(**{"exempt": 0, "checkout_started_on": None, **no_hold, **values})
 
 
 @contextmanager

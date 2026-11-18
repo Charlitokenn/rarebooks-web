@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import frappe
 import requests
-from frappe.utils import get_bench_path, get_sites
+from frappe.utils import get_bench_path, get_sites, getdate
 
 from frappe_books.subscription.control import SIGNATURE_HEADER, is_valid_signature, issued_now, sign
 from frappe_books.subscription.removal import (
@@ -48,6 +48,12 @@ DISK_HEADROOM = 2
 ACTION_ORDER = ("clear", "mark_sent", "export", "drop")
 # Case names go into folder and R2 key paths, so only the control site's autoname shape is accepted.
 CASE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,63}$")
+# A site name from the control site goes into a folder path, so no leading dot and no `..`.
+SITE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*$")
+# Under the work folder: `archived/<case>/` is where Frappe's drop moves the site folder, then deleted (AC-10).
+ARCHIVE_FOLDER = "archived"
+# The runner's own last look before a drop: the site must still read as unpaid and due (AC-9).
+DROP_PHASES = ("locked", "lapsed")
 UPLOAD_PART_BYTES = 64 * 1024 * 1024
 STORED_SUFFIXES = (".gz", ".zip", ".png", ".jpg", ".jpeg", ".pdf")
 
@@ -62,6 +68,10 @@ class ControlRefused(Exception):
 
 class DiskSpaceError(Exception):
 	"""Not enough free disk to build this site's export."""
+
+
+class SiteStateError(Exception):
+	"""What is left of a site to drop can't be told for sure, so nothing is dropped."""
 
 
 class StepError(Exception):
@@ -93,6 +103,9 @@ class RunnerConfig:
 	@property
 	def work_path(self) -> str:
 		return os.path.join(self.bench_path, WORK_FOLDER)
+
+	def archive_path(self, case: str) -> str:
+		return os.path.join(self.work_path, ARCHIVE_FOLDER, case)
 
 	def secrets(self) -> list[str]:
 		"""Every value that must never reach a log line or the control site."""
@@ -167,7 +180,7 @@ def load_config(bench_path: str) -> RunnerConfig:
 @contextmanager
 def open_site(site: str) -> Iterator[None]:
 	"""Connect to one site of this bench as Administrator, and always let it go again."""
-	frappe.init(site=site, sites_path=os.path.join(get_bench_path(), "sites"))
+	frappe.init(site=site, sites_path=sites_path())
 	try:
 		frappe.connect()
 		yield
@@ -176,7 +189,7 @@ def open_site(site: str) -> Iterator[None]:
 
 
 def bench_sites() -> list[str]:
-	return get_sites(os.path.join(get_bench_path(), "sites"))
+	return get_sites(sites_path())
 
 
 @dataclass
@@ -277,12 +290,19 @@ class Runner:
 			self.note(item["site"], f"couldn't report the failure: {self.scrub(str(error))}")
 
 	def is_valid_instruction(self, item) -> bool:
-		"""Only a known action, for a site this run read itself, with a case name safe to put in a path."""
+		"""Only a known action, for a site this run read itself, with a case name safe to put in a path.
+
+		A `drop` may also name a site this run couldn't read, so a drop cut short can be finished (AC-10):
+		`do_drop` then works out what is left of it, and drops nothing it hasn't just read itself.
+		"""
 		site = item.get("site") if isinstance(item, dict) else None
 		if isinstance(item, dict):
 			case, action = item.get("case"), item.get("action")
 			known_site = isinstance(site, str) and "error" not in self.reported.get(site, {"error": True})
-			if action in ACTION_ORDER and known_site and isinstance(case, str) and CASE_NAME.match(case):
+			if action == "drop" and isinstance(site, str):
+				known_site = bool(SITE_NAME.match(site))
+			safe_case = isinstance(case, str) and bool(CASE_NAME.match(case)) and case != ARCHIVE_FOLDER
+			if action in ACTION_ORDER and known_site and safe_case:
 				return True
 		self.log(
 			_line(str(site or "-"), f"ignored an instruction: {self.scrub(json.dumps(item, default=str))}")
@@ -335,6 +355,80 @@ class Runner:
 		finally:
 			shutil.rmtree(folder, ignore_errors=True)
 		self.note(site, f"export {case} uploaded, {counts['rows']} rows, {size} bytes")
+
+	def do_drop(self, item: dict):
+		"""Drop the site for good, only after the runner's own fresh look and the control site's go ahead (AC-9).
+
+		Safe to repeat (AC-10): a site already gone is reported done, and one whose database is gone but whose
+		folder is left is finished. A dry run only logs what it would drop (AC-14).
+		"""
+		site, case = item["site"], item["case"]
+		if self.mode != "live":
+			reason = self.drop_doubt(site)
+			self.note(site, f"would drop {site}, case {case}" if not reason else f"drop {case}: {reason}")
+			return
+
+		archive = self.config.archive_path(case)
+		with failing_step("drop"):
+			if not (self.config.root_login and self.config.root_password):
+				raise RunnerConfigError(f"root_login and root_password are needed in {SECRETS_FILE}")
+			has_folder, has_database = site_state(site, self.config)
+
+		if not has_folder:
+			with failing_step("drop"):
+				remove_archive(archive)
+			self.drop_done(item, "already gone")
+			return
+
+		reason = None if not has_database else self.drop_doubt(site)
+		reason = reason or self.mode_doubt()
+		if not reason and has_database:
+			answer = self.call("drop_starting", {"case": case, "site": site})
+			if answer.get("proceed") is not True:
+				reason = f"the control site said no: {self.scrub(str(answer.get('reason') or '-'))}"
+		if reason:
+			self.note(site, f"drop {case} not done: {reason}")
+			return
+
+		with failing_step("drop"):
+			if has_database:
+				drop_site(site, self.config, archive)
+			else:
+				finish_drop(site, self.config, archive)
+			remove_archive(archive)
+		self.drop_done(item, "dropped" if has_database else "finished an earlier drop")
+
+	def drop_doubt(self, site: str) -> str | None:
+		"""Why the site must not be dropped by its own fresh status, or None when it is still unpaid and due."""
+		try:
+			with open_site(site):
+				if not frappe.conf.get("books_control_url"):
+					return "not a hosted site"
+				status = removal_status()
+		except Exception as error:
+			return f"couldn't read the site: {self.scrub(_describe(error))[:ERROR_CHARACTERS]}"
+		if status["phase"] not in DROP_PHASES:
+			return f"phase is {status['phase']}"
+		if not status["removal_on"] or getdate(status["removal_on"]) > getdate(status["today"]):
+			return "its removal date hasn't come"
+		if status["payment_pending"]:
+			return "a payment is pending"
+		return None
+
+	def mode_doubt(self) -> str | None:
+		"""The mode is read again right before a drop, so switching it off stops a drop at once (AC-9)."""
+		mode = read_mode(self.config.bench_path)
+		return None if mode == "live" else f"{MODE_KEY} is now {mode}"
+
+	def drop_done(self, item: dict, how: str):
+		"""Tell the control site the site is gone. If it doesn't hear, the next run's `drop` reports it again."""
+		site, case = item["site"], item["case"]
+		try:
+			self.call("drop_done", {"case": case, "site": site})
+		except ControlRefused as error:
+			self.note(site, f"drop {case} {how}, but drop_done wasn't heard: {self.scrub(str(error))}")
+			return
+		self.note(site, f"drop {case} {how}")
 
 	def call(self, method: str, payload: dict) -> dict:
 		"""A signed POST to the control site. Acts only on an answer signed with this bench's secret that
@@ -408,6 +502,75 @@ class R2Storage:
 
 def make_storage(conf: dict) -> R2Storage:
 	return R2Storage(conf)
+
+
+def sites_path() -> str:
+	return os.path.join(get_bench_path(), "sites")
+
+
+@contextmanager
+def root_site(site: str, config: RunnerConfig) -> Iterator[None]:
+	"""Init one site (no site connection) with the database root login from the secrets file, never argv."""
+	frappe.init(site=site, sites_path=sites_path())
+	try:
+		frappe.flags.root_login = config.root_login
+		frappe.flags.root_password = config.root_password
+		yield
+	finally:
+		frappe.destroy()
+
+
+def site_state(site: str, config: RunnerConfig) -> tuple[bool, bool]:
+	"""Whether the site's folder and its database still exist. Raises when that can't be told for sure."""
+	from frappe.database.db_manager import DbManager
+	from frappe.database.mariadb.setup_db import get_root_connection
+
+	folder = os.path.join(sites_path(), site)
+	if not os.path.lexists(folder):
+		return False, False
+	if not os.path.isfile(os.path.join(folder, "site_config.json")):
+		raise SiteStateError(f"{site} has a folder but no site_config.json")
+	with root_site(site, config):
+		if not frappe.conf.get("books_control_url"):
+			raise SiteStateError(f"{site} is not a hosted site")
+		databases = DbManager(get_root_connection()).get_database_list()
+		return True, frappe.conf.db_name in databases
+
+
+def drop_site(site: str, config: RunnerConfig, archive: str):
+	"""Frappe's own drop, the one behind `bench drop-site`, in process: no backup, the site folder moved to the
+	case's archived path (AC-10). `_drop_site` keeps this init, so the bench's sites path is used."""
+	from frappe.commands.site import _drop_site
+
+	frappe.init(site=site, sites_path=sites_path())
+	try:
+		_drop_site(
+			site,
+			db_root_username=config.root_login,
+			db_root_password=config.root_password,
+			archived_sites_path=archive,
+			no_backup=True,
+		)
+	finally:
+		frappe.destroy()
+
+
+def finish_drop(site: str, config: RunnerConfig, archive: str):
+	"""The rest of a drop cut short after its database went: the database user, then the folder, with the same
+	Frappe helpers `_drop_site` uses. Both are safe to repeat (`DROP ... IF EXISTS`)."""
+	from frappe.commands.site import move
+	from frappe.database import drop_user_and_database
+
+	with root_site(site, config):
+		drop_user_and_database(frappe.conf.db_name, frappe.conf.db_user)
+		os.makedirs(archive, exist_ok=True)
+		move(archive, site)
+
+
+def remove_archive(archive: str):
+	"""Delete exactly the case's archived folder, so the R2 zip is the only copy left (AC-10)."""
+	if os.path.lexists(archive):
+		shutil.rmtree(archive)
 
 
 def read_deferred(work_path: str) -> list[str]:
