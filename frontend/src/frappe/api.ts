@@ -3,6 +3,7 @@ import type { DocPermissionMap } from 'fyo/utils/permissions';
 import { t } from 'fyo/utils/translation';
 import {
   call,
+  getLockStatus,
   getServerError,
   leaveIfSessionExpired,
   reachServer,
@@ -195,7 +196,8 @@ async function request<T>(
     await leaveIfSessionExpired(response.status);
     const [error] = body.errors ?? [];
     const message = error?.message ?? error?.type ?? response.statusText;
-    throw getServerError(message, error?.type, response.status);
+    const lockStatus = await getLockStatus(error?.type);
+    throw getServerError(message, error?.type, response.status, lockStatus);
   }
 
   if (method !== 'GET' && !options.quiet) {

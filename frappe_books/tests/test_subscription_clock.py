@@ -5,7 +5,14 @@ from unittest.mock import patch
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from frappe_books.subscription.clock import SubscriptionClock, is_locked, offered_plan
+from frappe_books.subscription.clock import (
+	BAD_ZONE_KEY,
+	SubscriptionClock,
+	is_locked,
+	offered_plan,
+	site_zone,
+)
+from frappe_books.tests.subscription import managed_site
 
 # 10:00 UTC on 1 January 2031 is day 1 in UTC and in Dar es Salaam (UTC+3).
 STARTED = datetime(2031, 1, 1, 10, 0)
@@ -68,6 +75,25 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		)
 		kolkata = clock(on_day(2, hour=23), time_zone="Asia/Kolkata", trial_started_on=started_late)
 		self.assertEqual(kolkata.day_number, 2)
+
+	def test_an_unknown_time_zone_falls_back_to_utc(self):
+		# covers: spec 0007 AC-4. A directory name like "America" is not a zone either.
+		late_on_day_25 = on_day(25, hour=23) + timedelta(minutes=30)
+		for name in ("Mars/Olympus", "America", "../etc/passwd"):
+			with self.subTest(name=name):
+				frappe.cache.delete_value(BAD_ZONE_KEY)
+				subject = clock(late_on_day_25, time_zone=name)
+				self.assertEqual(str(subject.zone), "UTC")
+				self.assertEqual((subject.day_number, subject.phase), (25, "prompt"))
+
+	def test_an_unknown_time_zone_never_raises(self):
+		# covers: spec 0007 AC-4 (the lock hooks call site_zone before login). Frappe's own now() raises
+		# with the same zone, so the Error Log row can't be written; that part of AC-4 is owed to /architect.
+		frappe.cache.delete_value(BAD_ZONE_KEY)
+		self.addCleanup(frappe.cache.delete_value, BAD_ZONE_KEY)
+		with site_time_zone("Mars/Olympus"):
+			for _ in range(3):
+				self.assertEqual(str(site_zone()), "UTC")
 
 	def test_status_dates_follow_day_one(self):
 		status = clock(on_day(23)).status()
@@ -146,7 +172,8 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		self.assertEqual(clock(on_day(40), managed=False, exempt=1).phase, "unmanaged")
 
 	def test_is_locked_reads_nothing_on_an_unmanaged_site(self):
-		with patch("frappe.get_cached_doc") as get_cached_doc:
+		# Unmanaged on its own terms, whatever `books_control_url` the test site was left with (spec 0007 AC-8).
+		with managed_site(False), patch("frappe.get_cached_doc") as get_cached_doc:
 			self.assertFalse(is_locked())
 		get_cached_doc.assert_not_called()
 

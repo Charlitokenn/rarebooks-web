@@ -17,9 +17,9 @@ import {
 import type { BootUserPermissions } from 'fyo/utils/permissions';
 import { subscriptionStatus } from 'src/utils/refs';
 import {
+  fetchLockStatus,
   getLockNotice,
   isLockErrorType,
-  refreshSubscriptionStatus,
   type SubscriptionStatus,
 } from 'src/utils/subscription';
 import type { DeskTheme } from 'src/utils/theme';
@@ -59,15 +59,21 @@ setConfig('serverMessagesHandler', (raw: string[]) => {
 /** Whether the last request failed because the server could not be reached. */
 export const hasLostConnection = ref(false);
 
+export interface CallOptions {
+  /** Build a lock error from the stored status, without fetching a fresh one (the status call itself). */
+  skipLockStatus?: boolean;
+}
+
 export async function call<T>(
   method: string,
-  args: Record<string, unknown> = {}
+  args: Record<string, unknown> = {},
+  options: CallOptions = {}
 ): Promise<T> {
   try {
     return await reachServer(() => frappeCall<T>(method, args));
   } catch (error) {
     await leaveIfSessionExpired((error as FrappeResourceError).status);
-    throw toBooksError(error);
+    throw await toBooksError(error, options);
   }
 }
 
@@ -83,15 +89,22 @@ export async function reachServer<T>(request: () => Promise<T>): Promise<T> {
   }
 }
 
+/** The status a lock notice is worded from, and whether it was fetched just now. */
+export interface LockStatus {
+  status: SubscriptionStatus | null;
+  fresh: boolean;
+}
+
 /** A fyo error for a server error, so forms treat it like their own. */
 export function getServerError(
   message: string,
   excType?: string,
-  status?: number
+  status?: number,
+  lockStatus?: LockStatus
 ): Error {
   // Before the status map, so a 403 SiteLockedError never reads as ForbiddenError.
   if (isLockErrorType(excType)) {
-    return getLockError();
+    return getLockError(excType, lockStatus);
   }
 
   const ServerError =
@@ -100,16 +113,46 @@ export function getServerError(
 }
 
 /**
- * A refused write on a locked site shows the locked banner's text (AC-8). If
- * the browser still thinks the site is open, as when the lock started at
- * midnight, the status is fetched again so the banner shows too.
+ * For a lock type refusal, waits for a fresh status before the notice is built, so the
+ * first refusal after midnight already shows the current phase's text (spec 0007 AC-6):
+ * always for `InReadOnlyMode`, which may be Frappe's own maintenance mode, and for
+ * `SiteLockedError` only while the browser still thinks the site is open. The banner
+ * updates too, since the fresh status is shared. Undefined for any other error.
  */
-function getLockError(): SiteLockedError {
-  if (!subscriptionStatus.value?.locked) {
-    void refreshSubscriptionStatus().catch(() => undefined);
+export async function getLockStatus(
+  excType?: string,
+  { skipLockStatus = false }: CallOptions = {}
+): Promise<LockStatus | undefined> {
+  if (!isLockErrorType(excType)) {
+    return undefined;
   }
 
-  return new SiteLockedError(getLockNotice(subscriptionStatus.value));
+  const stored = { status: subscriptionStatus.value, fresh: false };
+  const needsFresh =
+    excType === 'InReadOnlyMode' || !subscriptionStatus.value?.locked;
+  if (skipLockStatus || !needsFresh) {
+    return stored;
+  }
+
+  try {
+    return { status: await fetchLockStatus(), fresh: true };
+  } catch {
+    return stored;
+  }
+}
+
+/** A refused write shows the locked banner's text (AC-8), or the maintenance text (spec 0007 AC-5). */
+function getLockError(
+  excType?: string,
+  lockStatus?: LockStatus
+): SiteLockedError {
+  const { status, fresh } = lockStatus ?? {
+    status: subscriptionStatus.value,
+    fresh: false,
+  };
+  return new SiteLockedError(
+    getLockNotice(status, fresh ? excType : undefined)
+  );
 }
 
 /** Sends the user to log in, and back to Books after. */
@@ -145,15 +188,20 @@ function isConnectionFailure(error: unknown): boolean {
   return error instanceof TypeError && CONNECTION_FAILURE.test(error.message);
 }
 
-function toBooksError(error: unknown): unknown {
+async function toBooksError(
+  error: unknown,
+  options: CallOptions
+): Promise<unknown> {
   if (!isServerError(error)) {
     return error;
   }
 
+  const lockStatus = await getLockStatus(error.exc_type, options);
   return getServerError(
     error.messages.join('\n'),
     error.exc_type,
-    error.status
+    error.status,
+    lockStatus
   );
 }
 

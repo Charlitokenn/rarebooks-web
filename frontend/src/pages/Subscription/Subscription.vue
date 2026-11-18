@@ -142,7 +142,7 @@ const rows = computed(() => details.value?.rows ?? []);
 async function refresh(pull = false) {
   isRefreshing.value = true;
   try {
-    await refreshSubscriptionStatus(pull);
+    await refreshSubscriptionStatus({ pull });
     loadError.value = null;
   } catch {
     loadError.value = t`Couldn't reach billing. Try again.`;

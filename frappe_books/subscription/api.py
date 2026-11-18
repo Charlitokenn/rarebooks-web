@@ -18,12 +18,13 @@ from frappe_books.subscription.control import (
 	ControlSiteUnreachable,
 	call_control,
 	is_fresh,
+	is_trusted_link,
 	is_valid_signature,
 	parse_issued_at,
 	site_secret,
 	unreachable_message,
 )
-from frappe_books.subscription.state import apply_synced_state, mark_checkout_started
+from frappe_books.subscription.state import InvalidPushError, apply_synced_state, mark_checkout_started
 
 PLANS_CACHE_KEY = "books_subscription_plans"
 PLANS_CACHE_SECONDS = 60 * 60
@@ -36,18 +37,19 @@ RETURN_PATH = "/books/subscription?checkout=returned"
 UNSUBSCRIBABLE_PHASES = ("unmanaged", "exempt")
 
 
-class InvalidPushError(frappe.ValidationError):
-	http_status_code = 400
-
-
 # POST too: /books calls every method with a POST, and a POST commits what the pull applied.
 @frappe.whitelist(methods=["GET", "POST"])
-def get_subscription(refresh: bool = False) -> dict:
+def get_subscription(refresh: bool = False, with_plans: bool = True) -> dict:
 	"""The status dict, plus the plans for those who can subscribe. Allowed on a locked site.
 
 	`refresh` pulls fresh state from the control site first, as on the return from checkout (AC-12).
+	`with_plans=False` gives the status alone and never calls the control site, whatever `refresh` says
+	(spec 0007 AC-7): /books asks for it before it words a lock notice.
 	"""
 	frappe.has_permission(DOCTYPE, "read", throw=True)
+	if not with_plans:
+		return current_clock().status()
+
 	pull_error = None
 	if refresh and clock.is_managed() and clock.can_subscribe():
 		pull_error = _pull_and_report()
@@ -96,7 +98,10 @@ def _request_checkout(provider: str, billing_period: str) -> str:
 		response = {}
 
 	checkout_url = response.get("checkout_url")
-	if not isinstance(checkout_url, str) or not checkout_url.startswith(("https://", "http://")):
+	if not is_trusted_link(checkout_url):
+		if response:
+			# The control site answered, so its link is wrong: log it, then treat it like an outage.
+			frappe.log_error("Books billing: create_checkout sent a link that isn't https", defer_insert=True)
 		# A plain raise sends no message, so /books would show a generic server error.
 		frappe.throw(unreachable_message(), ControlSiteUnreachable)
 	return checkout_url
@@ -123,9 +128,11 @@ def receive_state() -> dict:
 	if state.get("site") != frappe.local.site or not issued_at or not is_fresh(issued_at):
 		_refuse()
 
+	# Only a bad value answers 400. Any other failure propagates, so Frappe rolls back and answers 500,
+	# and the control site retries it (spec 0007 AC-2).
 	try:
 		applied = apply_synced_state(state, issued_at)
-	except frappe.ValidationError as error:
+	except InvalidPushError as error:
 		_reject_push(str(error))
 	if applied:
 		# The next page open pulls fresh, rather than showing a Retry from before this push.
@@ -147,7 +154,7 @@ def pull_state():
 
 	try:
 		applied = apply_synced_state(state, issued_at)
-	except frappe.ValidationError:
+	except InvalidPushError:
 		frappe.log_error("Books billing: get_state sent a bad value", defer_insert=True)
 		raise ControlSiteUnreachable(unreachable_message()) from None
 

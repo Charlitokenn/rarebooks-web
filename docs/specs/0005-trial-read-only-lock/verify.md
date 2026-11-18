@@ -152,7 +152,7 @@ Setup: a hosted test site with the Books setup wizard completed. Set a phase wit
 - Found and fixed during this build: a user's first boot on a locked site failed (Frappe writes `User.last_known_versions`), now saved at login by an `on_session_creation` hook; and `start_checkout` showed "Internal Server Error" instead of the billing message.
 
 ## Milestone 6: review follow ups (added 2026-11-18)
-Setup: a hosted site as above. Empty the trial start with `bench --site <site> execute frappe_books.tests.subscription.store_facts --kwargs '{"trial_started_on": null, "paid_until": null, "exempt": 0}'`, and put it back with `bench --site <site> execute frappe_books.subscription.start_trial`.
+Setup: a hosted site as above. Empty the trial start with `bench --site <site> execute frappe_books.tests.subscription.clear_trial_start` (a save refuses an empty trial start, so this writes it straight to the database), and put it back with `bench --site <site> execute frappe_books.subscription.start_trial`.
 
 ### UI / manual
 - [x] Empty trial start, as Administrator on desktop and at phone width: a red banner "Your books are read only. Contact support." with Subscribe and no date; the Subscription page heading says "Read only", with no trial rows and never "Free trial" → AC-8

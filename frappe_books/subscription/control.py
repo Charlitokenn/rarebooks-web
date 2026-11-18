@@ -109,6 +109,13 @@ def control_url() -> str | None:
 	url = (frappe.conf.get("books_control_url") or "").rstrip("/")
 	if not url:
 		return None
-	if not url.startswith("https://") and not frappe.conf.get("developer_mode"):
-		return None
-	return url
+	return url if is_trusted_link(url) else None
+
+
+def is_trusted_link(url) -> bool:
+	"""`https://` always, `http://` only in developer mode. The control URL and checkout links share this rule."""
+	if not isinstance(url, str):
+		return False
+	return url.startswith("https://") or (
+		url.startswith("http://") and bool(frappe.conf.get("developer_mode"))
+	)

@@ -1,7 +1,7 @@
 # 0007. Lock hardening
 
 **Date**: 2026-11-18
-**Status**: Proposed
+**Status**: In Progress
 
 Decision history: [rationale.md](rationale.md). Refines spec [0005](../0005-trial-read-only-lock/index.md), which stays the record of how the trial clock and the read only lock work.
 

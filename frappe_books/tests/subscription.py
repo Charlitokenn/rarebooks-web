@@ -3,7 +3,7 @@
 import json
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
-from threading import Thread
+from threading import Barrier, Thread
 from unittest.mock import patch
 
 import frappe
@@ -61,6 +61,17 @@ def store_facts(**values):
 def reset_last_synced(value=None):
 	"""Set `last_synced_on` straight in the database, since the controller only lets it move forward."""
 	frappe.db.set_single_value(DOCTYPE, "last_synced_on", value)
+	frappe.db.commit()
+	frappe.clear_document_cache(DOCTYPE, DOCTYPE)
+
+
+def clear_trial_start():
+	"""Empty `trial_started_on` straight in the database, since the field is mandatory and a save refuses it.
+
+	For the no trial start lock: `bench --site <site> execute frappe_books.tests.subscription.clear_trial_start`,
+	and put it back with `bench --site <site> execute frappe_books.subscription.start_trial`.
+	"""
+	frappe.db.set_single_value(DOCTYPE, {"trial_started_on": None, "paid_until": None, "exempt": 0})
 	frappe.db.commit()
 	frappe.clear_document_cache(DOCTYPE, DOCTYPE)
 
@@ -234,16 +245,68 @@ def signed_push(state: dict, secret: bytes = TEST_SECRET) -> tuple[bytes, str]:
 
 def push(body: bytes, signature: str | None):
 	"""POST a push to `receive_state` over real HTTP, as the control site would, with no session."""
-	headers = {SIGNATURE_HEADER: signature} if signature else {}
+	with pushing():
+		return post_push(push_url(), body, signature)
+
+
+def push_together(*pushes: tuple[bytes, str]) -> list:
+	"""Send signed pushes from separate threads, released at the same moment by a barrier.
+
+	The patches are entered once here, since `patch` is not safe to enter from two threads at a time.
+	"""
+	barrier = Barrier(len(pushes))
+	responses = [None] * len(pushes)
+	url = push_url()
+
+	def send(index, body, signature):
+		barrier.wait()
+		responses[index] = post_push(url, body, signature)
+
+	with pushing():
+		threads = [Thread(target=send, args=(index, *each)) for index, each in enumerate(pushes)]
+		for thread in threads:
+			thread.start()
+		for thread in threads:
+			thread.join()
+	return responses
+
+
+@contextmanager
+def pushing():
+	"""The managed site and the test secret for `post_push`, entered once from the test's own thread."""
 	with (
 		managed_site(),
 		patch("frappe_books.subscription.api.site_secret", return_value=TEST_SECRET),
 	):
-		return make_request(
-			target=TEST_CLIENT.post,
-			args=(get_url("/api/method/frappe_books.subscription.receive_state"),),
-			kwargs={"data": body, "headers": headers, "content_type": "application/json"},
-		)
+		yield
+
+
+def push_url() -> str:
+	return get_url("/api/method/frappe_books.subscription.receive_state")
+
+
+def post_push(url: str, body: bytes, signature: str | None):
+	"""Safe from a thread with no Frappe context: `make_request` starts its own site thread."""
+	headers = {SIGNATURE_HEADER: signature} if signature else {}
+	return make_request(
+		target=TEST_CLIENT.post,
+		args=(url,),
+		kwargs={"data": body, "headers": headers, "content_type": "application/json"},
+	)
+
+
+def error_log_count(title: str) -> int:
+	"""Error Log rows titled `title`, after flushing the deferred rows queued in Redis.
+
+	The flush inserts as the session user, as the scheduler's Administrator would, or the rows are dropped.
+	"""
+	user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		frappe.deferred_insert.save_to_db()
+	finally:
+		frappe.set_user(user)
+	return frappe.db.count("Error Log", {"method": title})
 
 
 class ControlStub:

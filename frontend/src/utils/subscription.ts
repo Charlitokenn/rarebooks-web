@@ -205,8 +205,19 @@ function getPaidRows(status: SubscriptionStatus): SubscriptionDetailRow[] {
   return rows;
 }
 
-/** The locked banner's text, which every refused write shows too (AC-8, with the AC-15 note). */
-export function getLockNotice(status: SubscriptionStatus | null): string {
+/**
+ * The locked banner's text, which every refused write shows too (AC-8, with the AC-15 note).
+ * Pass `refusedWith` (the refusal's error type) only with a fresh status: an `InReadOnlyMode`
+ * refusal on a site that isn't locked is Frappe's own maintenance mode (spec 0007 AC-5).
+ */
+export function getLockNotice(
+  status: SubscriptionStatus | null,
+  refusedWith?: string
+): string {
+  if (refusedWith === 'InReadOnlyMode' && status && !status.locked) {
+    return t`This site is being updated and is read only for a few minutes. Try again shortly.`;
+  }
+
   const notice = getLockText(status);
   if (!status?.payment_pending) {
     return notice;
@@ -245,20 +256,67 @@ export function setSubscriptionStatus(status: SubscriptionStatus | undefined) {
   subscriptionStatus.value = status ?? null;
 }
 
-/**
- * Fetches the status again, as after a refused write shows the site turned read only overnight.
- * `refresh` has the server pull fresh state from billing first, as on the return from checkout (AC-12).
- */
-export async function refreshSubscriptionStatus(
-  refresh = false
-): Promise<SubscriptionStatus> {
+export interface RefreshOptions {
+  /** Have the server pull fresh state from billing first, as on the return from checkout (AC-12). */
+  pull?: boolean;
+  /** False asks for the status alone: no plans, and never a call to billing (spec 0007 AC-7). */
+  withPlans?: boolean;
+}
+
+/** Fetches the status again and shares it, as after a refused write shows the site turned read only overnight. */
+export async function refreshSubscriptionStatus({
+  pull = false,
+  withPlans = true,
+}: RefreshOptions = {}): Promise<SubscriptionStatus> {
   const { call } = await import('src/web/api');
+  const args: Record<string, boolean> = {};
+  if (pull) {
+    args.refresh = true;
+  }
+
+  if (!withPlans) {
+    args.with_plans = false;
+  }
+
+  // A lock type error on the status call itself must not wait for another status call.
   const status = await call<SubscriptionStatus>(
     'frappe_books.subscription.get_subscription',
-    refresh ? { refresh: true } : {}
+    args,
+    { skipLockStatus: true }
   );
-  subscriptionStatus.value = status;
-  return status;
+  // A status only answer carries no plans, so the Subscription page keeps the ones it has.
+  subscriptionStatus.value = withPlans
+    ? status
+    : { ...getKeptPlans(subscriptionStatus.value), ...status };
+  return subscriptionStatus.value;
+}
+
+let pendingLockStatus: Promise<SubscriptionStatus> | null = null;
+
+/**
+ * The fresh status a lock notice is worded from. Refusals that arrive together share one
+ * status only call, which never waits on billing (spec 0007 AC-6).
+ */
+export function fetchLockStatus(): Promise<SubscriptionStatus> {
+  pendingLockStatus ??= refreshSubscriptionStatus({ withPlans: false }).finally(
+    () => (pendingLockStatus = null)
+  );
+  return pendingLockStatus;
+}
+
+function getKeptPlans(
+  status: SubscriptionStatus | null
+): Pick<SubscriptionStatus, 'plans' | 'plans_error'> {
+  const kept: Pick<SubscriptionStatus, 'plans' | 'plans_error'> = {};
+  if (status?.plans !== undefined) {
+    kept.plans = status.plans;
+  }
+
+  if (status?.plans_error !== undefined) {
+    kept.plans_error = status.plans_error;
+  }
+
+  return kept;
 }
 
 /** Asks the server for a checkout link for the chosen period; the caller sends the browser there. */

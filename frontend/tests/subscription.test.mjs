@@ -291,6 +291,34 @@ function respondV2(status, type) {
     );
 }
 
+const MAINTENANCE =
+  'This site is being updated and is read only for a few minutes. Try again shortly.';
+
+/**
+ * Every write is refused with `type`, as v1 and v2 answer it, while `get_subscription`
+ * answers `fresh` (or fails when it is null). Returns the status calls' bodies.
+ */
+function refuseWith(status, type, fresh) {
+  const statusCalls = [];
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes('get_subscription')) {
+      statusCalls.push(JSON.parse(init?.body ?? '{}'));
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return fresh
+        ? Response.json({ message: fresh })
+        : Response.json({ exc_type: 'Exception' }, { status: 500 });
+    }
+    if (String(url).includes('/api/v2/')) {
+      return Response.json(
+        { errors: [{ type, message: 'Server says no' }] },
+        { status }
+      );
+    }
+    return Response.json({ exc_type: type }, { status });
+  };
+  return statusCalls;
+}
+
 test('a 403 SiteLockedError gives the lock notice, not ForbiddenError', async () => {
   subscriptionStatus.value = trialStatus(27);
   respondV2(403, 'SiteLockedError');
@@ -305,13 +333,11 @@ test('a 403 SiteLockedError gives the lock notice, not ForbiddenError', async ()
 });
 
 test('a 503 InReadOnlyMode gives the lock notice too, in v1 and v2', async () => {
-  subscriptionStatus.value = trialStatus(90, {
-    phase: 'lapsed',
-    removal_on: null,
-  });
-  respondV1(503, 'InReadOnlyMode');
+  // covers: spec 0007 AC-6 (the notice waits for the fresh status)
+  const lapsed = trialStatus(90, { phase: 'lapsed', removal_on: null });
+  subscriptionStatus.value = lapsed;
+  refuseWith(503, 'InReadOnlyMode', lapsed);
   const fromCall = await call('method').catch((error) => error);
-  respondV2(503, 'InReadOnlyMode');
   const fromSave = await updateDocument('ToDo', 'x', {}).catch((e) => e);
   for (const error of [fromCall, fromSave]) {
     assert.ok(error instanceof errors.SiteLockedError);
@@ -330,24 +356,93 @@ test('a 503 of another type is a real outage, not the lock', async () => {
   assert.equal(error.message, 'Server says no');
 });
 
-test('a lock refusal while the browser thinks the site is open fetches the status', async () => {
+test('the first refusal after the lock starts waits for the status and shows the dated text', async () => {
+  // covers: spec 0007 AC-6, AC-7 (a status only call)
   subscriptionStatus.value = trialStatus(25);
-  const requests = [];
-  globalThis.fetch = async (url) => {
-    requests.push(String(url));
-    if (String(url).includes('get_subscription')) {
-      return Response.json({ message: trialStatus(26) });
-    }
-    return Response.json(
-      { errors: [{ type: 'SiteLockedError', message: READ_ONLY }] },
-      { status: 403 }
-    );
-  };
+  const statusCalls = refuseWith(403, 'SiteLockedError', trialStatus(26));
   const error = await insertDocument('ToDo', {}).catch((error) => error);
-  assert.equal(error.message, READ_ONLY);
-  await new Promise((resolve) => setTimeout(resolve, 10));
-  assert.ok(requests.some((url) => url.includes('get_subscription')));
+  assert.ok(error instanceof errors.SiteLockedError);
+  assert.equal(
+    error.message,
+    'Your books are read only. Subscribe by 30/11/2026 to keep your data.'
+  );
+  assert.deepEqual(statusCalls, [{ with_plans: false }]);
   assert.equal(subscriptionStatus.value.phase, 'locked');
+});
+
+test('a 503 InReadOnlyMode on a site that is not locked is maintenance, in v1 and v2', async () => {
+  // covers: spec 0007 AC-5. The stored status said locked; the fresh one wins.
+  for (const stored of [trialStatus(27), trialStatus(5)]) {
+    subscriptionStatus.value = stored;
+    refuseWith(503, 'InReadOnlyMode', trialStatus(5));
+    const fromCall = await call('method').catch((error) => error);
+    const fromSave = await updateDocument('ToDo', 'x', {}).catch((e) => e);
+    for (const error of [fromCall, fromSave]) {
+      assert.ok(error instanceof errors.SiteLockedError);
+      assert.equal(error.message, MAINTENANCE);
+      assert.doesNotMatch(error.message, /Subscribe/);
+    }
+  }
+});
+
+test('a failed status call falls back to the plain read only text', async () => {
+  // covers: spec 0007 AC-6
+  subscriptionStatus.value = trialStatus(25);
+  for (const [status, type] of [
+    [403, 'SiteLockedError'],
+    [503, 'InReadOnlyMode'],
+  ]) {
+    refuseWith(status, type, null);
+    const error = await insertDocument('ToDo', {}).catch((error) => error);
+    assert.ok(error instanceof errors.SiteLockedError);
+    assert.equal(error.message, READ_ONLY);
+  }
+});
+
+test('a SiteLockedError on a site the browser knows is locked needs no status call', async () => {
+  // covers: spec 0007 AC-6. SiteLockedError always shows the lock notice, never maintenance.
+  subscriptionStatus.value = trialStatus(27);
+  const statusCalls = refuseWith(403, 'SiteLockedError', trialStatus(5));
+  const error = await insertDocument('ToDo', {}).catch((error) => error);
+  assert.equal(
+    error.message,
+    'Your books are read only. Subscribe by 30/11/2026 to keep your data.'
+  );
+  assert.deepEqual(statusCalls, []);
+});
+
+test('refusals that arrive together share one status call', async () => {
+  // covers: spec 0007 AC-6
+  subscriptionStatus.value = trialStatus(25);
+  const statusCalls = refuseWith(503, 'InReadOnlyMode', trialStatus(26));
+  const refused = await Promise.all([
+    insertDocument('ToDo', {}).catch((error) => error),
+    updateDocument('ToDo', 'x', {}).catch((error) => error),
+    call('method').catch((error) => error),
+  ]);
+  assert.equal(statusCalls.length, 1);
+  for (const error of refused) {
+    assert.match(error.message, /Subscribe by 30\/11\/2026/);
+  }
+});
+
+test('a status only fetch keeps the plans the browser already has', async () => {
+  // covers: spec 0007 AC-7
+  const plans = [
+    {
+      provider: 'PayPal',
+      billing_period: 'Monthly',
+      amount: 9,
+      currency: 'USD',
+      label: null,
+    },
+  ];
+  subscriptionStatus.value = trialStatus(25, { plans, plans_error: null });
+  globalThis.fetch = async () => Response.json({ message: trialStatus(26) });
+  await subscription.refreshSubscriptionStatus({ withPlans: false });
+  assert.equal(subscriptionStatus.value.phase, 'locked');
+  assert.deepEqual(subscriptionStatus.value.plans, plans);
+  assert.equal(subscriptionStatus.value.plans_error, null);
 });
 
 test("a logged out caller's 403 still goes to login, lock type or not", async () => {
@@ -376,7 +471,7 @@ test('the return refresh asks the server to pull from billing and updates the sh
       }),
     });
   };
-  await subscription.refreshSubscriptionStatus(true);
+  await subscription.refreshSubscriptionStatus({ pull: true });
   const [url, body] = bodies[0];
   assert.ok(url.includes('frappe_books.subscription.get_subscription'));
   assert.equal(body.refresh, true);
