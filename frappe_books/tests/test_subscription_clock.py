@@ -7,6 +7,7 @@ from frappe.tests import IntegrationTestCase
 
 from frappe_books.subscription.clock import (
 	SubscriptionClock,
+	current_clock,
 	is_locked,
 	offered_plan,
 	site_zone,
@@ -43,6 +44,30 @@ def site_time_zone(name):
 		yield
 	finally:
 		frappe.local.system_settings = previous
+
+
+@contextmanager
+def stored_clock(time_zone, now, **values):
+	"""A hosted site whose cached facts are `values` and whose clock reads `now`, as the lock hooks see it."""
+	with (
+		site_time_zone(time_zone),
+		managed_site(),
+		patch("frappe.get_cached_doc", return_value=facts(**values)),
+		patch("frappe_books.subscription.clock.utc_now", return_value=now),
+	):
+		yield
+
+
+def flush_error_log():
+	"""Deferred Error Log rows wait in Redis; write them, as the scheduler's Administrator would."""
+	import frappe.deferred_insert
+
+	user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		frappe.deferred_insert.save_to_db()
+	finally:
+		frappe.set_user(user)
 
 
 def clock(now, managed=True, time_zone="UTC", **values):
@@ -89,6 +114,30 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		with site_time_zone("Mars/Olympus"):
 			for _ in range(3):
 				self.assertEqual(str(site_zone()), "UTC")
+
+	def test_the_lock_check_counts_utc_days_with_an_unknown_time_zone(self):
+		# covers: spec 0007 AC-4. `is_locked` is what `lock_request` and `lock_job` ask before every request and job.
+		# 23:30 UTC on day 25 is already day 26 in any zone ahead of UTC.
+		late_on_day_25 = on_day(25, hour=23) + timedelta(minutes=30)
+		early_on_day_26 = on_day(26, hour=0) + timedelta(minutes=30)
+		with stored_clock(time_zone="Mars/Olympus", now=late_on_day_25):
+			self.assertFalse(is_locked())
+			self.assertEqual(current_clock().status()["today"], "2031-01-25")
+		with stored_clock(time_zone="Mars/Olympus", now=early_on_day_26):
+			self.assertTrue(is_locked())
+			self.assertEqual(current_clock().status()["day_number"], 26)
+
+	def test_an_unknown_time_zone_writes_no_log_of_its_own(self):
+		# covers: spec 0007 AC-4. Frappe's now() can't stamp a row with the same zone, so this app logs nothing.
+		flush_error_log()
+		before = frappe.db.count("Error Log")
+		with stored_clock(time_zone="Mars/Olympus", now=on_day(27)):
+			for _ in range(3):
+				site_zone()
+				is_locked()
+				current_clock().status()
+		flush_error_log()
+		self.assertEqual(frappe.db.count("Error Log"), before)
 
 	def test_status_dates_follow_day_one(self):
 		status = clock(on_day(23)).status()

@@ -489,6 +489,26 @@ test('refusals that arrive together share one status call', async () => {
   }
 });
 
+test(
+  'a status call refused with a lock error itself starts no second status call',
+  { timeout: 2000 },
+  async () => {
+    // covers: spec 0007 AC-6 (the loop guard). Every request answers InReadOnlyMode, get_subscription too.
+    subscriptionStatus.value = trialStatus(27);
+    const statusCalls = [];
+    globalThis.fetch = async (url, init) => {
+      if (String(url).includes('get_subscription')) {
+        statusCalls.push(JSON.parse(init?.body ?? '{}'));
+      }
+      return Response.json({ exc_type: 'InReadOnlyMode' }, { status: 503 });
+    };
+    const error = await call('method').catch((error) => error);
+    assert.ok(error instanceof errors.SiteLockedError);
+    assert.equal(error.message, TRIAL_LOCK);
+    assert.deepEqual(statusCalls, [{ with_plans: false }]);
+  }
+);
+
 test('a status only fetch keeps the plans the browser already has', async () => {
   // covers: spec 0007 AC-7
   const plans = [

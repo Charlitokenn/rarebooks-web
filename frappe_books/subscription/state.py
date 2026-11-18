@@ -20,7 +20,7 @@ class InvalidPushError(frappe.ValidationError):
 
 def start_trial():
 	"""Start the 30 day clock now, once. Install and the patch call this."""
-	facts = frappe.get_single(DOCTYPE)
+	facts = _locked_facts()
 	if facts.trial_started_on:
 		return
 	facts.trial_started_on = utc_now()
@@ -31,8 +31,9 @@ def apply_state(state: dict):
 	"""Apply the push fields by hand: `bench --site <site> execute frappe_books.subscription.apply_state --kwargs ...`.
 
 	Lifts or sets the lock before the control site exists. Keys left out stay as they are; unknown keys are ignored.
+	Takes the row lock like every other writer, so it can't collide with a push on a live site (spec 0007).
 	"""
-	facts = frappe.get_single(DOCTYPE)
+	facts = _locked_facts()
 	set_facts(facts, state)
 	save_facts(facts)
 
