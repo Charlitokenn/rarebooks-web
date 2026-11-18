@@ -139,7 +139,7 @@ spec [0007](../specs/0007-lock-hardening/index.md) · code in `frappe_books/subs
   - [x] The right notice on the first refused write: `with_plans` on `get_subscription`, the awaited status, the maintenance text and the loop guard (AC-5, AC-6, AC-7)
   - [x] Tests that don't depend on the site: `clear_trial_start()`, the two order sensitive tests, and spec 0005's verify.md setup line (AC-8)
 - [ ] Verify it: `/check verify lock hardening`
-- [ ] Test it: `/test lock hardening`
+- [x] Test it: `/test lock hardening`
 - [ ] Review it (fresh model): `/check review lock hardening`
 - [ ] Document it: `/document lock hardening`
 

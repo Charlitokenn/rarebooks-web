@@ -197,6 +197,24 @@ class IntegrationTestPushHardening(SubscriptionTestMixin, IntegrationTestCase):
 			self.assertGreaterEqual(started[1], finished[0])
 		self.assertEqual(error_log_count(BAD_PUSH_LOG), bad_values)
 
+	def test_two_pushes_at_once_in_the_other_order_still_keep_the_newer(self):
+		# covers: AC-1. Whichever push takes the row lock first, the older one can't overwrite the newer.
+		bad_values = error_log_count(BAD_PUSH_LOG)
+		newer = signed_push({"issued_at": iso_ago(seconds=10), "paid_until": a_year_out()})
+		older = signed_push({"issued_at": iso_ago(seconds=30), "paid_until": str(add_days(getdate(), 100))})
+		with slow_apply():
+			responses = push_together(newer, older)
+		results = sorted(response.json["message"]["result"] for response in responses)
+		for response in responses:
+			self.assertEqual(response.status_code, 200, response.json)
+		self.assertIn(results, (["applied", "applied"], ["applied", "ignored"]))
+		frappe.clear_document_cache(DOCTYPE, DOCTYPE)
+		self.assertEqual(str(facts().paid_until), a_year_out())
+		self.assertEqual(
+			get_datetime(facts().last_synced_on), parse_issued_at(json.loads(newer[0])["issued_at"])
+		)
+		self.assertEqual(error_log_count(BAD_PUSH_LOG), bad_values)
+
 	def test_a_bad_value_still_answers_400_and_logs_once(self):
 		# covers: AC-2
 		before = error_log_count(BAD_PUSH_LOG)
