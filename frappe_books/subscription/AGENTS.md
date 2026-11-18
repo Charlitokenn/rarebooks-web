@@ -14,6 +14,8 @@ The 30 day trial clock, the subscription state, and the read only lock for hoste
 | `state.py` | The only writers of the Books Subscription single: `start_trial`, `apply_state`, and the synced push or pull |
 | `control.py` | The signed contract with the control site: HMAC signing, the `issued_at` window, outgoing calls |
 | `api.py` | Whitelisted `get_subscription`, `start_checkout` and `receive_state` (guest, rate limited, signed) |
+| `removal.py` | The site's side of trial end removal (spec [0007 trial end export removal](../../docs/specs/0007-trial-end-export-removal/index.md)): `removal_status`, `build_export`, and the two hold fields. Not whitelisted, not in `ALLOWED_METHODS` |
+| `runner.py` | The removal runner behind `bench books-removal-run`: reads every hosted site of the bench, reports them to the control site in signed calls, carries out `clear`, `mark_sent`, `export` and `drop`, and uploads exports to R2 with `boto3` |
 | `../tests/subscription.py` | Test helpers: `store_facts`, `lock_site`, `set_hosted_phase`, `ControlStub`, `SubscriptionTestMixin` |
 
 ## Commands
@@ -29,6 +31,11 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 - A locked request or job runs in a read only database transaction (`frappe.db.begin(read_only=True)`), the same mechanism as Frappe's maintenance mode. An insert or rename is refused with `SiteLockedError` (403); any other write fails with `InReadOnlyMode` (503).
 - A new method that must still work on a locked site goes in `ALLOWED_METHODS` in `lock.py`, and in the allowlist test.
 - Books Subscription changes only through `state.py`. Its controller refuses every other writer, Administrator included.
+- Every writer in `state.py` reads the single through `_locked_facts()` (`get_doc(..., for_update=True)`, a row lock held until commit), so pushes, pulls, checkout, `start_trial` and `apply_state` never collide. Take it only after any control site call has returned, never across a network wait (spec [0007 lock hardening](../../docs/specs/0007-lock-hardening/index.md)).
+- Only `InvalidPushError` (in `state.py`, raised by the value checks) answers 400 from `receive_state`. Catch nothing broader: any other failure must stay a 500 that rolls back, so the control site retries it.
+- A link from the control site (`books_control_url`, a checkout link) passes `is_trusted_link` in `control.py`: `https://` always, `http://` only with `developer_mode`.
+- `clock.site_zone()` must never raise, since the lock hooks call it before login: a time zone the server doesn't know gives UTC, with no log of its own.
+- `get_subscription(with_plans=False)` returns the status alone and never calls the control site; /books uses it to word a lock notice.
 - Dates and phases use the site's System Settings time zone. `trial_started_on` is stored in UTC.
 - Calls to and from the control site are signed with `books_control_secret` in the `X-Books-Signature` header. Never log the secret.
 
@@ -38,6 +45,14 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 - Subscription tests patch `clock.is_managed` (`managed_site()`) instead of writing `site_config.json`, and restore the facts with `SubscriptionTestMixin`.
 - A hosted, unpaid, non exempt site with no `trial_started_on` reads as `locked` (fail closed), with `lock_reason: no_trial_start` and no trial dates in the status. Repair it with `bench --site <site> execute frappe_books.subscription.start_trial`.
 - A pull from the control site runs at most once per `PULL_INTERVAL_SECONDS` (10) per site. The caller claims the window first with Redis SET NX on `LAST_PULL_KEY` (`_claim_pull_window`); calls inside it get the stored result, or the Retry message while the pull is still pending, and never call billing. An applied push deletes the key. Only subscribers can ask for a pull, and its `issued_at` must be within the 5 minute window, like a push. Tests clear the key through `control_site()` (`PULL_CACHE_KEYS`).
+- The removal runner runs from host cron, outside any site's requests and jobs. It does nothing unless `books_removal_mode` in `common_site_config.json` is `dry_run` or `live` (a dry run never writes to a site). Its secrets live in `<bench>/config/books-runner.json`, which must be owned by the bench user with mode 600; Frappe never loads it, so no site can read it through `frappe.conf`.
 - Frappe writes `User.last_known_versions` on a user's first boot, so `save_known_versions` saves it at login (`on_session_creation`), before the lock applies.
+
+## Agent skills
+
+- [aws-sdk-python-usage](../../.agents/skills/aws-sdk-python-usage/): `aws/agent-toolkit-for-aws`, boto3 and botocore patterns (clients, `ClientError`, S3 transfers), for the R2 upload in `runner.py`
+- [cloudflare](../../.agents/skills/cloudflare/): `cloudflare/skills`, picking Cloudflare products and finding the right docs
+- [cf-cli](../../.agents/skills/cf-cli/): `cloudflare/skills`, the `cf` CLI, including R2 bucket commands for the rollout
+- MCP servers: Cloudflare API MCP (`https://mcp.cloudflare.com/mcp`, recommended), Cloudflare docs MCP (`https://docs.mcp.cloudflare.com/mcp`, recommended)
 
 _Drafted by /sync from the introducing change, worth a quick human pass._

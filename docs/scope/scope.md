@@ -20,7 +20,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 6 | Trial and read only lock | Slice 5 | done |
 | 9 | Lock hardening | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | in-progress |
-| 8 | Billing control site | Slice 5 | planned |
+| 8 | Billing control site | Slice 5 | in-progress |
 
 ## Already built
 
@@ -159,12 +159,25 @@ spec [0007](../specs/0007-trial-end-export-removal/index.md) · code in `frappe_
 - [ ] Review it (fresh model): `/check review trial end export and site removal`
 - [ ] Document it: `/document trial end export and site removal`
 
-### 8. Billing control site · needs a decision
+### 8. Billing control site · in-progress
 A small central Frappe app of yours (`rarebooks_control`, its own repo) that keeps the list of hosted sites and their per site secrets, takes payment (ClickPesa yearly for Tanzania, PayPal Subscriptions monthly or yearly for everyone else), and pushes each change to the customer site through the signed contract in spec 0005. Production use of feature 6 waits on it. (from spec 0005)
 **Done when:** a customer site's Subscribe button reaches a real ClickPesa or PayPal checkout, a confirmed payment pushes a `paid_until` that lifts the lock within a minute, a PayPal cancel, suspend or expiry pushes the change, and a bad webhook signature changes nothing.
-- [ ] Design it (spec): `/architect billing control site` (settle the site registry and secret rotation, ClickPesa checkout links, its webhook checksum header and key, and its dashboard return URL, PayPal plans and webhook verification, how `paid_until` is computed (the paid period starts at trial end when someone pays early), push retries, and where it is hosted)
+spec [0008](../specs/0008-billing-control-site/index.md) · code in the `rarebooks_control` repo, plus `frappe_books/commands.py`, `frappe_books/subscription/control.py` and the Subscription page in this repo
+- [x] Design it (spec): `/architect billing control site` (settle the site registry and secret rotation, ClickPesa checkout links, its webhook checksum header and key, and its dashboard return URL, PayPal plans and webhook verification, how `paid_until` is computed (the paid period starts at trial end when someone pays early), push retries, and where it is hosted)
+- [ ] Build it: `/develop billing control site`
+  - [ ] The thread, one ClickPesa payment end to end against stubs: new repo and CI, the data model and Billing Manager role, signing with golden vectors and signed responses, `register_site` and `books-register-site`, `get_state`, ClickPesa checkout and webhook, lock then fetch then write, one push; this repo's contract update (AC-1, AC-2, AC-3, AC-6, AC-7, AC-8, AC-13, AC-21)
+  - [ ] PayPal: subscriptions with `start_time` at trial end, verified webhooks, `provider_reference` rule, money checks, refunds, double subscription cancel, the "starts on" note and refusal messages on the customer site, a sandbox run (AC-4, AC-5, AC-9, AC-10, AC-11, AC-21, AC-23)
+  - [ ] Reliability: versioned push queue with retries and alerts, the return page, reconcile jobs, mismatch and unknown payment alerts, receipts, retention, `being_removed` and `billing_state()` for spec 0007 (AC-5, AC-10, AC-12, AC-13, AC-16, AC-17, AC-18, AC-19)
+  - [ ] Operator tools and hardening: manual edit and Push now, secret rotation through the runner, two factor sign in, per site rate limits, signature failure alert (AC-14, AC-15, AC-20, AC-22)
+  - [ ] Rollout: `control` user and bench on the hosting server, Redis passwords, nginx and TLS, R2 backups, Resend, ClickPesa and PayPal live setup, the TZS 1,000 launch check (AC-3, AC-4, AC-19, AC-22, AC-23)
+- [ ] Verify it: `/check verify billing control site`
+- [ ] Test it: `/test billing control site`
+- [ ] Review it (fresh model): `/check review billing control site`
+- [ ] Document it: `/document billing control site`
 
 ## Deferred
+
+- Self serve signup: a public form that provisions a hosted site and calls `register_site`; fiscal (TRA VFD/EFD) receipts for Tanzanian payments; rotation of the runner secrets in `books_runner_secrets` (from spec 0008)
 
 - Delete a dropped site's own TLS certificate in the runner, or move the hosting bench to a wildcard certificate; and a "Removed" page so a removed site's URL explains what happened (from spec 0007)
 

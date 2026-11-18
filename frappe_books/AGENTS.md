@@ -10,6 +10,7 @@ The server side of Books: 68 `books_*` DocTypes with their controllers, plus pla
 |---|---|
 | `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags, and the subscription lock hooks (`before_request`, `before_job`, `on_session_creation`, wildcard `doc_events`) |
 | `subscription/` | Trial clock, subscription state and the read only lock ([subscription/AGENTS.md](subscription/AGENTS.md)) |
+| `commands.py` | Bench commands from the module level `commands` list: `bench books-removal-run`, the hourly removal runner (spec 0007 trial end export removal) |
 | `frappe_books/doctype/books_*/` | One DocType each: `.json`, `.py` controller, optional `.js`, `test_*.py` |
 | `frappe_books/report/`, `print_format/`, `workspace/` | "Books " script reports, print formats, the workspace |
 | `accounting/`, `inventory/`, `commerce/` | Shared domain logic the controllers call (ledger, settlement, stock posting, FIFO valuation, POS, pricing, loyalty) |
