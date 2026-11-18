@@ -18,7 +18,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Choose dashboard accounts | Slice 3 | done |
 | 5 | Expenses | Slice 4 | done |
 | 6 | Trial and read only lock | Slice 5 | done |
-| 9 | Lock hardening | Slice 5 | planned |
+| 9 | Lock hardening | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | planned |
 | 8 | Billing control site | Slice 5 | planned |
 
@@ -129,10 +129,19 @@ spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_book
 - [x] Review it (fresh model): `/check review trial and read only lock`
 - [x] Document it: `/document trial and read only lock`
 
-### 9. Lock hardening · needs a decision
+### 9. Lock hardening · in-progress
 Close the minor findings from the fresh model review of feature 6, so the paywall holds up under real traffic and real mistakes, and make its tests independent of what the test site was left in. (from review 2026-11-18-v16-dashboard-features-trial-lock)
 **Done when:** two pushes at once never answer 400 or log a false "bad value"; a checkout link is accepted only over https outside developer mode; a bad time zone in System Settings falls back to UTC and logs once instead of failing every request; Frappe's own maintenance mode no longer shows "Subscribe to make changes again"; the first refused write after a site turns read only shows the current phase's text; the time zone and concurrent push paths have tests; and the two order sensitive tests (`test_is_locked_reads_nothing_on_an_unmanaged_site`, `test_a_bad_value_answers_400_and_changes_nothing`) set their own starting state, with the Milestone 6 setup line in `verify.md` fixed.
-- [ ] Design it (spec): `/architect lock hardening` (most items update spec 0005: how concurrent pushes are serialized, the wording for a real maintenance mode, the time zone fallback, and whether the client waits for a fresh status before the first lock notice)
+spec [0007](../specs/0007-lock-hardening/index.md) · code in `frappe_books/subscription/` and `frontend/src/utils/subscription.ts`
+- [x] Design it (spec): `/architect lock hardening` (most items update spec 0005: how concurrent pushes are serialized, the wording for a real maintenance mode, the time zone fallback, and whether the client waits for a fresh status before the first lock notice)
+- [ ] Build it: `/develop lock hardening`
+  - [ ] Server hardening: the locking read for pushes, pulls and checkout, the 400 or 500 split, the https checkout rule, and the UTC fallback with an hourly log (AC-1, AC-2, AC-3, AC-4)
+  - [ ] The right notice on the first refused write: `with_plans` on `get_subscription`, the awaited status, the maintenance text and the loop guard (AC-5, AC-6, AC-7)
+  - [ ] Tests that don't depend on the site: `clear_trial_start()`, the two order sensitive tests, and spec 0005's verify.md setup line (AC-8)
+- [ ] Verify it: `/check verify lock hardening`
+- [ ] Test it: `/test lock hardening`
+- [ ] Review it (fresh model): `/check review lock hardening`
+- [ ] Document it: `/document lock hardening`
 
 ### 7. Trial end export and site removal · needs a decision
 On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
