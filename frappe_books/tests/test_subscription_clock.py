@@ -6,7 +6,6 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from frappe_books.subscription.clock import (
-	BAD_ZONE_KEY,
 	SubscriptionClock,
 	is_locked,
 	offered_plan,
@@ -81,16 +80,12 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		late_on_day_25 = on_day(25, hour=23) + timedelta(minutes=30)
 		for name in ("Mars/Olympus", "America", "../etc/passwd"):
 			with self.subTest(name=name):
-				frappe.cache.delete_value(BAD_ZONE_KEY)
 				subject = clock(late_on_day_25, time_zone=name)
 				self.assertEqual(str(subject.zone), "UTC")
 				self.assertEqual((subject.day_number, subject.phase), (25, "prompt"))
 
 	def test_an_unknown_time_zone_never_raises(self):
-		# covers: spec 0007 AC-4 (the lock hooks call site_zone before login). Frappe's own now() raises
-		# with the same zone, so the Error Log row can't be written; that part of AC-4 is owed to /architect.
-		frappe.cache.delete_value(BAD_ZONE_KEY)
-		self.addCleanup(frappe.cache.delete_value, BAD_ZONE_KEY)
+		# covers: spec 0007 AC-4 (the lock hooks call site_zone before login).
 		with site_time_zone("Mars/Olympus"):
 			for _ in range(3):
 				self.assertEqual(str(site_zone()), "UTC")

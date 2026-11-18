@@ -134,8 +134,8 @@ Close the minor findings from the fresh model review of feature 6, so the paywal
 **Done when:** two pushes at once never answer 400 or log a false "bad value"; a checkout link is accepted only over https outside developer mode; a bad time zone in System Settings falls back to UTC and logs once instead of failing every request; Frappe's own maintenance mode no longer shows "Subscribe to make changes again"; the first refused write after a site turns read only shows the current phase's text; the time zone and concurrent push paths have tests; and the two order sensitive tests (`test_is_locked_reads_nothing_on_an_unmanaged_site`, `test_a_bad_value_answers_400_and_changes_nothing`) set their own starting state, with the Milestone 6 setup line in `verify.md` fixed.
 spec [0007](../specs/0007-lock-hardening/index.md) · code in `frappe_books/subscription/` and `frontend/src/utils/subscription.ts`
 - [x] Design it (spec): `/architect lock hardening` (most items update spec 0005: how concurrent pushes are serialized, the wording for a real maintenance mode, the time zone fallback, and whether the client waits for a fresh status before the first lock notice)
-- [ ] Build it: `/develop lock hardening`
-  - [ ] Server hardening: the locking read for pushes, pulls and checkout, the 400 or 500 split, the https checkout rule, and the UTC fallback in the subscription clock, with no log of its own (AC-1, AC-2, AC-3, AC-4)
+- [x] Build it: `/develop lock hardening`
+  - [x] Server hardening: the locking read for pushes, pulls and checkout, the 400 or 500 split, the https checkout rule, and the UTC fallback in the subscription clock, with no log of its own (AC-1, AC-2, AC-3, AC-4)
   - [x] The right notice on the first refused write: `with_plans` on `get_subscription`, the awaited status, the maintenance text and the loop guard (AC-5, AC-6, AC-7)
   - [x] Tests that don't depend on the site: `clear_trial_start()`, the two order sensitive tests, and spec 0005's verify.md setup line (AC-8)
 - [ ] Verify it: `/check verify lock hardening`
