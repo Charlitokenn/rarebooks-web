@@ -15,7 +15,7 @@ from frappe.utils import get_test_client, get_url, set_request
 from frappe.utils.background_jobs import execute_job
 from frappe.utils.password import update_password
 
-from frappe_books.subscription.clock import DOCTYPE, utc_now
+from frappe_books.subscription.clock import DOCTYPE, _local_date, site_zone, utc_now
 from frappe_books.subscription.control import SIGNATURE_HEADER, is_valid_signature, sign
 from frappe_books.subscription.state import save_facts
 
@@ -82,6 +82,37 @@ def unlock_self_hosted_site():
 	"""Undoes `lock_hosted_site`: a fresh clock and no control site URL."""
 	unlock_site()
 	update_site_config("books_control_url", "None")
+
+
+def set_hosted_phase(phase: str):
+	"""For the browser tests: `bench execute` this with `--kwargs '{"phase": "grace"}'` to show a phase.
+
+	`pending` is the unpaid lock with a checkout started an hour ago (AC-15).
+	"""
+	today = _local_date(utc_now(), site_zone())
+	unpaid = {"paid_until": None, "provider": None, "billing_period": None, "auto_renews": 0}
+	paid = {
+		"trial_started_on": utc_now() - timedelta(days=60),
+		"provider": "PayPal",
+		"billing_period": "Yearly",
+	}
+	facts = {
+		"trial": {**unpaid, "trial_started_on": utc_now()},
+		"prompt": {**unpaid, "trial_started_on": utc_now() - timedelta(days=22)},
+		"locked": {**unpaid, "trial_started_on": utc_now() - timedelta(days=27)},
+		"active": {**paid, "paid_until": today + timedelta(days=200), "auto_renews": 1},
+		"renew_soon": {**paid, "paid_until": today + timedelta(days=10), "auto_renews": 0},
+		"grace": {**paid, "paid_until": today - timedelta(days=3), "auto_renews": 0},
+		"lapsed": {**paid, "paid_until": today - timedelta(days=10), "auto_renews": 0},
+	}
+	if phase == "pending":
+		values = {**facts["locked"], "checkout_started_on": utc_now() - timedelta(hours=1)}
+	elif phase == "exempt":
+		values = {**facts["locked"], "exempt": 1}
+	else:
+		values = facts[phase]
+	update_site_config("books_control_url", CONTROL_URL)
+	store_facts(**{"exempt": 0, "checkout_started_on": None, **values})
 
 
 @contextmanager
