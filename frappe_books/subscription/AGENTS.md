@@ -16,6 +16,7 @@ The 30 day trial clock, the subscription state, and the read only lock for hoste
 | `api.py` | Whitelisted `get_subscription`, `start_checkout` and `receive_state` (guest, rate limited, signed) |
 | `removal.py` | The site's side of trial end removal (spec [0007 trial end export removal](../../docs/specs/0007-trial-end-export-removal/index.md)): `removal_status`, `build_export`, and the two hold fields. Not whitelisted, not in `ALLOWED_METHODS` |
 | `runner.py` | The removal runner behind `bench books-removal-run`: reads every hosted site of the bench, reports them to the control site in signed calls, carries out `clear`, `mark_sent`, `export` and `drop`, and uploads exports to R2 with `boto3` |
+| `registration.py` | `bench books-register-site` (spec [0008](../../docs/specs/0008-billing-control-site/index.md) AC-1): registers one site of the bench with the control site, signed with the runner secret, and writes `books_control_url` and the site secret into its `site_config.json` |
 | `../tests/subscription.py` | Test helpers: `store_facts`, `lock_site`, `set_hosted_phase`, `ControlStub`, `SubscriptionTestMixin` |
 
 ## Commands
@@ -38,6 +39,7 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 - `get_subscription(with_plans=False)` returns the status alone and never calls the control site; /books uses it to word a lock notice.
 - Dates and phases use the site's System Settings time zone. `trial_started_on` is stored in UTC.
 - Calls to and from the control site are signed with `books_control_secret` in the `X-Books-Signature` header. Never log the secret.
+- `../tests/signing_vectors.json` holds the golden signing vectors and must stay byte for byte identical to `rarebooks_control/tests/signing_vectors.json` in the `rarebooks_control` repo. Change both together.
 
 ## Gotchas
 
