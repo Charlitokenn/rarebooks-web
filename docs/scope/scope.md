@@ -17,7 +17,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Best sellers chart | Slice 2 | done |
 | 4 | Choose dashboard accounts | Slice 3 | done |
 | 5 | Expenses | Slice 4 | done |
-| 6 | Trial and read only lock | Slice 5 | in-progress |
+| 6 | Trial and read only lock | Slice 5 | done |
 | 7 | Trial end export and site removal | Slice 5 | planned |
 | 8 | Billing control site | Slice 5 | planned |
 
@@ -111,7 +111,7 @@ spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_boo
 
 A new site gets a 30 day clock: days 1 to 21 are the free trial, and days 22 to 30 are the window to pay. A site that hasn't subscribed by day 26 turns read only. On day 30 the data is sent to the owner and the site is removed.
 
-### 6. Trial and read only lock · in-progress
+### 6. Trial and read only lock · done
 Track each site's trial clock and subscription state. Show how many days are left and how to subscribe. From day 26, without a subscription, the site turns read only: you can still view and export your records, but you can't add or change anything. Paying lifts the lock at once.
 **Done when:** a new site has full access on days 1 to 25, sees a subscribe prompt from day 22, and from day 26 without a subscription the server refuses every create, edit, submit, cancel and delete (no matter the role) while viewing and export still work. A subscribed site is never locked. The prompt and the lock notice work on a phone.
 spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_books/subscription/` and `frappe_books/frappe_books/doctype/books_subscription/`
