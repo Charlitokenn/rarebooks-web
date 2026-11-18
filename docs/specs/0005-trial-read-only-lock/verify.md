@@ -5,19 +5,19 @@ Setup for a managed site: add `"books_control_url": "https://control.example.com
 
 ## UI / manual
 - [ ] Locked managed site, as Administrator in /app: open a Books Party, change a field, save → refused, the value is unchanged after a reload → AC-5
-- [ ] Locked managed site, in /books: create a Party → refused with "This site is read only. Subscribe to make changes again." → AC-5
-- [ ] Locked managed site: open the dashboard, a list, a form, a report, the search palette, the print view, download a PDF and export a list as CSV → each works → AC-6
-- [ ] Locked managed site: log out, log in again, request a password reset → each works → AC-7
-- [ ] Remove `books_control_url` from site_config while the clock reads day 41 → saves work again, nothing is locked → AC-2
+- [x] Locked managed site, in /books: create a Party → refused with "This site is read only. Subscribe to make changes again." → AC-5
+- [x] Locked managed site: open the dashboard, a list, a form, a report, the search palette, the print view, download a PDF and export a list as CSV → each works → AC-6
+- [x] Locked managed site: log out, log in again, request a password reset → each works → AC-7
+- [x] Remove `books_control_url` from site_config while the clock reads day 41 → saves work again, nothing is locked → AC-2
 
 ## Commands
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (spike, every write path for Books Manager and Administrator: insert and rename give `SiteLockedError` 403, set_value, submit and delete give `InReadOnlyMode` 503, nothing written; reads and exports, allowlist, setup wizard, payment lifts the lock, unmanaged) → AC-2, AC-5, AC-6, AC-7, AC-12
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK (days 21, 22, 25, 26, 30; Dar es Salaam at 23:30 UTC on day 25 is day 26; empty time zone is UTC; paid lifecycle; unmanaged and exempt) → AC-1, AC-2, AC-3, AC-4, AC-13, AC-14, AC-18
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_jobs` → OK (a queued job writes nothing even after a commit, a scheduled job runs, the next unlocked job in the same worker writes) → AC-9
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_state` → OK (guard, read only roles, track changes, start trial once, apply_state rules, last_synced_on forward only) → AC-1, AC-12, AC-17
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (spike, every write path for Books Manager and Administrator: insert and rename give `SiteLockedError` 403, set_value, submit and delete give `InReadOnlyMode` 503, nothing written; reads and exports, allowlist, setup wizard, payment lifts the lock, unmanaged) → AC-2, AC-5, AC-6, AC-7, AC-12
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK (days 21, 22, 25, 26, 30; Dar es Salaam at 23:30 UTC on day 25 is day 26; empty time zone is UTC; paid lifecycle; unmanaged and exempt) → AC-1, AC-2, AC-3, AC-4, AC-13, AC-14, AC-18
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_jobs` → OK (a queued job writes nothing even after a commit, a scheduled job runs, the next unlocked job in the same worker writes) → AC-9
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_state` → OK (guard, read only roles, track changes, start trial once, apply_state rules, last_synced_on forward only) → AC-1, AC-12, AC-17
 - [ ] `bench --site <site> migrate` on an existing site → `tabSingles` has `trial_started_on` for Books Subscription, in UTC, and a Version row → AC-1, AC-17
-- [ ] `bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'state': {'paid_until': '<a year out>'}}"` on a locked site → the next save in /books works → AC-12
-- [ ] As Administrator, `PUT /api/v2/document/Books Subscription/Books Subscription` with `{"exempt": 1}` → refused, `exempt` stays 0 → AC-17
+- [x] `bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'state': {'paid_until': '<a year out>'}}"` on a locked site → the next save in /books works → AC-12
+- [x] As Administrator, `PUT /api/v2/document/Books Subscription/Books Subscription` with `{"exempt": 1}` → refused, `exempt` stays 0 → AC-17
 
 ## Value sourcing
 - [ ] `trial_started_on`: on a site whose System Settings time zone is Asia/Kolkata, the stored value matches UTC now, not local time → AC-1
@@ -35,7 +35,7 @@ Setup for a managed site: add `"books_control_url": "https://control.example.com
 - AC-8, AC-10, AC-11, AC-15, AC-16, AC-19: later milestones
 
 ## AC-5 error types (settled by /architect, 2026-11-18)
-- [ ] On a locked site, an insert or rename answers `SiteLockedError` with 403; a save, submit, cancel or delete of an existing document answers `InReadOnlyMode` with 503; nothing is written in any case → AC-5
+- [x] On a locked site, an insert or rename answers `SiteLockedError` with 403; a save, submit, cancel or delete of an existing document answers `InReadOnlyMode` with 503; nothing is written in any case → AC-5
 
 ## Milestone 2: thin UI (added 2026-11-18)
 Setup: a hosted site as above. Move the clock with `bench --site <site> console`: `from frappe_books.tests.subscription import store_facts; from frappe_books.subscription.clock import utc_now; from datetime import timedelta; store_facts(trial_started_on=utc_now() - timedelta(days=N - 1))` for day N. Web workers cache `site_config.json` for up to 60 seconds after you add `books_control_url`.
@@ -53,8 +53,8 @@ Setup: a hosted site as above. Move the clock with `bench --site <site> console`
 - [ ] Day 25 at 23:50 site time, open a form, wait past midnight, then save → the lock dialog shows and the banner turns red without a reload → AC-8
 
 ### Commands
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_status` → OK (boot carries the status, unmanaged boots as unmanaged, a Books User reads it, Guest is refused, a locked site still answers `get_subscription`) → AC-2, AC-3, AC-4, AC-7
-- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK (banner text per day and phase, dismissal by site day, Subscribe only for managers, lapsed and payment pending texts; a 403 `SiteLockedError` and a 503 `InReadOnlyMode` in v1 and v2 give the lock notice, another 503 stays a plain error, a Guest 403 still goes to login, a stale status is fetched again) → AC-4, AC-5, AC-8
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_status` → OK (boot carries the status, unmanaged boots as unmanaged, a Books User reads it, Guest is refused, a locked site still answers `get_subscription`) → AC-2, AC-3, AC-4, AC-7
+- [x] `cd frontend && node --test tests/subscription.test.mjs` → OK (banner text per day and phase, dismissal by site day, Subscribe only for managers, lapsed and payment pending texts; a 403 `SiteLockedError` and a 503 `InReadOnlyMode` in v1 and v2 give the lock notice, another 503 stays a plain error, a Guest 403 still goes to login, a stale status is fetched again) → AC-4, AC-5, AC-8
 - [ ] `cd frontend && BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` → passes (a locked site shows the banner, refuses a save with the lock text, and Subscribe opens the page) → AC-4, AC-5, AC-8
 
 ### Value sourcing
@@ -79,11 +79,11 @@ Setup: a hosted site with `books_control_url` and `books_control_secret` in `sit
 - [ ] Stub down, press Subscribe → the same message under the plans → AC-16
 
 ### Commands
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK (a signed push lifts the lock; a missing, wrong or truncated signature, another site, a 6 minute old, naive or bad `issued_at` each answer 401; an older replay and the same push again are `ignored`; a bad provider, period or date answers 400 and changes nothing; unknown keys are ignored; a newer `paid_until` clears `checkout_started_on`; the return pull applies state; plans per country and cached; a Books User gets no plans and 403 on checkout; checkout refusals for Tanzania Monthly, no country and an active plan; timeout, refused connection and a bad response signature give the Retry state) → AC-10, AC-11, AC-12, AC-15, AC-16
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_status` → still OK (`get_subscription` now also takes a POST) → AC-2, AC-3
-- [ ] `curl -i -X POST <site>/api/method/frappe_books.subscription.receive_state -H 'Content-Type: application/json' -d '{}'` 61 times in a minute → the 61st is rate limited → AC-11
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK (a signed push lifts the lock; a missing, wrong or truncated signature, another site, a 6 minute old, naive or bad `issued_at` each answer 401; an older replay and the same push again are `ignored`; a bad provider, period or date answers 400 and changes nothing; unknown keys are ignored; a newer `paid_until` clears `checkout_started_on`; the return pull applies state; plans per country and cached; a Books User gets no plans and 403 on checkout; checkout refusals for Tanzania Monthly, no country and an active plan; timeout, refused connection and a bad response signature give the Retry state) → AC-10, AC-11, AC-12, AC-15, AC-16
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_status` → still OK (`get_subscription` now also takes a POST) → AC-2, AC-3
+- [x] `curl -i -X POST <site>/api/method/frappe_books.subscription.receive_state -H 'Content-Type: application/json' -d '{}'` 61 times in a minute → the 61st is rate limited → AC-11
 - [ ] Error Log after a signed push with `"provider": "Stripe"` → one "Books billing: receive_state refused a bad value" row (it may take a scheduler tick, the insert is deferred) → AC-11
-- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK (the return refresh sends `refresh: true` and clears the banner, a plain refresh doesn't, checkout sends the period and returns the link, a refused checkout carries the server message, plan prices per period) → AC-10, AC-12
+- [x] `cd frontend && node --test tests/subscription.test.mjs` → OK (the return refresh sends `refresh: true` and clears the banner, a plain refresh doesn't, checkout sends the period and returns the link, a refused checkout carries the server message, plan prices per period) → AC-10, AC-12
 
 ### Value sourcing
 - [ ] Plans: the prices and labels shown equal the stub's `plans`, and a plan the stub lists for another provider is not shown → AC-10
@@ -112,9 +112,9 @@ Setup: a hosted site as above, set up with dates in dd/MM/yyyy. Set the paid fac
 - [ ] `paid_until` today − 8: a red banner "Your books are read only. Renew to make changes again." with no dismiss button and no removal date; the page heading says "Read only" with only "Ended on"; creating a Currency is refused with the same text → AC-14, AC-5, AC-8
 
 ### Commands
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK (`paid_lifecycle_boundaries`: today with auto renew is active, +15 active, +14 and +0 without auto renew are renew_soon, −1 and −7 grace, −8 lapsed and locked) → AC-13, AC-14
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (`test_grace_keeps_access_and_the_day_after_locks_as_lapsed`: an insert on the last grace day succeeds over HTTP, the next day it gets `SiteLockedError` 403) → AC-14, AC-5
-- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK (no banner for active either way, renew soon and grace texts with their dates, both dismissible for the site day, lapsed ignores the dismissal, page heading and rows per paid phase) → AC-13, AC-14
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK (`paid_lifecycle_boundaries`: today with auto renew is active, +15 active, +14 and +0 without auto renew are renew_soon, −1 and −7 grace, −8 lapsed and locked) → AC-13, AC-14
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK (`test_grace_keeps_access_and_the_day_after_locks_as_lapsed`: an insert on the last grace day succeeds over HTTP, the next day it gets `SiteLockedError` 403) → AC-14, AC-5
+- [x] `cd frontend && node --test tests/subscription.test.mjs` → OK (no banner for active either way, renew soon and grace texts with their dates, both dismissible for the site day, lapsed ignores the dismissal, page heading and rows per paid phase) → AC-13, AC-14
 
 ### Value sourcing
 - [ ] "Ends on" / "Ended on" / "Paid until" / "Renews on" date: equals Books Subscription `paid_until`, shown in the user's date format; change System Settings `date_format` to mm-dd-yyyy, reload → the dates follow → AC-13, AC-14, AC-19
@@ -130,17 +130,17 @@ Setup: a hosted site as above, set up with dates in dd/MM/yyyy. Set the paid fac
 Setup: a hosted test site with the Books setup wizard completed. Set a phase with `bench --site <site> execute frappe_books.tests.subscription.set_hosted_phase --kwargs '{"phase": "<trial|prompt|locked|pending|active|renew_soon|grace|lapsed|exempt>"}'`. For phone checks use a 390 x 844 touch viewport (or a real phone, and the installed PWA).
 
 ### UI / manual
-- [ ] Each phase at phone width: the banner wraps inside the screen, its Subscribe button is fully visible, and no page scrolls sideways on the dashboard or the Subscription page → AC-19
-- [ ] Locked, at phone width: edit an existing Party (Tax ID) and save from the footer → the "Read only" dialog shows the locked banner's text and fits the screen → AC-5, AC-8, AC-19
+- [x] Each phase at phone width: the banner wraps inside the screen, its Subscribe button is fully visible, and no page scrolls sideways on the dashboard or the Subscription page → AC-19
+- [x] Locked, at phone width: edit an existing Party (Tax ID) and save from the footer → the "Read only" dialog shows the locked banner's text and fits the screen → AC-5, AC-8, AC-19
 - [ ] Locked: a Books User who has never opened Books logs in and opens /books → the app loads (no server error), with "Ask your administrator to subscribe." and no Subscribe button → AC-6, AC-7, AC-8
 - [ ] Locked, as a manager, with the control site unreachable: choose a plan → the page shows "Couldn't reach billing. Try again." (not "Internal Server Error") → AC-16
 - [ ] Phone nav sheet: the Subscription item shows on a hosted site and is gone on an exempt or self hosted site → AC-2, AC-19
 - [ ] The texts and dates are the same on desktop and phone, in the user's date format → AC-19
 
 ### Commands
-- [ ] `BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` (in `frontend/`) → 17 passed: trial, prompt and dismissal, locked reads and refused writes (insert on desktop, edit on phone), Books User, payment pending, plans and the checkout return, paid phases, exempt, each on desktop and phone, then self hosted → AC-2 to AC-16, AC-19
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK, including `test_a_first_boot_after_login_works_on_a_locked_site` → AC-6, AC-7
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK; `test_checkout_on_an_unreachable_control_site` checks the message is thrown, not only raised → AC-16
+- [x] `BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` (in `frontend/`) → 17 passed: trial, prompt and dismissal, locked reads and refused writes (insert on desktop, edit on phone), Books User, payment pending, plans and the checkout return, paid phases, exempt, each on desktop and phone, then self hosted → AC-2 to AC-16, AC-19
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_lock` → OK, including `test_a_first_boot_after_login_works_on_a_locked_site` → AC-6, AC-7
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK; `test_checkout_on_an_unreachable_control_site` checks the message is thrown, not only raised → AC-16
 
 ### Value sourcing
 - [ ] Prompt countdown: day 23 shows "3 days left", 26 minus the day number from `trial_started_on` in the site's time zone → AC-4, AC-18

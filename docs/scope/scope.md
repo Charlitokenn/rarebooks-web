@@ -122,7 +122,7 @@ spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_book
   - [x] Control site contract: signing helpers, `receive_state` with rate limit and replay rule, signed pull, `start_checkout`, plans and the return refresh, payment pending and Retry states, the control stub and tests (AC-10, AC-11, AC-12, AC-15, AC-16)
   - [x] Paid lifecycle: active, renew soon, grace and lapsed texts and boundary tests (AC-13, AC-14)
   - [x] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
-- [ ] Verify it: `/check verify trial and read only lock`
+- [x] Verify it: `/check verify trial and read only lock`
 - [ ] Test it: `/test trial and read only lock`
 - [ ] Review it (fresh model): `/check review trial and read only lock`
 - [ ] Document it: `/document trial and read only lock`
