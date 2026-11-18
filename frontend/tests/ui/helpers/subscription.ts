@@ -88,6 +88,9 @@ export async function getStatus(page: Page) {
 
 /** Signs this page's context in as a Books User, who can't subscribe. */
 export async function signInAsBooksUser(page: Page) {
+  await benchExecute('frappe_books.tests.subscription.make_user', {
+    args: [BOOKS_USER.usr, 'Books User', BOOKS_USER.pwd],
+  });
   await page.context().clearCookies();
   const response = await page.request.post('/api/method/login', {
     form: BOOKS_USER,

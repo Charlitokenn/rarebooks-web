@@ -156,9 +156,9 @@ for (const layout of LAYOUTS) {
 
       if (isPhone) {
         await open(page, `/books/edit/Party/${encodeURIComponent(party)}`);
-        const email = page.getByRole('textbox', { name: 'Email' });
-        await email.fill(`locked-${Date.now()}@example.com`);
-        await email.press('Tab');
+        const taxId = page.getByRole('textbox', { name: 'Tax ID' });
+        await taxId.fill(`LOCK-${Date.now()}`);
+        await taxId.press('Tab');
         await page
           .locator('footer')
           .getByRole('button', { name: 'Save', exact: true })
@@ -178,7 +178,7 @@ for (const layout of LAYOUTS) {
         await page.getByRole('button', { name: 'Yes', exact: true }).click();
       }
 
-      await expect(lockDialog(page)).toContainText(LOCKED);
+      await expect(lockDialog(page).getByText(LOCKED)).toBeVisible();
       await expect(lockDialog(page)).toBeInViewport();
       await expectNoSidewaysScroll(page);
       await lockDialog(page).getByRole('button', { name: 'Okay' }).click();

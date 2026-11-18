@@ -116,12 +116,12 @@ Track each site's trial clock and subscription state. Show how many days are lef
 **Done when:** a new site has full access on days 1 to 25, sees a subscribe prompt from day 22, and from day 26 without a subscription the server refuses every create, edit, submit, cancel and delete (no matter the role) while viewing and export still work. A subscribed site is never locked. The prompt and the lock notice work on a phone.
 spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_books/subscription/` and `frappe_books/frappe_books/doctype/books_subscription/`
 - [x] Design it (spec): `/architect trial and read only lock` (settle where the trial clock and subscription state live and who can change them, how payment is taken and confirmed, how the server enforces read only across every doctype and whitelisted method, what export covers, and what happens with time zones and a payment that arrives late in the window)
-- [ ] Build it: `/develop trial and read only lock`
+- [x] Build it: `/develop trial and read only lock`
   - [x] Server thread: the read only transaction spike first, Books Subscription single and its guard, phase and time zone rules, install and patch, `before_request` and `before_job` locks with the allowlist, wildcard `doc_events`, `apply_state`, Python tests (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-9, AC-17, AC-18)
   - [x] Thin UI end to end: status in boot, the banner in the app shell, lock error mapping in `api.ts`, the Subscription page and sidebar item, node tests and one Playwright locked save test (AC-2, AC-3, AC-4, AC-5, AC-8)
   - [x] Control site contract: signing helpers, `receive_state` with rate limit and replay rule, signed pull, `start_checkout`, plans and the return refresh, payment pending and Retry states, the control stub and tests (AC-10, AC-11, AC-12, AC-15, AC-16)
   - [x] Paid lifecycle: active, renew soon, grace and lapsed texts and boundary tests (AC-13, AC-14)
-  - [ ] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
+  - [x] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
 - [ ] Verify it: `/check verify trial and read only lock`
 - [ ] Test it: `/test trial and read only lock`
 - [ ] Review it (fresh model): `/check review trial and read only lock`
