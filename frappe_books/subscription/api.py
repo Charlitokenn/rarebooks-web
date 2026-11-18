@@ -95,13 +95,15 @@ def _request_checkout(provider: str, billing_period: str) -> str:
 			{"provider": provider, "billing_period": billing_period, "return_url": get_url(RETURN_PATH)},
 		)
 	except ControlSiteUnreachable:
-		response = {}
+		response = None
 
-	checkout_url = response.get("checkout_url")
+	checkout_url = response.get("checkout_url") if response is not None else None
 	if not is_trusted_link(checkout_url):
-		if response:
-			# The control site answered, so its link is wrong: log it, then treat it like an outage.
+		# When the control site answered, its answer is wrong: log why, then treat it like an outage.
+		if isinstance(checkout_url, str) and checkout_url:
 			frappe.log_error("Books billing: create_checkout sent a link that isn't https", defer_insert=True)
+		elif response is not None:
+			frappe.log_error("Books billing: create_checkout sent no checkout link", defer_insert=True)
 		# A plain raise sends no message, so /books would show a generic server error.
 		frappe.throw(unreachable_message(), ControlSiteUnreachable)
 	return checkout_url
@@ -183,6 +185,11 @@ def _pull_and_report() -> str | None:
 	except ControlSiteUnreachable:
 		frappe.clear_messages()
 		error = unreachable_message()
+	except BaseException:
+		# Any other failure (a lock wait timeout, a deadlock) propagates as a 500. Free the window first,
+		# so the next refresh pulls again instead of reading `pending` until the window ends.
+		frappe.cache.delete_value(LAST_PULL_KEY)
+		raise
 	frappe.cache.set_value(LAST_PULL_KEY, error or "", expires_in_sec=PULL_INTERVAL_SECONDS)
 	return error
 

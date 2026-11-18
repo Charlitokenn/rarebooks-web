@@ -45,6 +45,7 @@ RATE_LIMIT_KEY = "rl:frappe_books.subscription.api.receive_state:*"
 BAD_PUSH_LOG = "Books billing: receive_state refused a bad value"
 BAD_PULL_LOG = "Books billing: get_state sent a bad value"
 BAD_LINK_LOG = "Books billing: create_checkout sent a link that isn't https"
+NO_LINK_LOG = "Books billing: create_checkout sent no checkout link"
 
 
 def a_year_out() -> str:
@@ -187,14 +188,16 @@ class IntegrationTestPushHardening(SubscriptionTestMixin, IntegrationTestCase):
 		for response in responses:
 			self.assertEqual(response.status_code, 200, response.json)
 			self.assertIn(response.json["message"]["result"], ("applied", "ignored"))
+		applied = [response for response in responses if response.json["message"]["result"] == "applied"]
+		# An ignored push stops before the apply, so each applied push recorded exactly one apply.
+		self.assertEqual(len(started), len(applied))
 		frappe.clear_document_cache(DOCTYPE, DOCTYPE)
 		self.assertEqual(str(facts().paid_until), a_year_out())
 		self.assertEqual(
 			get_datetime(facts().last_synced_on), parse_issued_at(json.loads(newer[0])["issued_at"])
 		)
 		# The second apply began only once the first had finished and committed.
-		if len(started) == 2:
-			self.assertGreaterEqual(started[1], finished[0])
+		self.assertTrue(all(begin >= end for begin, end in zip(started[1:], finished, strict=False)))
 		self.assertEqual(error_log_count(BAD_PUSH_LOG), bad_values)
 
 	def test_two_pushes_at_once_in_the_other_order_still_keep_the_newer(self):
@@ -202,12 +205,14 @@ class IntegrationTestPushHardening(SubscriptionTestMixin, IntegrationTestCase):
 		bad_values = error_log_count(BAD_PUSH_LOG)
 		newer = signed_push({"issued_at": iso_ago(seconds=10), "paid_until": a_year_out()})
 		older = signed_push({"issued_at": iso_ago(seconds=30), "paid_until": str(add_days(getdate(), 100))})
-		with slow_apply():
+		with slow_apply() as (started, finished, _entered):
 			responses = push_together(newer, older)
 		results = sorted(response.json["message"]["result"] for response in responses)
 		for response in responses:
 			self.assertEqual(response.status_code, 200, response.json)
 		self.assertIn(results, (["applied", "applied"], ["applied", "ignored"]))
+		self.assertEqual(len(started), results.count("applied"))
+		self.assertTrue(all(begin >= end for begin, end in zip(started[1:], finished, strict=False)))
 		frappe.clear_document_cache(DOCTYPE, DOCTYPE)
 		self.assertEqual(str(facts().paid_until), a_year_out())
 		self.assertEqual(
@@ -247,6 +252,8 @@ class IntegrationTestPushHardening(SubscriptionTestMixin, IntegrationTestCase):
 			),
 		):
 			self.assertRaises(frappe.QueryDeadlockError, get_subscription, refresh=True)
+			# The window is freed, not left `pending`, so the next refresh pulls again.
+			self.assertIsNone(frappe.cache.get_value(LAST_PULL_KEY, use_local_cache=False))
 		frappe.db.rollback()
 		self.assertEqual(error_log_count(BAD_PULL_LOG), before)
 
@@ -262,16 +269,19 @@ class IntegrationTestPushHardening(SubscriptionTestMixin, IntegrationTestCase):
 		# covers: AC-3
 		body, signature = signed_push({"paid_until": a_year_out()})
 		responses = []
-		with slow_apply() as (_started, _finished, entered), pushing():
+		with slow_apply() as (_started, finished, entered), pushing():
 			url = push_url()
 			thread = Thread(target=lambda: responses.append(post_push(url, body, signature)))
 			thread.start()
 			self.assertTrue(entered.wait(10))
 			# The push holds the row lock now: this waits for its commit, then saves on top of it.
 			mark_checkout_started()
+			checkout_saved = time.monotonic()
 			frappe.db.commit()
 			thread.join()
 		self.assertEqual(responses[0].status_code, 200, responses[0].json)
+		# The checkout's locking read returned only after the push's apply had finished.
+		self.assertGreaterEqual(checkout_saved, finished[0])
 		frappe.clear_document_cache(DOCTYPE, DOCTYPE)
 		self.assertEqual(str(facts().paid_until), a_year_out())
 		self.assertIsNotNone(facts().checkout_started_on)
@@ -457,6 +467,19 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 				):
 					self.assertRaisesRegex(frappe.ValidationError, UNREACHABLE, start_checkout, "Yearly")
 				self.assertEqual(error_log_count(BAD_LINK_LOG), before + 1)
+				self.assertIsNone(facts().checkout_started_on)
+
+	def test_an_answer_with_no_usable_link_is_logged_as_no_link(self):
+		# covers: AC-3. Only a link that is there but not https gets the https row.
+		lock_site()
+		frappe.set_user(BOOKS_MANAGER)
+		for link in (None, "", 123):
+			with self.subTest(link=link):
+				bad_links, no_links = error_log_count(BAD_LINK_LOG), error_log_count(NO_LINK_LOG)
+				with control_site(ControlStub(checkout_url=link)):
+					self.assertRaisesRegex(frappe.ValidationError, UNREACHABLE, start_checkout, "Yearly")
+				self.assertEqual(error_log_count(NO_LINK_LOG), no_links + 1)
+				self.assertEqual(error_log_count(BAD_LINK_LOG), bad_links)
 				self.assertIsNone(facts().checkout_started_on)
 
 	def test_developer_mode_accepts_a_plain_http_checkout_link(self):
