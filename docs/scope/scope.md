@@ -141,7 +141,7 @@ spec [0007](../specs/0007-lock-hardening/index.md) · code in `frappe_books/subs
 - [ ] Verify it: `/check verify lock hardening`
 - [x] Test it: `/test lock hardening`
 - [x] Review it (fresh model): `/check review lock hardening`
-- [ ] Document it: `/document lock hardening`
+- [x] Document it: `/document lock hardening`
 
 ### 7. Trial end export and site removal · in-progress
 On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
