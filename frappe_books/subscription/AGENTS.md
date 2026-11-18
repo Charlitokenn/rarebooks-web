@@ -36,6 +36,8 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 
 - Web workers cache `site_config.json` for up to 60 seconds, so a new `books_control_url` takes a minute to show over HTTP.
 - Subscription tests patch `clock.is_managed` (`managed_site()`) instead of writing `site_config.json`, and restore the facts with `SubscriptionTestMixin`.
+- A hosted, unpaid, non exempt site with no `trial_started_on` reads as `locked` (fail closed). Repair it with `bench --site <site> execute frappe_books.subscription.start_trial`.
+- A pull from the control site runs at most once per `PULL_INTERVAL_SECONDS` (10) per site; calls inside that window reuse the last result from `LAST_PULL_KEY`, even "Couldn't reach billing". Only subscribers can ask for one, and its `issued_at` must be within the 5 minute window, like a push. Tests clear the key through `control_site()` (`PULL_CACHE_KEYS`).
 - Frappe writes `User.last_known_versions` on a user's first boot, so `save_known_versions` saves it at login (`on_session_creation`), before the lock applies.
 
 _Drafted by /sync from the introducing change, worth a quick human pass._
