@@ -1,6 +1,5 @@
 """The trial clock: works out a site's phase from the stored facts, today and the site's time zone."""
 
-import pickle
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -18,9 +17,6 @@ PAYMENT_PENDING_HOURS = 24
 LOCKED_PHASES = ("locked", "lapsed")
 SUBSCRIBER_ROLES = ("System Manager", "Books Manager")
 DOCTYPE = "Books Subscription"
-# Claimed with Redis SET NX for an hour, so a bad time zone writes one Error Log row an hour, not one a request.
-BAD_ZONE_KEY = "books_subscription_bad_time_zone"
-BAD_ZONE_LOG_SECONDS = 60 * 60
 
 
 def current_clock() -> SubscriptionClock:
@@ -129,28 +125,15 @@ class SubscriptionClock:
 def site_zone() -> ZoneInfo:
 	"""System Settings time zone, or UTC while it is empty (never Frappe's Asia/Kolkata fallback).
 
-	A name the server doesn't know also gives UTC, logged once an hour (spec 0007 AC-4). The lock hooks call
-	this before login, so it must never raise.
+	A name the server doesn't know also gives UTC, with no log of its own: Frappe's `now()` raises building
+	the same zone, so an Error Log row couldn't be stamped (spec 0007 AC-4). The lock hooks call this before
+	login, so it must never raise.
 	"""
 	name = frappe.get_system_settings("time_zone") or "UTC"
 	try:
 		return ZoneInfo(name)
 	except Exception:
-		_log_bad_zone(name)
 		return ZoneInfo("UTC")
-
-
-def _log_bad_zone(name) -> None:
-	key = frappe.cache.make_key(BAD_ZONE_KEY)
-	if not frappe.cache.set(key, pickle.dumps(name), ex=BAD_ZONE_LOG_SECONDS, nx=True):
-		return
-	try:
-		# Deferred, since a locked request runs in a read only transaction.
-		frappe.log_error(f"Books subscription: unknown time zone {name}, using UTC", defer_insert=True)
-	except Exception:
-		# Frappe's own `now()` builds the same zone and raises, so the Error Log row can't be stamped.
-		# `site_zone` must never raise (spec 0007), so the row is skipped.
-		pass
 
 
 def can_subscribe() -> bool:

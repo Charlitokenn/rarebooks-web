@@ -28,20 +28,17 @@ Setup: a hosted site (`bench --site <site> set-config books_control_url https://
 - [x] 400 vs 500: a bad provider → 400; a database error during the save → 500, no "bad value" row, no change → AC-2
 - [x] Checkout link: `https://` always accepted; `http://` accepted only with `developer_mode` on → AC-3
 - [x] The zone: an empty `time_zone` and an unknown one both give UTC days; a real zone (Africa/Dar_es_Salaam) moves the lock to local midnight → AC-4
-- [ ] Bad zone log: the Redis claim on `books_subscription_bad_time_zone` is taken once an hour (see the open AC-4 note below for the Error Log row) → AC-4
+- [ ] No log of its own: set `time_zone` to "Mars/Olympus" through `frappe.local.system_settings` in `bench console`, call `frappe_books.subscription.clock.site_zone()` and `is_locked()` a few times → UTC, no exception, and no new Error Log row titled with "Books subscription" (`frappe.deferred_insert.save_to_db()` first). Don't save the bad zone to System Settings itself: Frappe then fails every signed in request, which is out of scope → AC-4
 - [x] Lock notice: `InReadOnlyMode` with a fresh `locked: false` → maintenance text; with a fresh `locked: true` → the phase's text; a failed status call → the stored status's text → AC-5, AC-6
 - [x] Plans after a status only fetch: kept from before → AC-7
 - [ ] Maintenance text: translated through `t` (switch the user's language and check it is looked up) → AC-5
 - [x] `get_subscription` plans: absent with `with_plans: false` for every role; present for a manager otherwise → AC-7
 
-## Open: AC-4, owed to /architect
-Frappe's own `now_datetime()` builds `ZoneInfo(System Settings time_zone)` and raises on an unknown name, so with a bad zone Frappe itself fails every timestamped write (login's session, document saves, the Error Log row). This app's clock falls back to UTC and never raises, but "every request keeps working (login included)" and "one Error Log row an hour" can't be met from this app. Not verifiable until the spec is updated.
-
 ## Acceptance-criteria coverage
 - AC-1 … concurrent push test, value sourcing "which push wins"
 - AC-2 … the four split tests, value sourcing "400 vs 500"
 - AC-3 … checkout during a push, the https link tests
-- AC-4 … clock fallback tests only; login and the Error Log row are open (above)
+- AC-4 … `test_an_unknown_time_zone_falls_back_to_utc`, `test_an_unknown_time_zone_never_raises`, value sourcing "the zone" and "no log of its own" (Frappe's own failures with a bad zone are out of scope)
 - AC-5 … maintenance node test, the two maintenance manual steps
 - AC-6 … awaited status, fallback and shared call node tests, the first refusal manual steps
 - AC-7 … `test_a_status_only_call_never_pulls`, kept plans node test
