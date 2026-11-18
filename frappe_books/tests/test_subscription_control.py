@@ -195,9 +195,12 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 			self.assertRaisesRegex(frappe.ValidationError, "subscription is active", start_checkout, "Yearly")
 
 	def test_checkout_on_an_unreachable_control_site(self):
+		frappe.clear_messages()
 		with control_site(ControlStub(error=requests.Timeout())):
 			self.assertRaisesRegex(frappe.ValidationError, "Couldn't reach billing", start_checkout, "Yearly")
 		self.assertIsNone(facts().checkout_started_on)
+		# Thrown, not raised, so /books shows the message instead of a generic server error.
+		self.assertIn("Couldn't reach billing", str(frappe.get_message_log()))
 
 
 class UnitTestSigning(UnitTestCase):

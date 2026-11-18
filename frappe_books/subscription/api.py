@@ -74,16 +74,26 @@ def start_checkout(billing_period: Literal["Monthly", "Yearly"]) -> dict:
 	if billing_period not in periods:
 		frappe.throw(_("{0} billing isn't offered for this site.").format(_(billing_period)))
 
-	response = call_control(
-		CREATE_CHECKOUT,
-		{"provider": provider, "billing_period": billing_period, "return_url": get_url(RETURN_PATH)},
-	)
-	checkout_url = response.get("checkout_url")
-	if not isinstance(checkout_url, str) or not checkout_url.startswith(("https://", "http://")):
-		raise ControlSiteUnreachable(unreachable_message())
-
+	checkout_url = _request_checkout(provider, billing_period)
 	mark_checkout_started()
 	return {"checkout_url": checkout_url}
+
+
+def _request_checkout(provider: str, billing_period: str) -> str:
+	"""The control site's checkout link. Its failure is thrown with a message the user sees (AC-16)."""
+	try:
+		response = call_control(
+			CREATE_CHECKOUT,
+			{"provider": provider, "billing_period": billing_period, "return_url": get_url(RETURN_PATH)},
+		)
+	except ControlSiteUnreachable:
+		response = {}
+
+	checkout_url = response.get("checkout_url")
+	if not isinstance(checkout_url, str) or not checkout_url.startswith(("https://", "http://")):
+		# A plain raise sends no message, so /books would show a generic server error.
+		frappe.throw(unreachable_message(), ControlSiteUnreachable)
+	return checkout_url
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
