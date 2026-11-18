@@ -220,3 +220,92 @@ test('showServerMessages never rejects', async (t) => {
 
   await assert.doesNotReject(showServerMessages([{ message: 'Note' }]));
 });
+
+test('whitespace duplicates keep the first indicator and response order', async () => {
+  await showServerMessages([
+    { message: '  Saved  ', indicator: 'green' },
+    { message: 'Second', indicator: 'orange' },
+    { message: 'Saved', indicator: 'red' },
+  ]);
+
+  assert.deepEqual(shown, [
+    {
+      type: 'success',
+      message: 'Saved',
+      id: 'server-message:Saved',
+      duration: 5_000,
+    },
+    {
+      type: 'warning',
+      message: 'Second',
+      id: 'server-message:Second',
+      duration: Infinity,
+    },
+  ]);
+});
+
+test('invalid message entries do not hide a later valid message', async () => {
+  await showServerMessages([
+    null,
+    undefined,
+    {},
+    { message: 42 },
+    { message: '' },
+    { message: '\n\t ' },
+    { message: 'Valid' },
+  ]);
+
+  assert.deepEqual(
+    shown.map(({ message }) => message),
+    ['Valid']
+  );
+});
+
+test('an unknown indicator falls back to an informational toast', async () => {
+  await showServerMessages([
+    { message: 'Notice', indicator: 'purple', alert: 1 },
+  ]);
+  assert.deepEqual(shown, [
+    {
+      type: 'info',
+      message: 'Notice',
+      id: 'server-message:Notice',
+      duration: 5_000,
+    },
+  ]);
+});
+
+test('deduplication is per response and repeated messages reuse the toast id', async () => {
+  await showServerMessages([warning]);
+  await showServerMessages([warning]);
+
+  assert.equal(shown.length, 2);
+  assert.equal(shown[0].id, shown[1].id);
+});
+
+test('a write without messages succeeds without showing a toast', async () => {
+  answerWith(undefined);
+  assert.equal(
+    (await frappeApi.insertDocument('Books Expense', {})).name,
+    doc.name
+  );
+  assert.deepEqual(await settled(), []);
+});
+
+test('malformed JSON message values are discarded before displaying toasts', async () => {
+  await showServerMessages(
+    parseServerMessages([
+      'null',
+      '42',
+      'false',
+      '{}',
+      '[]',
+      JSON.stringify({ message: 'Saved', indicator: 'green' }),
+    ])
+  );
+
+  assert.deepEqual(
+    shown.map(({ message }) => message),
+    ['Saved']
+  );
+});
