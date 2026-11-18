@@ -190,6 +190,20 @@ class IntegrationTestReadOnlyLock(SubscriptionTestMixin, IntegrationTestCase):
 			with self.subTest(path=path):
 				self.assertFalse(is_allowed_path(path))
 
+	def test_lookalike_and_legacy_paths_fail_closed(self):
+		# covers: AC-7 (only the listed methods run; the legacy `cmd=` route posts to "/" and is not matched)
+		for path in (
+			"/",
+			"/api/method/",
+			"/api/method/login/../frappe.client.set_value",
+			"/api/method/frappe.integrations.oauth2_logins_evil.login",
+			"/api/method/frappe_books.subscription.apply_state",
+			"/api/v2/method/frappe_books.subscription.lock.save_known_versions",
+			"/books/api/method/login",
+		):
+			with self.subTest(path=path):
+				self.assertFalse(is_allowed_path(path))
+
 	def test_setup_wizard_completion_is_not_locked(self):
 		method = "/api/method/frappe_books.frappe_books.doctype.books_setup_wizard.books_setup_wizard.complete_setup"
 		with managed_site():

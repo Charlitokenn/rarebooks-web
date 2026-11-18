@@ -2,6 +2,7 @@
 
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 import frappe
 import requests
@@ -30,6 +31,7 @@ from frappe_books.tests.subscription import (
 BOOKS_USER = "books-user-control@example.com"
 BOOKS_MANAGER = "books-manager-control@example.com"
 UNREACHABLE = "Couldn't reach billing. Try again."
+RATE_LIMIT_KEY = "rl:frappe_books.subscription.api.receive_state:*"
 
 
 def a_year_out() -> str:
@@ -92,6 +94,26 @@ class IntegrationTestReceiveState(SubscriptionTestMixin, IntegrationTestCase):
 			self.assertEqual(push(body, signature).status_code, 400, state)
 		frappe.clear_document_cache(DOCTYPE, DOCTYPE)
 		self.assertFalse(facts().auto_renews)
+
+	def test_a_bad_value_is_logged_once_without_the_secret(self):
+		# covers: AC-11 (one "refused a bad value" Error Log row per refused push)
+		title = "Books billing: receive_state refused a bad value"
+		frappe.deferred_insert.save_to_db()  # rows queued by earlier pushes
+		before = frappe.db.count("Error Log", {"method": title})
+		body, signature = signed_push({"provider": "Stripe"})
+		self.assertEqual(push(body, signature).status_code, 400)
+		frappe.deferred_insert.save_to_db()
+		rows = frappe.get_all("Error Log", {"method": title}, ["error"], order_by="creation desc")
+		self.assertEqual(len(rows), before + 1)
+		self.assertNotIn(TEST_SECRET.decode(), rows[0].error)
+
+	def test_the_61st_push_in_a_minute_is_rate_limited(self):
+		# covers: AC-11 (receive_state allows 60 calls a minute per address)
+		frappe.cache.delete_keys(RATE_LIMIT_KEY)
+		self.addCleanup(frappe.cache.delete_keys, RATE_LIMIT_KEY)
+		codes = [push(b"{}", None).status_code for _ in range(61)]
+		self.assertEqual(set(codes[:60]), {401})
+		self.assertEqual(codes[60], 429)
 
 	def test_unknown_keys_are_ignored(self):
 		body, signature = signed_push({"paid_until": a_year_out(), "colour": "blue"})
@@ -193,6 +215,26 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 		store_facts(paid_until=a_year_out(), auto_renews=1)
 		with control_site(ControlStub()):
 			self.assertRaisesRegex(frappe.ValidationError, "subscription is active", start_checkout, "Yearly")
+
+	def test_a_plain_http_control_url_is_never_called_outside_developer_mode(self):
+		# covers: the security model (only https carries the secret)
+		lock_site()
+		stub = ControlStub(state={"paid_until": a_year_out()})
+		with (
+			control_site(stub),
+			patch.dict(frappe.conf, {"books_control_url": "http://control.example.com", "developer_mode": 0}),
+		):
+			status = get_subscription(refresh=True)
+		self.assertEqual(stub.calls, [])
+		self.assertEqual(status["plans_error"], UNREACHABLE)
+		self.assertTrue(status["locked"])
+
+	def test_the_status_never_carries_the_secret_or_the_control_url(self):
+		# covers: AC-17 (every Books role reads the status), security model
+		with control_site(ControlStub()):
+			status = json.dumps(get_subscription(refresh=True), default=str)
+		self.assertNotIn(TEST_SECRET.decode(), status)
+		self.assertNotIn("control.example.com", status)
 
 	def test_checkout_on_an_unreachable_control_site(self):
 		frappe.clear_messages()

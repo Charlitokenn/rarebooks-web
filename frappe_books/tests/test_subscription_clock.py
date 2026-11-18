@@ -102,6 +102,24 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		self.assertIsNone(status["removal_on"])
 		self.assertEqual(status["provider"], "PayPal")
 
+	def test_grace_end_rolls_into_the_next_month(self):
+		# covers: AC-14 (Renew by is paid_until plus 7 days, across a month end)
+		status = clock(
+			datetime(2031, 2, 2, 12), paid_until=datetime(2031, 1, 31).date(), provider="ClickPesa"
+		).status()
+		self.assertEqual(status["phase"], "grace")
+		self.assertEqual(status["grace_ends_on"], "2031-02-07")
+
+	def test_a_paid_site_lapses_at_local_midnight(self):
+		# covers: AC-14, AC-18. paid_until 1 January: grace ends 8 January, so 9 January locks.
+		# 23:30 UTC on 8 January is already 02:30 on 9 January in Dar es Salaam (UTC+3).
+		late_on_grace_end = datetime(2031, 1, 8, 23, 30)
+		paid_until = datetime(2031, 1, 1).date()
+		in_utc = clock(late_on_grace_end, paid_until=paid_until)
+		in_dar = clock(late_on_grace_end, time_zone="Africa/Dar_es_Salaam", paid_until=paid_until)
+		self.assertEqual((in_utc.phase, in_utc.locked), ("grace", False))
+		self.assertEqual((in_dar.phase, in_dar.locked), ("lapsed", True))
+
 	def test_unmanaged_and_exempt_sites_are_never_locked(self):
 		self.assertEqual(clock(on_day(40), managed=False).phase, "unmanaged")
 		self.assertEqual(clock(on_day(40), exempt=1).phase, "exempt")
