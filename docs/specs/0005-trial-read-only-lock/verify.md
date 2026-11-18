@@ -155,20 +155,20 @@ Setup: a hosted test site with the Books setup wizard completed. Set a phase wit
 Setup: a hosted site as above. Empty the trial start with `bench --site <site> execute frappe_books.tests.subscription.store_facts --kwargs '{"trial_started_on": null, "paid_until": null, "exempt": 0}'`, and put it back with `bench --site <site> execute frappe_books.subscription.start_trial`.
 
 ### UI / manual
-- [ ] Empty trial start, as Administrator on desktop and at phone width: a red banner "Your books are read only. Contact support." with Subscribe and no date; the Subscription page heading says "Read only", with no trial rows and never "Free trial" → AC-8
-- [ ] Same, as a Books User: the same text with "Ask your administrator to subscribe." and no Subscribe → AC-8
-- [ ] Same: save an existing Party → the "Read only" dialog shows "Your books are read only. Contact support." and nothing is saved → AC-5, AC-8
-- [ ] Run `start_trial`, reload → the site is on day 1 of a trial, with the trial dates back → AC-1
+- [x] Empty trial start, as Administrator on desktop and at phone width: a red banner "Your books are read only. Contact support." with Subscribe and no date; the Subscription page heading says "Read only", with no trial rows and never "Free trial" → AC-8
+- [x] Same, as a Books User: the same text with "Ask your administrator to subscribe." and no Subscribe → AC-8
+- [x] Same: save an existing Party → the "Read only" dialog shows "Your books are read only. Contact support." and nothing is saved → AC-5, AC-8
+- [x] Run `start_trial`, reload → the site is on day 1 of a trial, with the trial dates back → AC-1
 
 ### Commands
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK, including `test_a_lock_with_no_trial_start_has_a_reason_and_no_trial_dates` → AC-8
-- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK, including `test_a_pull_already_running_elsewhere_is_not_repeated` and `test_an_applied_push_clears_the_last_pull_result` → AC-12, AC-16
-- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK, including the "contact support, with no dates" case → AC-8
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_clock` → OK, including `test_a_lock_with_no_trial_start_has_a_reason_and_no_trial_dates` → AC-8
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_control` → OK, including `test_a_pull_already_running_elsewhere_is_not_repeated` and `test_an_applied_push_clears_the_last_pull_result` → AC-12, AC-16
+- [x] `cd frontend && node --test tests/subscription.test.mjs` → OK, including the "contact support, with no dates" case → AC-8
 
 ### Value sourcing
-- [ ] `lock_reason`: `no_trial_start` only when the phase is `locked` and `trial_started_on` is empty; null on a normal day 27 lock → AC-8
-- [ ] Pull window: with the control site stub made slow (8 seconds), open the Subscription page as a manager in two tabs at once → the stub sees one `get_state` call, and the second tab shows "Couldn't reach billing. Try again." until the first pull lands → AC-16
-- [ ] Push clears it: with billing down, open the page (Retry shows), then send a signed push with a newer `paid_until` → the next page open pulls again at once, not after 10 seconds → AC-12
+- [x] `lock_reason`: `no_trial_start` only when the phase is `locked` and `trial_started_on` is empty; null on a normal day 27 lock → AC-8
+- [x] Pull window: with the control site stub made slow (8 seconds), open the Subscription page as a manager in two tabs at once → the stub sees one `get_state` call, and the second tab shows "Couldn't reach billing. Try again." until the first pull lands → AC-16
+- [x] Push clears it: with billing down, open the page (Retry shows), then send a signed push with a newer `paid_until` → the next page open pulls again at once, not after 10 seconds → AC-12
 
 ### Coverage
 - AC-8 · clock status test, node banner test, manual steps · AC-12, AC-16 · the two control tests, the value sourcing steps
