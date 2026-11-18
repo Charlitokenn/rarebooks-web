@@ -42,7 +42,7 @@ The feature is small, the team is small, and the stack is settled (Frappe 16, Ma
 
 ### An unknown time zone
 
-**Option A: UTC, log once an hour (chosen).**
+**Option A: UTC, log once an hour (first chosen, dropped in the revision below).**
 - Pros: the site stays up and someone notices.
 - Cons: lock days follow UTC until it's fixed.
 
@@ -53,6 +53,12 @@ The feature is small, the team is small, and the stack is settled (Frappe 16, Ma
 **Option C: UTC, log every request.**
 - Pros: impossible to miss.
 - Cons: it floods the Error Log on a busy site.
+
+**Revised 2026-11-18 after `/check verify`: UTC in this app only, no log (Option B, narrowed).** Building and verifying Option A showed it can't hold. Frappe's own `now_datetime()` and its session resume (`sessions.py`, `get_expired_threshold`) build `ZoneInfo` from the same setting, so with an unknown zone every signed in request, login included, fails with `ZoneInfoNotFoundError` before this app's code runs, and an Error Log row can't be stamped. Options weighed then:
+- **Narrow AC-4 and drop the log (chosen).** Promise only that this app's clock and lock hooks never raise and count in UTC. Pros: honest, and removes code that can never write. Cons: no signal from this app; Frappe's own log is the signal.
+- **Narrow AC-4 and log to a file** (the `frappe_books` logger, which doesn't need `now()`). Rejected: a second signal next to the tracebacks Frappe already logs on every failing request.
+- **Drop AC-4 and the fallback.** Rejected: the lock hook would become one more place that fails on a bad setting, for the sake of four fewer lines.
+- **Patch Frappe's zone lookup.** Rejected: changing framework behavior from an app is out of bounds, and Frappe's save already refuses an unknown zone.
 
 ### The first notice and maintenance
 
@@ -82,20 +88,20 @@ For the maintenance words, our own translated text was chosen over passing on Fr
 
 Every finding is a defect in code that otherwise holds, so each is fixed in place, the "fix in place" path for an enhancement, with no migration and no new component. The row lock is the boring, correct tool for "two writers, one row" on MariaDB: the database already guarantees the order, and tying the lock to the transaction removes the two failure modes a Redis lock adds. Splitting 400 from 500 by exception type makes the control site contract honest: 400 means "your data is wrong, don't send it again", 500 means "my side failed, try again".
 
-Reusing the existing "unreachable" path for a bad link and the existing UTC path for an empty zone keeps the number of user facing states the same, which matters more for a paywall's support load than a precise message for an operator mistake. The hourly log is the middle ground between silence and a flood.
+Reusing the existing "unreachable" path for a bad link and the existing UTC path for an empty zone keeps the number of user facing states the same, which matters more for a paywall's support load than a precise message for an operator mistake. The hourly log was first picked as the middle ground between silence and a flood; the 2026-11-18 revision dropped it, since an Error Log row can't be stamped with an unknown zone.
 
 On the client, the status only call is the one change that fixes both the stale first notice and the maintenance mix up, because the fresh status is exactly what tells them apart. Making it skip plans keeps the notice off the billing path, so the 10 second billing timeout can never delay a save's error.
 
 Small calls made while writing:
 - **Where the client waits**: in the two async callers (`call` through an async `toBooksError`, and `request`), so `getServerError` stays synchronous. Runner up: make `getServerError` async, which spreads the change further for no gain.
 - **A failed status call**: fall back to the stored status and the generic text, rather than retrying, so a refused save never hangs.
-- **Error Log titles and the cache key**: "Books billing: create_checkout sent a link that isn't https", "Books subscription: unknown time zone {0}, using UTC", and `books_subscription_bad_time_zone`, named to match the existing "Books billing:" rows.
+- **Error Log titles**: "Books billing: create_checkout sent a link that isn't https", named to match the existing "Books billing:" rows. (The unknown time zone row and its `books_subscription_bad_time_zone` key were dropped in the 2026-11-18 revision above.)
 - **`SiteLockedError` with an unlocked fresh status** (the lock lifted between the save and the status read): still the lock notice with the generic text, rather than a third message, since a retry then works.
 
 Changes after the cross check (2026-11-18, applied on the engineer's go):
 - **A locking read, not a raw lock plus a plain read.** Under MariaDB's repeatable read, a plain `get_single` after a separate `SELECT ... FOR UPDATE` can still see the row from before the wait, so the save would fail the same timestamp check. `frappe.get_doc(..., for_update=True)` locks and reads the latest committed rows in one step. `mark_checkout_started` takes it too, since it reads then saves just like a push.
 - **`InvalidPushError` lives in `state.py`** and the value checks raise it, because `api.py` imports `state.py` and the checks used plain `frappe.ValidationError`. Both the push and the pull catch only that type.
-- **The time zone fallback catches any exception** (`ZoneInfo("America")` raises a directory error, not `ZoneInfoNotFoundError`), logs with `defer_insert` because a locked request is read only, and claims its hourly key with SET NX so two workers can't both log.
+- **The time zone fallback catches any exception** (`ZoneInfo("America")` raises a directory error, not `ZoneInfoNotFoundError`), and returns UTC. (Its hourly log was later dropped; see the revision under *An unknown time zone*.)
 - **The client always fetches a fresh status on `InReadOnlyMode`**, not only when it thinks the site is open, so maintenance after a payment never says "Subscribe". AC-5 is limited to Frappe's "reads allowed" maintenance, because in full maintenance Frappe stops every request before this app runs.
 - **No loop, one fetch:** the status call skips the wait, and refusals that arrive together share one fetch. A status only fetch keeps the plans already stored.
 - **Tests force the overlap** (a barrier and a delay inside the apply) so the concurrency test can't pass without the fix, and name how errors are injected and logs are counted.
