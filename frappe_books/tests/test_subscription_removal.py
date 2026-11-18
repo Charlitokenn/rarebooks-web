@@ -576,6 +576,225 @@ class IntegrationTestRemovalRunner(SubscriptionTestMixin, IntegrationTestCase):
 		self.assertEqual([body["deferred"] for body in stub.bodies("report_sites")], [["RC-00009"], []])
 
 
+PROCEED = {"drop_starting": {"proceed": True, "reason": None}}
+
+
+class IntegrationTestRemovalDrop(SubscriptionTestMixin, IntegrationTestCase):
+	"""The `drop` instruction (spec 0007 Milestone 3). Frappe's drop itself is mocked; the rest is real."""
+
+	def setUp(self):
+		super().setUp()
+		self.lines = []
+		self.archives = []
+		# Day 41 of an unpaid trial: locked, and past its removal date.
+		store_facts(
+			trial_started_on=utc_now() - timedelta(days=40),
+			paid_until=None,
+			exempt=0,
+			checkout_started_on=None,
+		)
+
+	def run_drop(self, stub, state=(True, True), mode="live", drop=None, **options):
+		"""One run with the site's folder and database `state` as given, and Frappe's drop mocked."""
+		with (
+			runner_bench(stub, mode=mode, **options) as bench,
+			patch("frappe_books.subscription.runner.site_state", return_value=state) as site_state,
+			patch(
+				"frappe_books.subscription.runner.drop_site", side_effect=drop or self.fake_drop
+			) as drop_site,
+			patch("frappe_books.subscription.runner.finish_drop", side_effect=self.fake_drop) as finish_drop,
+		):
+			code = run(bench_path=bench, log=self.lines.append)
+			self.archive_left = [path for path in self.archives if os.path.lexists(path)]
+		self.assertEqual(code, 0)
+		return site_state, drop_site, finish_drop
+
+	def fake_drop(self, site, _config, archive):
+		"""What Frappe's drop leaves: the site folder moved under the case's archived path."""
+		os.makedirs(os.path.join(archive, site))
+		self.archives.append(archive)
+
+	def drop(self, site=None, case=CASE):
+		return {"site": site or frappe.local.site, "case": case, "action": "drop"}
+
+	def test_a_due_drop_waits_for_the_go_ahead_then_drops_and_reports_done(self):
+		# covers: AC-9, AC-10
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		_state, drop_site, finish_drop = self.run_drop(stub)
+		self.assertEqual(stub.methods(), ["report_sites", "drop_starting", "drop_done"])
+		(starting,) = stub.bodies("drop_starting")
+		self.assertEqual((starting["case"], starting["site"]), (CASE, frappe.local.site))
+		(site, config, archive) = drop_site.call_args.args
+		self.assertEqual(site, frappe.local.site)
+		self.assertEqual(config.root_password, ROOT_PASSWORD)
+		self.assertEqual(archive, os.path.join(config.bench_path, "books-removal", "archived", CASE))
+		finish_drop.assert_not_called()
+		self.assertEqual(self.archive_left, [], "the case's archived folder is deleted")
+		self.assertIn(f"drop {CASE} dropped", self.lines[-1])
+
+	def test_the_control_site_saying_no_drops_nothing(self):
+		# covers: AC-9 (any failed check on the control site means no drop)
+		stub = RemovalControlStub(
+			[self.drop()], answers={"drop_starting": {"proceed": False, "reason": "not approved"}}
+		)
+		_state, drop_site, _finish = self.run_drop(stub)
+		drop_site.assert_not_called()
+		self.assertEqual(stub.methods(), ["report_sites", "drop_starting"])
+		self.assertIn("the control site said no: not approved", self.lines[-1])
+
+	def test_a_go_ahead_without_a_valid_signature_drops_nothing(self):
+		# covers: AC-9, AC-15
+		stub = RemovalControlStub([self.drop()], answers=PROCEED, badly_signed=("drop_starting",))
+		_state, drop_site, _finish = self.run_drop(stub)
+		drop_site.assert_not_called()
+		self.assertEqual(stub.bodies("drop_done"), [])
+		self.assertEqual(stub.bodies("step_failed"), [])
+
+	def test_a_go_ahead_that_isnt_exactly_true_drops_nothing(self):
+		# covers: AC-9
+		for proceed in ("yes", 1, None):
+			with self.subTest(proceed=proceed):
+				stub = RemovalControlStub([self.drop()], answers={"drop_starting": {"proceed": proceed}})
+				_state, drop_site, _finish = self.run_drop(stub)
+				drop_site.assert_not_called()
+
+	def test_a_site_that_paid_or_has_a_payment_pending_is_never_dropped(self):
+		# covers: AC-9 (the runner's own fresh read), AC-11
+		cases = {
+			"phase is active": {"paid_until": add_days(site_today(), 365), "provider": "PayPal"},
+			"a payment is pending": {"checkout_started_on": utc_now() - timedelta(hours=1)},
+		}
+		for reason, values in cases.items():
+			with self.subTest(reason=reason):
+				store_facts(**values)
+				stub = RemovalControlStub([self.drop()], answers=PROCEED)
+				_state, drop_site, _finish = self.run_drop(stub)
+				drop_site.assert_not_called()
+				self.assertEqual(stub.methods(), ["report_sites"], "drop_starting is never asked")
+				self.assertIn(reason, self.lines[-1])
+				store_facts(paid_until=None, provider=None, checkout_started_on=None)
+
+	def test_a_site_before_its_removal_date_is_never_dropped(self):
+		# covers: AC-9
+		store_facts(trial_started_on=utc_now() - timedelta(days=27))
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		_state, drop_site, _finish = self.run_drop(stub)
+		drop_site.assert_not_called()
+		self.assertIn("removal date hasn't come", self.lines[-1])
+
+	def test_switching_the_mode_off_mid_run_stops_the_drop(self):
+		# covers: AC-9 (`books_removal_mode` is `live` at that moment)
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		with patch("frappe_books.subscription.runner.read_mode", side_effect=["live", "off"]):
+			_state, drop_site, _finish = self.run_drop(stub)
+		drop_site.assert_not_called()
+		self.assertEqual(stub.bodies("drop_starting"), [])
+		self.assertIn("books_removal_mode is now off", self.lines[-1])
+
+	def test_a_dry_run_only_logs_would_drop(self):
+		# covers: AC-14
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		site_state, drop_site, finish_drop = self.run_drop(stub, mode="dry_run")
+		site_state.assert_not_called()
+		drop_site.assert_not_called()
+		finish_drop.assert_not_called()
+		self.assertEqual(stub.methods(), ["report_sites"])
+		self.assertIn(f"would drop {frappe.local.site}", self.lines[-1])
+
+	def test_a_site_already_gone_is_reported_done(self):
+		# covers: AC-10 (safe to repeat, also for a site this run can't read)
+		gone = "gone.example.com"
+		stub = RemovalControlStub([self.drop(gone)])
+		with runner_bench(stub, sites=[]) as bench:
+			archive = os.path.join(bench, "books-removal", "archived", CASE)
+			os.makedirs(os.path.join(archive, gone))
+			with (
+				patch("frappe_books.subscription.runner.site_state", return_value=(False, False)),
+				patch("frappe_books.subscription.runner.drop_site") as drop_site,
+			):
+				self.assertEqual(run(bench_path=bench, log=self.lines.append), 0)
+			self.assertFalse(os.path.lexists(archive), "a leftover archived folder is deleted")
+		drop_site.assert_not_called()
+		self.assertEqual(stub.methods(), ["report_sites", "drop_done"])
+		self.assertEqual(stub.bodies("drop_done")[0]["site"], gone)
+		self.assertIn(f"drop {CASE} already gone", self.lines[-1])
+
+	def test_a_drop_cut_short_after_the_database_is_finished(self):
+		# covers: AC-10 (the database is gone but the folder remains)
+		half = "half.example.com"
+		stub = RemovalControlStub([self.drop(half)])
+		_state, drop_site, finish_drop = self.run_drop(stub, state=(True, False), sites=[half])
+		drop_site.assert_not_called()
+		self.assertEqual(finish_drop.call_args.args[0], half)
+		self.assertEqual(stub.methods(), ["report_sites", "drop_done"])
+		self.assertEqual(self.archive_left, [])
+		self.assertIn(f"drop {CASE} finished an earlier drop", self.lines[-1])
+
+	def test_a_failed_drop_is_reported_with_the_secrets_removed(self):
+		# covers: AC-12
+		def broken(_site, _config, _archive):
+			raise RuntimeError(f"Access denied for root using {ROOT_PASSWORD}")
+
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		self.run_drop(stub, drop=broken)
+		(failed,) = stub.bodies("step_failed")
+		self.assertEqual((failed["case"], failed["step"]), (CASE, "drop"))
+		self.assertEqual(failed["error"], "RuntimeError: Access denied for root using ***")
+		self.assertEqual(stub.bodies("drop_done"), [])
+
+	def test_no_root_login_is_a_failed_drop_step(self):
+		# covers: AC-10 (root credentials only from the secrets file), AC-12
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		site_state, drop_site, _finish = self.run_drop(stub, secrets=runner_secrets(root_password=None))
+		site_state.assert_not_called()
+		drop_site.assert_not_called()
+		(failed,) = stub.bodies("step_failed")
+		self.assertIn("root_login and root_password are needed", failed["error"])
+
+	def test_a_site_whose_state_cant_be_told_is_a_failed_drop_step(self):
+		# covers: AC-9 (any doubt means no drop)
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		with patch(
+			"frappe_books.subscription.runner.site_state",
+			side_effect=RuntimeError("Can't connect to MySQL server"),
+		):
+			with runner_bench(stub) as bench, patch("frappe_books.subscription.runner.drop_site") as drop:
+				run(bench_path=bench, log=self.lines.append)
+		drop.assert_not_called()
+		self.assertEqual(stub.bodies("step_failed")[0]["step"], "drop")
+		self.assertEqual(stub.bodies("drop_starting"), [])
+
+	def test_a_drop_done_the_control_site_cannot_hear_is_logged(self):
+		# covers: AC-10 (the next run's `drop` finds the site gone and reports it again)
+		stub = RemovalControlStub([self.drop()], answers=PROCEED)
+		answer_signed = stub.post
+
+		def answer(url, data, headers, timeout):
+			if url.endswith("drop_done"):
+				raise requests.Timeout("slow")
+			return answer_signed(url, data, headers, timeout)
+
+		stub.post = answer
+		self.run_drop(stub)
+		self.assertIn("drop_done wasn't heard", self.lines[-1])
+		self.assertEqual(stub.bodies("step_failed"), [])
+
+	def test_unsafe_site_or_case_names_in_a_drop_are_ignored(self):
+		# covers: AC-15 (a name from the control site never leaves the sites folder)
+		bad = [
+			self.drop("../frappe-bench"),
+			self.drop(".hidden"),
+			self.drop("a/b.example.com"),
+			self.drop("double..dot.com"),
+			self.drop(case="archived"),
+		]
+		stub = RemovalControlStub(bad, answers=PROCEED)
+		site_state, drop_site, _finish = self.run_drop(stub)
+		site_state.assert_not_called()
+		drop_site.assert_not_called()
+		self.assertEqual(sum("ignored an instruction" in line for line in self.lines), 5)
+
+
 def fake_export(out_dir):
 	"""A tiny export, for runner tests about anything but the export's content."""
 	os.makedirs(out_dir, exist_ok=True)

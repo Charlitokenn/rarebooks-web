@@ -31,6 +31,9 @@ const LOCKED =
 // A lapsed site names its removal date too (spec 0007 AC-2).
 const LAPSED =
   /^Your books are read only\. Renew by .+ to keep this site\. After that it is removed and a copy of your data is emailed to the owner\.$/;
+// Once the export email went out, the banner names the end of the hold (spec 0007 AC-8).
+const HOLDING =
+  /^Your books are read only\. A copy of your data was emailed to the owner\. This site will be removed after (.+)\.$/;
 const PENDING =
   'Payment pending. The lock lifts as soon as your payment is confirmed.';
 const ASK = 'Ask your administrator to subscribe.';
@@ -231,6 +234,32 @@ for (const layout of LAYOUTS) {
       await expect(page.getByTestId('payment-pending')).toHaveText(PENDING);
     });
 
+    test('once the export is emailed the banner names the hold date', async ({
+      page,
+    }) => {
+      await setPhase(page, 'holding');
+      await open(page, '/books');
+      await expect(bannerText(page)).toHaveText(HOLDING);
+      const text = await bannerText(page).innerText();
+      expect(text.match(HOLDING)![1]).not.toMatch(ISO_DATE);
+      await expect(
+        banner(page).getByRole('button', { name: 'Dismiss' })
+      ).toHaveCount(0);
+      // An administrator can still pay to keep the site.
+      await expect(
+        banner(page).getByRole('button', { name: 'Subscribe' })
+      ).toBeVisible();
+      await expectBannerFits(page);
+
+      await openSubscription(page);
+      await expect(
+        page.getByRole('heading', { name: 'Read only' })
+      ).toBeVisible();
+      await expect(page.getByTestId('removal-on')).not.toHaveText(ISO_DATE);
+      await expect(page.getByTestId('removal-on')).not.toBeEmpty();
+      await expectNoSidewaysScroll(page);
+    });
+
     test('plans start a checkout and the return refreshes the status', async ({
       page,
     }) => {
@@ -347,7 +376,10 @@ for (const layout of LAYOUTS) {
       await expect(
         banner(page).getByRole('button', { name: 'Dismiss' })
       ).toHaveCount(0);
-      expect((await getStatus(page)).removal_on).toBeNull();
+      // A lapsed site has a removal date now (spec 0007 AC-2), shown in the user's date format.
+      expect((await getStatus(page)).removal_on).toMatch(ISO_DATE);
+      await expect(page.getByTestId('removal-on')).not.toHaveText(ISO_DATE);
+      await expect(page.getByTestId('removal-on')).not.toBeEmpty();
       await expectBannerFits(page);
     });
 
