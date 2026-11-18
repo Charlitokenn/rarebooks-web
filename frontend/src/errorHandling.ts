@@ -106,6 +106,10 @@ function getErrorLabel(error: Error) {
     return t`Mandatory error`;
   }
 
+  if (name === 'SiteLockedError') {
+    return t`Read only`;
+  }
+
   if (name === 'NotImplemented') {
     return t`Error`;
   }

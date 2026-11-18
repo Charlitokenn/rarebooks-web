@@ -11,9 +11,17 @@ import {
   LinkValidationError,
   MandatoryError,
   NotFoundError,
+  SiteLockedError,
   ValidationError,
 } from 'fyo/utils/errors';
 import type { BootUserPermissions } from 'fyo/utils/permissions';
+import { subscriptionStatus } from 'src/utils/refs';
+import {
+  getLockNotice,
+  isLockErrorType,
+  refreshSubscriptionStatus,
+  type SubscriptionStatus,
+} from 'src/utils/subscription';
 import type { DeskTheme } from 'src/utils/theme';
 import type { ChartOfAccounts } from 'utils/types';
 import { ref } from 'vue';
@@ -81,9 +89,27 @@ export function getServerError(
   excType?: string,
   status?: number
 ): Error {
+  // Before the status map, so a 403 SiteLockedError never reads as ForbiddenError.
+  if (isLockErrorType(excType)) {
+    return getLockError();
+  }
+
   const ServerError =
     errorClassByType[excType ?? ''] ?? errorClassByStatus[status ?? 0];
   return ServerError ? new ServerError(message, false) : new Error(message);
+}
+
+/**
+ * A refused write on a locked site shows the locked banner's text (AC-8). If
+ * the browser still thinks the site is open, as when the lock started at
+ * midnight, the status is fetched again so the banner shows too.
+ */
+function getLockError(): SiteLockedError {
+  if (!subscriptionStatus.value?.locked) {
+    void refreshSubscriptionStatus().catch(() => undefined);
+  }
+
+  return new SiteLockedError(getLockNotice(subscriptionStatus.value));
 }
 
 /** Sends the user to log in, and back to Books after. */
@@ -169,6 +195,8 @@ declare global {
           charts_of_accounts: ChartOfAccounts[];
           indian_states: Record<string, string>;
           print_style: string;
+          /** The trial clock and lock state (spec 0005). */
+          subscription?: SubscriptionStatus;
         };
         app_data?: { app_name: string; app_logo_url?: string | null }[];
         docs?: { doctype: string; name: string; symbol?: string | null }[];

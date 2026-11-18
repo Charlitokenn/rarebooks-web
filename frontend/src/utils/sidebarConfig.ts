@@ -3,6 +3,8 @@ import { reports } from 'reports';
 import { canOpenReport } from 'reports/serverReport';
 import { getImportableSchemaNames } from 'src/importer';
 import { routeFilters } from 'src/utils/filters';
+import { subscriptionStatus } from 'src/utils/refs';
+import { SUBSCRIPTION_ROUTE, isManaged } from 'src/utils/subscription';
 import { fyo } from '../initFyo';
 import { SidebarConfig, SidebarItem, SidebarRoot } from './types';
 
@@ -350,6 +352,14 @@ function getCompleteSidebar(): SidebarConfig {
     getInventorySidebar(),
     getPOSSidebar(),
     getRegionalSidebar(),
+    {
+      label: t`Subscription`,
+      name: 'subscription',
+      route: SUBSCRIPTION_ROUTE,
+      icon: 'lucide-calendar-clock',
+      // Everyone on a hosted site sees it; self hosted and exempt sites don't (AC-2).
+      hidden: () => !isManaged(subscriptionStatus.value),
+    },
     {
       label: t`Setup`,
       name: 'setup',

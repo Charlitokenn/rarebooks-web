@@ -55,6 +55,14 @@ export class MandatoryError extends ValidationError {
   }
 }
 
+/** A write refused because the site is read only until someone subscribes (spec 0005). */
+export class SiteLockedError extends ValidationError {
+  constructor(message: string, shouldStore = false) {
+    super(message, shouldStore);
+    this.name = 'SiteLockedError';
+  }
+}
+
 export class NotImplemented extends BaseError {
   constructor(message = '', shouldStore = false) {
     super(501, message, shouldStore);

@@ -1,5 +1,6 @@
 <template>
   <FrappeMobileShell>
+    <SubscriptionBanner />
     <router-view v-slot="{ Component }">
       <keep-alive>
         <component :is="Component" :key="$route.path" />
@@ -25,6 +26,7 @@
 </template>
 <script setup lang="ts">
 import { MobileShell as FrappeMobileShell } from 'frappe-ui';
+import SubscriptionBanner from 'src/components/SubscriptionBanner.vue';
 import { openNavSheetKey } from 'src/utils/injectionKeys';
 import { computed, onMounted, provide, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

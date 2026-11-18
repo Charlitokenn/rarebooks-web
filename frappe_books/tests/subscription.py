@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.auth import CookieManager, LoginManager
+from frappe.installer import update_site_config
 from frappe.tests.test_api import make_request
 from frappe.utils import get_test_client, get_url, set_request
 from frappe.utils.background_jobs import execute_job
@@ -45,6 +46,18 @@ def lock_site():
 
 def unlock_site():
 	store_facts(trial_started_on=utc_now(), paid_until=None, exempt=0, checkout_started_on=None)
+
+
+def lock_hosted_site():
+	"""For the browser tests: `bench execute` this to make the site hosted and lock it."""
+	update_site_config("books_control_url", "https://control.example.com")
+	lock_site()
+
+
+def unlock_self_hosted_site():
+	"""Undoes `lock_hosted_site`: a fresh clock and no control site URL."""
+	unlock_site()
+	update_site_config("books_control_url", "None")
 
 
 @contextmanager

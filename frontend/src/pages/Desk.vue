@@ -13,6 +13,7 @@ import { settingsDialog, showSidebar } from 'src/utils/refs';
       </Transition>
     </template>
 
+    <SubscriptionBanner />
     <div class="flex min-h-0 flex-1 overflow-hidden bg-surface-base">
       <router-view v-slot="{ Component }">
         <keep-alive>
@@ -46,6 +47,7 @@ import { settingsDialog, showSidebar } from 'src/utils/refs';
 import { DesktopShell as FrappeDesktopShell } from 'frappe-ui';
 import { defineComponent } from 'vue';
 import Sidebar from '../components/Sidebar.vue';
+import SubscriptionBanner from '../components/SubscriptionBanner.vue';
 import SettingsDialog from './Settings/SettingsDialog.vue';
 export default defineComponent({
   name: 'Desk',
@@ -53,6 +55,7 @@ export default defineComponent({
     FrappeDesktopShell,
     SettingsDialog,
     Sidebar,
+    SubscriptionBanner,
   },
   async mounted() {
     // The viewport can grow while a phone-only page is open.

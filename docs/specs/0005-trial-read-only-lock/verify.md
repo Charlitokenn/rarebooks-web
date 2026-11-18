@@ -36,3 +36,32 @@ Setup for a managed site: add `"books_control_url": "https://control.example.com
 
 ## AC-5 error types (settled by /architect, 2026-11-18)
 - [ ] On a locked site, an insert or rename answers `SiteLockedError` with 403; a save, submit, cancel or delete of an existing document answers `InReadOnlyMode` with 503; nothing is written in any case → AC-5
+
+## Milestone 2: thin UI (added 2026-11-18)
+Setup: a hosted site as above. Move the clock with `bench --site <site> console`: `from frappe_books.tests.subscription import store_facts; from frappe_books.subscription.clock import utc_now; from datetime import timedelta; store_facts(trial_started_on=utc_now() - timedelta(days=N - 1))` for day N. Web workers cache `site_config.json` for up to 60 seconds after you add `books_control_url`.
+
+### UI / manual
+- [ ] Day 5, as Administrator: no banner; the sidebar shows Subscription; the page says "Free trial", 17 days left, the trial end date (day 21) and the read only date (day 26) → AC-3
+- [ ] Day 22, as Administrator: every /books screen shows "4 days left to subscribe before your books turn read only." with a Subscribe button that opens /books/subscription → AC-4
+- [ ] Day 22, as a Books User: the same banner says "Ask your administrator to subscribe." and has no Subscribe button → AC-4
+- [ ] Day 22: dismiss the banner, reload → it stays hidden; set `localStorage.books_subscription_banner_dismissed` to yesterday's date, reload → it shows again → AC-4
+- [ ] Day 27: a red banner "Your books are read only. Subscribe by {day 30 date} to keep your data." with no dismiss button, even with today's date stored in the dismissal key → AC-8
+- [ ] Day 27: create a Currency → a "Read only" dialog with the banner's text, and nothing saved (SiteLockedError, 403) → AC-5, AC-8
+- [ ] Day 27: change and save an existing Party → the same dialog and text (InReadOnlyMode, 503) → AC-5, AC-8
+- [ ] Lapsed (`paid_until` 10 days ago): banner and refused saves say "Your books are read only. Renew to make changes again." → AC-8
+- [ ] Remove `books_control_url`: no banner, no Subscription item, and /books/subscription says "This site is not on a hosted plan." → AC-2
+- [ ] Day 25 at 23:50 site time, open a form, wait past midnight, then save → the lock dialog shows and the banner turns red without a reload → AC-8
+
+### Commands
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_status` → OK (boot carries the status, unmanaged boots as unmanaged, a Books User reads it, Guest is refused, a locked site still answers `get_subscription`) → AC-2, AC-3, AC-4, AC-7
+- [ ] `cd frontend && node --test tests/subscription.test.mjs` → OK (banner text per day and phase, dismissal by site day, Subscribe only for managers, lapsed and payment pending texts; a 403 `SiteLockedError` and a 503 `InReadOnlyMode` in v1 and v2 give the lock notice, another 503 stays a plain error, a Guest 403 still goes to login, a stale status is fetched again) → AC-4, AC-5, AC-8
+- [ ] `cd frontend && BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` → passes (a locked site shows the banner, refuses a save with the lock text, and Subscribe opens the page) → AC-4, AC-5, AC-8
+
+### Value sourcing
+- [ ] Dismissal day: with the browser's clock set a day ahead of the site, a banner dismissed today still hides until the site's `today` changes → AC-4
+- [ ] Days left: day 23 shows 3 (26 minus the day number) → AC-4
+- [ ] Day 30 date in the lock text: equals the status dict's `removal_on`, shown in the user's date format → AC-8
+- [ ] Banner after a refresh: on /books/subscription the status is fetched again, and the banner follows the shared `subscriptionStatus` ref → AC-12 (fully checked with the return refresh in milestone 3)
+
+### Coverage
+- AC-2 · unmanaged boot test, manual step · AC-3 · Subscription page step · AC-4 · node banner tests, manual steps · AC-5, AC-8 · node error mapping tests, Playwright test, manual steps
