@@ -61,3 +61,6 @@ frontend/playwright-report/
 
 # Aider AI Chat
 .aider*
+
+# Redis snapshots a local bench writes into the working folder
+dump.rdb
