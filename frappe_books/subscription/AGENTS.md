@@ -17,6 +17,7 @@ The 30 day trial clock, the subscription state, and the read only lock for hoste
 | `removal.py` | The site's side of trial end removal (spec [0007 trial end export removal](../../docs/specs/0007-trial-end-export-removal/index.md)): `removal_status`, `build_export`, and the two hold fields. Not whitelisted, not in `ALLOWED_METHODS` |
 | `runner.py` | The removal runner behind `bench books-removal-run`: reads every hosted site of the bench, reports them to the control site in signed calls, carries out `rotate_secret` (spec 0008 AC-15, always first), `clear`, `mark_sent`, `export` and `drop`, and uploads exports to R2 with `boto3` |
 | `registration.py` | `bench books-register-site` (spec [0008](../../docs/specs/0008-billing-control-site/index.md) AC-1): registers one site of the bench with the control site, signed with the runner secret, and writes `books_control_url` and the site secret into its `site_config.json` |
+| `rollout.py` | Run by hand on the hosting server (spec 0007): `preflight` behind `bench books-removal-check`, and `setup_bucket` behind `bench books-removal-setup-bucket` (the R2 lifecycle rules). Neither changes a site or prints a secret |
 | `../tests/subscription.py` | Test helpers: `store_facts`, `lock_site`, `set_hosted_phase`, `ControlStub`, `SubscriptionTestMixin` |
 
 ## Commands
@@ -49,6 +50,7 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 - A pull from the control site runs at most once per `PULL_INTERVAL_SECONDS` (10) per site. The caller claims the window first with Redis SET NX on `LAST_PULL_KEY` (`_claim_pull_window`); calls inside it get the stored result, or the Retry message while the pull is still pending, and never call billing. An applied push deletes the key. Only subscribers can ask for a pull, and its `issued_at` must be within the 5 minute window, like a push. Tests clear the key through `control_site()` (`PULL_CACHE_KEYS`).
 - The removal runner runs from host cron, outside any site's requests and jobs. It does nothing unless `books_removal_mode` in `common_site_config.json` is `dry_run` or `live` (a dry run never writes to a site, except `rotate_secret`, which is billing and writes the new `books_control_secret` to the site's `site_config.json` in both modes). Its secrets live in `<bench>/config/books-runner.json`, which must be owned by the bench user with mode 600; Frappe never loads it, so no site can read it through `frappe.conf`.
 - Don't read `@@transaction_isolation` directly: MariaDB below 11.1 has only `tx_isolation`. Ask for both names, as `_session_isolation_level()` in `removal.py` does.
+- `ALLOWED_METHODS` matches the short public path (`/api/method/frappe_books.subscription.get_subscription`). The module path `frappe_books.subscription.api.get_subscription` is not allowed, so a locked site answers it read only (503). Call these methods by the short path.
 - Frappe writes `User.last_known_versions` on a user's first boot, so `save_known_versions` saves it at login (`on_session_creation`), before the lock applies.
 
 ## Agent skills
