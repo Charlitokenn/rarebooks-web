@@ -108,7 +108,7 @@ def _snapshot():
 	The level is set for the session, since MariaDB refuses a next transaction level while Frappe's implicit
 	transaction is open, and the session's own level is put back afterwards.
 	"""
-	previous = frappe.db.sql("select @@session.transaction_isolation")[0][0].replace("-", " ")
+	previous = _session_isolation_level()
 	if previous not in ISOLATION_LEVELS:
 		previous = "REPEATABLE READ"
 	frappe.db.rollback()
@@ -119,6 +119,18 @@ def _snapshot():
 	finally:
 		frappe.db.rollback()
 		frappe.db.sql(f"SET SESSION TRANSACTION ISOLATION LEVEL {previous}")
+
+
+def _session_isolation_level() -> str:
+	"""The session's isolation level, such as "REPEATABLE READ".
+
+	MariaDB 11.1 renamed `tx_isolation` to `transaction_isolation` (keeping the old name as a deprecated alias),
+	so ask for both names: a bench below 11.1 has only the old one, and a later release may drop it.
+	"""
+	rows = frappe.db.sql(
+		"show session variables where variable_name in ('transaction_isolation', 'tx_isolation')"
+	)
+	return rows[0][1].replace("-", " ") if rows else ""
 
 
 def _export_doctypes() -> list[str]:

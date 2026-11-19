@@ -20,6 +20,7 @@ from frappe.utils import add_days, get_datetime, getdate
 from frappe_books.subscription.clock import DOCTYPE, _local_date, current_clock, site_zone, utc_now
 from frappe_books.subscription.removal import (
 	PendingWritesError,
+	_session_isolation_level,
 	build_export,
 	clear_removal,
 	mark_export_sent,
@@ -242,6 +243,15 @@ class IntegrationTestRemovalExport(SubscriptionTestMixin, IntegrationTestCase):
 			build_export(self.out)
 		self.assertEqual(frappe.db.transaction_writes, 0)
 		self.assertEqual(facts().modified, before)
+
+	def test_an_export_puts_the_session_isolation_level_back(self):
+		# covers: AC-6 (one REPEATABLE READ snapshot), on MariaDB below 11.1 too, which has only `tx_isolation`
+		frappe.db.rollback()
+		frappe.db.sql("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
+		self.addCleanup(frappe.db.sql, "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+		with patch("frappe_books.subscription.removal._write_database_backup"):
+			build_export(self.out)
+		self.assertEqual(_session_isolation_level(), "READ COMMITTED")
 
 	def test_an_export_refuses_to_commit_pending_writes(self):
 		frappe.db.set_single_value("Books Accounting Settings", "company_name", "Uncommitted Co")
