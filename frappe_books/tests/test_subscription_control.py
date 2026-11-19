@@ -439,6 +439,18 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 		with control_site(ControlStub()):
 			self.assertRaisesRegex(frappe.ValidationError, "subscription is active", start_checkout, "Yearly")
 
+	def test_a_paypal_subscription_waiting_to_start_refuses_checkout(self):
+		# covers: spec 0008 AC-21
+		store_facts(
+			trial_started_on=utc_now() - timedelta(days=22), provider="PayPal", auto_renews=1, paid_until=None
+		)
+		stub = ControlStub()
+		with control_site(stub):
+			self.assertRaisesRegex(
+				frappe.ValidationError, "Your PayPal subscription starts on", start_checkout, "Monthly"
+			)
+		self.assertEqual(stub.calls, [])
+
 	def test_a_plain_http_control_url_is_never_called_outside_developer_mode(self):
 		# covers: the security model (only https carries the secret)
 		lock_site()

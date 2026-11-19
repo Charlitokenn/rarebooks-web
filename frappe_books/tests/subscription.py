@@ -102,6 +102,7 @@ def unlock_self_hosted_site():
 def set_hosted_phase(phase: str):
 	"""For the browser tests: `bench execute` this with `--kwargs '{"phase": "grace"}'` to show a phase.
 
+	`waiting` is day 23 with a PayPal subscription that starts after the trial (spec 0008 AC-21).
 	`pending` is the unpaid lock with a checkout started an hour ago (AC-15). `holding` is the unpaid lock after
 	the export email went out an hour ago, held for 72 hours (spec 0007 AC-8).
 	"""
@@ -115,6 +116,13 @@ def set_hosted_phase(phase: str):
 	facts = {
 		"trial": {**unpaid, "trial_started_on": utc_now()},
 		"prompt": {**unpaid, "trial_started_on": utc_now() - timedelta(days=22)},
+		# Day 23 with a PayPal subscription set to start after the trial (spec 0008 AC-21).
+		"waiting": {
+			**unpaid,
+			"trial_started_on": utc_now() - timedelta(days=22),
+			"provider": "PayPal",
+			"auto_renews": 1,
+		},
 		"locked": {**unpaid, "trial_started_on": utc_now() - timedelta(days=27)},
 		"active": {**paid, "paid_until": today + timedelta(days=200), "auto_renews": 1},
 		"renew_soon": {**paid, "paid_until": today + timedelta(days=10), "auto_renews": 0},

@@ -36,6 +36,8 @@ export interface SubscriptionStatus {
   provider: string | null;
   billing_period: string | null;
   auto_renews: boolean;
+  /** The day after the trial, while a PayPal subscription made during it waits for its first payment (spec 0008 AC-21). */
+  subscription_starts_on: string | null;
   payment_pending: boolean;
   can_subscribe: boolean;
   offered_provider: string | null;
@@ -104,7 +106,8 @@ export function getSubscriptionBanner(
 
 /** The text of a banner that still leaves full access: the trial prompt, renew soon or grace. */
 function getOpenBannerMessage(status: SubscriptionStatus): string | null {
-  if (status.phase === 'prompt') {
+  // A PayPal subscription is already set to start after the trial, so there is nothing to prompt for.
+  if (status.phase === 'prompt' && !status.subscription_starts_on) {
     const daysLeft = LOCK_DAY - (status.day_number ?? 0);
     return t`${daysLeft} days left to subscribe before your books turn read only.`;
   }
@@ -270,6 +273,18 @@ function getLockText(status: SubscriptionStatus | null): string {
   }
 
   return t`This site is read only. Subscribe to make changes again.`;
+}
+
+/** "Your PayPal subscription starts on …" while it waits for its first payment, else null (spec 0008 AC-21). */
+export function getSubscriptionStartsNote(
+  status: SubscriptionStatus | null
+): string | null {
+  if (!status?.subscription_starts_on) {
+    return null;
+  }
+
+  const startsOn = formatDate(status.subscription_starts_on);
+  return t`Your PayPal subscription starts on ${startsOn}.`;
 }
 
 /** Days left in the free trial, today included, as the banner counts its days (AC-3). */

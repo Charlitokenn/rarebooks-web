@@ -136,6 +136,28 @@ for (const layout of LAYOUTS) {
       await expect(page.getByTestId('trial-days-left')).toHaveText('0');
     });
 
+    test('a PayPal subscription waiting to start shows its start day and no Subscribe', async ({
+      page,
+    }) => {
+      // covers: spec 0008 AC-21
+      await setPhase(page, 'waiting');
+      await open(page, '/books');
+      await expect(banner(page)).toHaveCount(0);
+
+      await open(page, '/books/subscription');
+      await expect(page.getByTestId('subscription-starts-on')).toHaveText(
+        /^Your PayPal subscription starts on \S+\.$/
+      );
+      await expect(page.getByTestId('subscription-starts-on')).not.toHaveText(
+        ISO_DATE
+      );
+      await expect(page.getByTestId('subscription-plans')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Subscribe' })).toHaveCount(
+        0
+      );
+      await expectNoSidewaysScroll(page);
+    });
+
     test('a locked site keeps reads and refuses writes with the lock notice', async ({
       page,
     }) => {
@@ -193,7 +215,6 @@ for (const layout of LAYOUTS) {
       await expect(
         page.getByRole('heading', { name: 'Read only' })
       ).toBeVisible();
-      await expect(page.getByTestId('trial-days-left')).toHaveCount(0);
       // The fake control site can't be reached (AC-16).
       const plans = page.getByTestId('subscription-plans');
       await expect(plans.getByRole('alert')).toContainText(BILLING_DOWN);

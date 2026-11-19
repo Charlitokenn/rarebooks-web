@@ -7,7 +7,7 @@ from typing import Literal
 import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
-from frappe.utils import get_url
+from frappe.utils import formatdate, get_url
 
 from frappe_books.subscription import clock
 from frappe_books.subscription.clock import DOCTYPE, SUBSCRIBER_ROLES, current_clock, offered_plan
@@ -73,11 +73,16 @@ def get_subscription(refresh: bool = False, with_plans: bool = True) -> dict:
 def start_checkout(billing_period: Literal["Monthly", "Yearly"]) -> dict:
 	"""Ask the control site for a checkout link for this site's provider and the chosen period (AC-10)."""
 	frappe.only_for(list(SUBSCRIBER_ROLES))
-	phase = current_clock().phase
+	subscription_clock = current_clock()
+	phase = subscription_clock.phase
 	if phase in UNSUBSCRIBABLE_PHASES:
 		frappe.throw(_("This site is not on a hosted plan."))
 	if phase == "active":
 		frappe.throw(_("Your subscription is active. Change your plan from your PayPal account."))
+	starts_on = subscription_clock.subscription_starts_on
+	if starts_on:
+		# A second checkout would make a second subscription (spec 0008 AC-21).
+		frappe.throw(_("Your PayPal subscription starts on {0}.").format(formatdate(starts_on)))
 
 	provider, periods = offered_plan()
 	if not provider:

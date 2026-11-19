@@ -27,6 +27,13 @@
             </div>
           </dl>
           <p
+            v-if="startsNote"
+            class="mt-4 text-base text-ink-gray-7"
+            data-testid="subscription-starts-on"
+          >
+            {{ startsNote }}
+          </p>
+          <p
             v-if="status.payment_pending"
             class="mt-4 text-base text-ink-gray-7"
             data-testid="payment-pending"
@@ -105,6 +112,7 @@ import {
   formatPlanPrice,
   getPlanLabel,
   getSubscriptionDetails,
+  getSubscriptionStartsNote,
   isCheckoutReturn,
   isManaged,
   refreshSubscriptionStatus,
@@ -122,13 +130,16 @@ const loadError = ref<string | null>(null);
 const checkoutPeriod = ref<SubscriptionPlan['billing_period'] | null>(null);
 const checkoutError = ref<string | null>(null);
 
-// An active plan is changed with the provider, so only the other phases offer plans.
+const startsNote = computed(() => getSubscriptionStartsNote(status.value));
+// An active plan is changed with the provider, and a PayPal subscription waiting to start needs no
+// second checkout, so neither offers plans (spec 0008 AC-21).
 const showPlans = computed(
   () =>
     !!status.value &&
     isManaged(status.value) &&
     status.value.can_subscribe &&
-    status.value.phase !== 'active'
+    status.value.phase !== 'active' &&
+    !startsNote.value
 );
 const billingError = computed(
   () => loadError.value ?? status.value?.plans_error ?? null

@@ -81,6 +81,16 @@ class SubscriptionClock:
 		return self.phase in LOCKED_PHASES
 
 	@property
+	def subscription_starts_on(self) -> date | None:
+		"""The day after the trial, when a PayPal subscription made during it is still waiting for its first
+		payment (spec 0008 AC-21). Subscribe is hidden meanwhile and the prompt banner stays away."""
+		if self.phase not in UNPAID_TRIAL_PHASES or not self.facts.trial_started_on:
+			return None
+		if self.facts.provider != "PayPal" or not self.facts.auto_renews:
+			return None
+		return self._trial_day(TRIAL_LAST_DAY) + timedelta(days=1)
+
+	@property
 	def removal_kind(self) -> str | None:
 		"""`Trial` for an unpaid trial with a day 1, `Lapsed` for a lapsed site, else None (spec 0007 AC-1).
 
@@ -126,6 +136,7 @@ class SubscriptionClock:
 			"provider": self.facts.provider or None,
 			"billing_period": self.facts.billing_period or None,
 			"auto_renews": bool(self.facts.auto_renews),
+			"subscription_starts_on": _iso(self.subscription_starts_on),
 			"payment_pending": self._payment_pending(),
 			"can_subscribe": can_subscribe(),
 			"offered_provider": offered_provider,

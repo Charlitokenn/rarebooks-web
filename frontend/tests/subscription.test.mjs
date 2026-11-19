@@ -10,8 +10,13 @@ import {
   updateDocument,
 } from './helpers/accounting.mjs';
 
-const { getLockNotice, getSubscriptionBanner, getTrialDaysLeft, isManaged } =
-  subscription;
+const {
+  getLockNotice,
+  getSubscriptionBanner,
+  getSubscriptionStartsNote,
+  getTrialDaysLeft,
+  isManaged,
+} = subscription;
 
 const READ_ONLY = 'This site is read only. Subscribe to make changes again.';
 const TRIAL_LOCK =
@@ -35,6 +40,7 @@ function trialStatus(day, overrides = {}) {
     provider: null,
     billing_period: null,
     auto_renews: false,
+    subscription_starts_on: null,
     payment_pending: false,
     can_subscribe: true,
     offered_provider: 'PayPal',
@@ -70,6 +76,34 @@ test('days 22 to 25 count down to read only, and can be dismissed', () => {
     canSubscribe: true,
   });
   assert.match(getSubscriptionBanner(trialStatus(25), null).message, /^1 days/);
+});
+
+test('a PayPal subscription waiting to start hides the prompt banner, not the lock', () => {
+  // covers: spec 0008 AC-21
+  const waiting = {
+    provider: 'PayPal',
+    auto_renews: true,
+    subscription_starts_on: '2026-11-22',
+  };
+  for (const day of [22, 25]) {
+    assert.equal(getSubscriptionBanner(trialStatus(day, waiting), null), null);
+  }
+  assert.equal(
+    getSubscriptionBanner(trialStatus(26, waiting), null)?.message,
+    TRIAL_LOCK
+  );
+});
+
+test('the starts on note names the day after the trial, only while waiting', () => {
+  // covers: spec 0008 AC-21
+  assert.equal(
+    getSubscriptionStartsNote(
+      trialStatus(23, { subscription_starts_on: '2026-11-22' })
+    ),
+    'Your PayPal subscription starts on 22/11/2026.'
+  );
+  assert.equal(getSubscriptionStartsNote(trialStatus(23)), null);
+  assert.equal(getSubscriptionStartsNote(null), null);
 });
 
 test('a dismissed prompt stays hidden until the next site day', () => {

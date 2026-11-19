@@ -139,6 +139,25 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 		flush_error_log()
 		self.assertEqual(frappe.db.count("Error Log"), before)
 
+	def test_a_paypal_subscription_made_in_the_trial_starts_the_day_after_it(self):
+		# covers: spec 0008 AC-21
+		waiting = {"provider": "PayPal", "auto_renews": 1}
+		for day in (5, 23, 27):
+			with self.subTest(day=day):
+				self.assertEqual(
+					clock(on_day(day), **waiting).status()["subscription_starts_on"], "2031-01-22"
+				)
+		for values in (
+			{},
+			{"provider": "PayPal", "auto_renews": 0},
+			{"provider": "ClickPesa", "auto_renews": 1},
+			{**waiting, "paid_until": datetime(2031, 2, 21).date()},
+			{**waiting, "exempt": 1},
+			{**waiting, "trial_started_on": None},
+		):
+			with self.subTest(values=values):
+				self.assertIsNone(clock(on_day(23), **values).status()["subscription_starts_on"])
+
 	def test_status_dates_follow_day_one(self):
 		status = clock(on_day(23)).status()
 		self.assertEqual(status["phase"], "prompt")

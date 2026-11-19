@@ -10,6 +10,7 @@ export const site = process.env.BOOKS_FILTER_TEST_SITE;
 export type TestPhase =
   | 'trial'
   | 'prompt'
+  | 'waiting'
   | 'locked'
   | 'pending'
   | 'holding'
@@ -23,6 +24,7 @@ export type TestPhase =
 const SERVER_PHASE: Record<TestPhase, string> = {
   trial: 'trial',
   prompt: 'prompt',
+  waiting: 'prompt',
   locked: 'locked',
   pending: 'locked',
   holding: 'locked',
