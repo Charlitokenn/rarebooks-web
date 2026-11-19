@@ -95,6 +95,18 @@
             {{ checkoutError }}
           </p>
         </section>
+        <section
+          v-if="canChat"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-6 border border-outline-gray-1 p-4 text-base text-ink-gray-8"
+        >
+          <p>{{ t`Questions about your subscription?` }}</p>
+          <FrappeButton
+            icon-left="lucide-message-circle"
+            :label="t`Chat with support`"
+            data-testid="subscription-support-chat"
+            @click="openSupportChat"
+          />
+        </section>
       </div>
     </FrappeScrollArea>
   </div>
@@ -119,6 +131,7 @@ import {
   startCheckout,
   type SubscriptionPlan,
 } from 'src/utils/subscription';
+import { hasSupportChat, openSupportChat } from 'src/utils/supportChat';
 import { computed, onActivated, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -130,6 +143,8 @@ const loadError = ref<string | null>(null);
 const checkoutPeriod = ref<SubscriptionPlan['billing_period'] | null>(null);
 const checkoutError = ref<string | null>(null);
 
+// Set once at startup from the boot, so it needs no reactivity.
+const canChat = hasSupportChat();
 const startsNote = computed(() => getSubscriptionStartsNote(status.value));
 // An active plan is changed with the provider, and a PayPal subscription waiting for its first payment
 // needs no second checkout (PayPal would refuse it), so neither offers plans (spec 0008 AC-21).

@@ -26,6 +26,13 @@
       {{ t`Ask your administrator to subscribe.` }}
     </p>
     <FrappeButton
+      v-if="isLocked && canChat"
+      icon-left="lucide-message-circle"
+      :label="t`Chat with support`"
+      data-testid="banner-support-chat"
+      @click="openSupportChat"
+    />
+    <FrappeButton
       v-if="banner.dismissible"
       variant="ghost"
       icon="lucide-x"
@@ -44,10 +51,13 @@ import {
   getDismissedOn,
   getSubscriptionBanner,
 } from 'src/utils/subscription';
+import { hasSupportChat, openSupportChat } from 'src/utils/supportChat';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+// Set once at startup from the boot, so it needs no reactivity.
+const canChat = hasSupportChat();
 const dismissedOn = ref(getDismissedOn());
 const banner = computed(() =>
   getSubscriptionBanner(subscriptionStatus.value, dismissedOn.value)

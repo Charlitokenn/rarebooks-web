@@ -2,6 +2,7 @@ import { t } from 'fyo';
 import type { DropdownOptions } from 'frappe-ui';
 import { call } from 'src/web/api';
 import { docsPathRef } from './refs';
+import { endSupportChat, hasSupportChat, openSupportChat } from './supportChat';
 import { deskTheme, setDeskTheme, type DeskTheme } from './theme';
 
 /** Phones have no keyboard shortcuts, so they pass no `openShortcuts`. */
@@ -12,6 +13,15 @@ export function getAppMenuItems(openShortcuts?: () => void): DropdownOptions {
           label: t`Keyboard shortcuts`,
           icon: 'lucide-command',
           onClick: openShortcuts,
+        },
+      ]
+    : [];
+  const supportChat = hasSupportChat()
+    ? [
+        {
+          label: t`Chat with support`,
+          icon: 'lucide-message-circle',
+          onClick: () => void openSupportChat(),
         },
       ]
     : [];
@@ -26,6 +36,7 @@ export function getAppMenuItems(openShortcuts?: () => void): DropdownOptions {
           icon: 'lucide-circle-help',
           onClick: openDocumentation,
         },
+        ...supportChat,
         ...shortcuts,
       ],
     },
@@ -71,6 +82,8 @@ export function openDocumentation() {
 }
 
 async function logOut() {
+  // The next user on this browser must not see this user's chat (spec 0009 AC-9).
+  await endSupportChat();
   await call('logout');
   window.location.assign('/login');
 }

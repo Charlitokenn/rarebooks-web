@@ -16,6 +16,7 @@ import {
 } from 'fyo/utils/errors';
 import type { BootUserPermissions } from 'fyo/utils/permissions';
 import { subscriptionStatus } from 'src/utils/refs';
+import type { SupportChat } from 'src/utils/supportChat';
 import {
   fetchLockStatus,
   getLockNotice,
@@ -245,6 +246,8 @@ declare global {
           print_style: string;
           /** The trial clock and lock state (spec 0005). */
           subscription?: SubscriptionStatus;
+          /** The signed tawk.to visitor, or null when the chat is off (spec 0009). */
+          support_chat?: SupportChat | null;
         };
         app_data?: { app_name: string; app_logo_url?: string | null }[];
         docs?: { doctype: string; name: string; symbol?: string | null }[];

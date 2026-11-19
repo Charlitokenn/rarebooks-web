@@ -21,6 +21,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Lock hardening | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | in-progress |
 | 8 | Billing control site | Slice 5 | in-progress |
+| 10 | Support chat | Slice 6 | in-progress |
 
 ## Already built
 
@@ -175,7 +176,24 @@ spec [0008](../specs/0008-billing-control-site/index.md) · code in the `rareboo
 - [x] Review it (fresh model): `/check review billing control site`
 - [ ] Document it: `/document billing control site`
 
+## Slice 6: Support chat
+
+### 10. Support chat · in-progress · Beta
+Add a tawk.to chat widget to every /books screen, so a signed in user can reach support from anywhere, including the Subscription page and the read only lock. When they start a chat, their name, email and organization show up on the visitor in the tawk.to dashboard, so you don't have to ask who they are.
+**Done when:** a signed in user on any /books screen can open the chat, and the tawk.to dashboard shows their name, email and organization on that chat; the details come from the server for the signed in user, so a user can't pose as someone else; the widget still loads on a locked site; it doesn't cover key controls on a phone; and the app works normally if tawk.to is blocked or down.
+spec [0009](../specs/0009-support-chat/index.md) · code in `frappe_books/support_chat.py` and `frontend/src/utils/supportChat.ts`
+- [x] Design it (spec): `/architect support chat` (settle where the widget keys live and who can change them, how the name, email and organization are sent and whether they are signed so a visitor can't fake them, what counts as the organization on this site, the language the widget shows, and what users are told about the data going to tawk.to)
+- [ ] Build it: `/develop support chat`
+  - [x] Thin thread: the signed `support_chat` boot block from the bench config keys, and a "Chat with support" item in the app menu that loads tawk.to on first open with the bubble hidden (AC-1, AC-2, AC-3, AC-4, AC-10)
+  - [x] Support details and entry points: company, site, roles, version, live phase and screen path, plus buttons on the locked banner and the Subscription page (AC-5, AC-6, AC-7)
+  - [x] Failure and sign out: the load timeout toast with the support email, late load guard, `Tawk_API.logout` at sign out and the expired session guard (AC-3, AC-8, AC-9, AC-11)
+  - [ ] Tests and rollout: Playwright with a stub tawk.to, rollout notes, Secure Mode on, the privacy policy naming tawk.to, and a manual check with the real widget on a hosted site (AC-1, AC-3 to AC-10)
+- [ ] Verify it: `/check verify support chat`
+- [ ] Test it: `/test support chat`
+
 ## Deferred
+
+- Support chat: load tawk.to at app start for proactive chat if the team wants to reach out first; a widget per language keyed by the user's Frappe language (from spec 0009)
 
 - Self serve signup: a public form that provisions a hosted site and calls `register_site`; fiscal (TRA VFD/EFD) receipts for Tanzanian payments; rotation of the runner secrets in `books_runner_secrets` (from spec 0008)
 

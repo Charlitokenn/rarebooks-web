@@ -41,7 +41,8 @@ await build({
       export { getFilterFields } from './src/utils/filterFields';
       export { getSidebarConfig } from './src/utils/sidebarConfig';
       export { getAppMenuItems } from './src/utils/appMenu';
-      export { docsPathRef } from './src/utils/refs';
+      export { docsPathRef, subscriptionStatus } from './src/utils/refs';
+      export * as supportChat from './src/utils/supportChat';
       export { deskTheme, getColorScheme } from './src/utils/theme';
       export { default as ListView } from './src/pages/ListView/ListView.vue';
       export { default as POS } from './src/pages/POS/POS.vue';
@@ -216,6 +217,8 @@ export const {
   getSidebarConfig,
   getAppMenuItems,
   docsPathRef,
+  subscriptionStatus,
+  supportChat,
   deskTheme,
   getColorScheme,
   ListView,
