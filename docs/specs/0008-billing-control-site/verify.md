@@ -83,9 +83,9 @@ _Run 2026-11-19 from the dev container against the real sandbox (product `PROD-5
 - [ ] Refund the sandbox sale → event outcome `Refund`, one email to `books_ops_email`, the site unchanged → AC-10
 
 ## Value sourcing (PayPal)
-- [ ] `start_time` follows the site's `time_zone`: Dar es Salaam gives 21:00Z the day before; an empty or bad zone gives 00:00Z → AC-4
+- [ ] `start_time` is 12:00 Pacific on the day after the trial whatever the site zone: a trial ending 2026-11-23 sends `2026-11-24T20:00:00Z`, and PayPal's first `next_billing_time` falls on 24 November (about 10:00 UTC, 13:00 in Dar es Salaam) → AC-4 (amended 2026-11-19, build plan task 11a)
 - [ ] `start_time` uses `paid_until` + 1 when it is later than the trial end, and is left out when the day is not more than 5 minutes ahead → AC-4
-- [ ] `paid_until` is the smaller of (next billing day in the site zone minus 1) and (payment day plus one period minus 1); a moved `next_billing_time` with the same `last_payment.time` grants no days → AC-9
+- [ ] `paid_until` is the smaller of (next billing day in the site zone) and (payment day plus one period minus 1): a charge at 2026-11-19T05:01Z with the next at 2026-12-18T10:00Z gives 18 December in Dar es Salaam, and the site reads `active`, not `grace`, on the morning of 18 December; a moved `next_billing_time` with the same `last_payment.time` grants no days → AC-9 (amended 2026-11-19)
 - [ ] The money check uses the Books Plan found by `paypal_plan_id` (a disabled plan too): 8.99 USD or 9.00 EUR on a 9 USD plan is `Mismatch` with an ops email naming the subscriber → AC-9, AC-10
 - [ ] Of two live subscriptions, the newer by PayPal `create_time` is cancelled, whichever event arrives first → AC-11
 - [ ] `subscription_starts_on` is trial day 21 plus 1 in the site's zone, and is empty once `paid_until` is set, for ClickPesa, or with `auto_renews` off → AC-21
