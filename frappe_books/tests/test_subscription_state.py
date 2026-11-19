@@ -60,10 +60,13 @@ class IntegrationTestSubscriptionState(SubscriptionTestMixin, IntegrationTestCas
 		self.assertEqual(facts.provider_reference, "I-ABC")
 
 	def test_apply_state_refuses_a_bad_value_and_changes_nothing(self):
+		# Compare with the stored facts, not blanks: a site that ran a live checkout keeps its provider.
+		before = {field: frappe.db.get_single_value(DOCTYPE, field) for field in ("provider", "paid_until")}
 		for state in ({"provider": "Stripe"}, {"billing_period": "Weekly"}, {"paid_until": "soon"}):
 			with self.subTest(state=state):
 				self.assertRaises(frappe.ValidationError, apply_state, state)
-				self.assertEqual(frappe.db.get_single_value(DOCTYPE, "provider"), "")
+				after = {field: frappe.db.get_single_value(DOCTYPE, field) for field in before}
+				self.assertEqual(after, before)
 
 	def test_a_newer_paid_until_clears_the_pending_checkout(self):
 		store_facts(paid_until=date(2031, 1, 1), checkout_started_on=utc_now())
