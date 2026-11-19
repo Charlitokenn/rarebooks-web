@@ -158,3 +158,35 @@ _2026-11-19: created from this container with `start_time` `2026-11-24T20:00:00Z
 - AC-4: the `start_time` unit tests, the sandbox approvals and the two Value sourcing `start_time` steps · AC-9: the `paid_until` unit tests, the integration tests on realistic 10:00 UTC charge times, the charge day step · AC-21: the clock, refusal, node and browser tests and the day 22 to 26 step
 - Not yet covered: the charge day step waits for the 24 November sandbox charge
 
+
+# Verify: billing control site, Milestone 4 (operator tools and hardening) · spec 0008 · updated 2026-11-19
+_Steps derived from spec 0008 AC-13 to AC-15, AC-20 and AC-22. Covers build plan tasks 16 to 18. The `rotate_secret` instruction reaches a bench only once spec 0007's `report_sites` exists on the control site (its Milestone 4); until then `removal.rotation_instructions(bench)` is what it will send._
+
+## Commands (rarebooks_control)
+- [ ] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_operator_tools` → 19 tests pass → AC-13, AC-14, AC-15, AC-20, AC-22
+- [ ] `bench --site <control site> run-tests --app rarebooks_control` → 92 tests pass → Milestones 1 to 4
+
+## Commands (this repo)
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_rotation` → 4 tests pass → AC-15
+
+## Control site, by hand (staging)
+- [ ] As a Billing Manager, change `paid_until` on a Books Hosted Site and save → a Version shows the change, `push_status` goes Pending then Synced, the customer site shows the new date → AC-14, AC-13
+- [ ] Set provider ClickPesa with billing period Monthly and save → refused with "A ClickPesa site is billed yearly…" → AC-14
+- [ ] `provider_reference` is read only in the form; change `provider` and it becomes editable; saving a new reference without a provider change (through the API) is refused → AC-14
+- [ ] Press Push now → "Push queued", a push reaches the customer site within a minute → AC-14
+- [ ] Sign in as a Removal Manager or System Manager → no Push now or Rotate secret button; `POST /api/method/rarebooks_control.billing.push_now` answers 403; billing fields are read only → AC-20
+- [ ] Press Rotate secret → the form says a rotation is waiting and the button is gone; no secret shows in the form, the Version list or the error log → AC-15
+- [ ] While pending, a `get_state` signed with the old secret and one signed with the new secret both answer 200, each signed with the secret it came with → AC-15
+- [ ] Run `bench books-removal-run` on the hosting bench (once `report_sites` sends `rotate_secret`) → the site's `site_config.json` holds the new `books_control_secret`, the log says "rotate_secret done" and never shows the secret, the row's `pending_secret` is empty, and a push lands (maybe after one retry in the first minute) → AC-15, AC-13
+- [ ] After the swap, a call signed with the old secret gets 401; `secret_rotated` again gets 409 `no_rotation` → AC-15
+- [ ] A fresh control site install: sign in as any desk user, Administrator included → asked to set up an authenticator app (System Settings shows two factor on, method OTP App) → AC-20
+- [ ] Send 21 badly signed calls in one hour (any mix of `get_state` and webhooks) → exactly one email to `books_ops_email`; the 22nd and later send nothing more that hour → AC-22
+- [ ] Desk shows a Billing workspace with Hosted Sites, Plans, Checkouts, Payment Events and Benches; the Hosted Site list shows and filters by Push Status → AC-14
+
+## Value sourcing (Milestone 4)
+- [ ] The pending secret is 64 hex characters from `secrets.token_hex(32)`, new on each rotation, and is sent only to the site's own bench → AC-15
+- [ ] The failure count is per UTC hour: 20 failures at 10:59 and 20 at 11:01 send no email; 21 in one hour send one → AC-22
+- [ ] A per bench limit, not per IP: 120 `secret_rotated` calls a minute from one bench pass, the 121st gets 429, another bench is unaffected → AC-22
+
+## Acceptance-criteria coverage
+- AC-13: the push after an edit and after the swap · AC-14: the edit, ClickPesa period, reference and Push now steps · AC-15: the rotation steps · AC-20: the role and two factor steps · AC-22: the signature alert and per bench limit steps
