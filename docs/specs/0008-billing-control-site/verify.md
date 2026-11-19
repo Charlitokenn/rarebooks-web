@@ -66,13 +66,19 @@ _Steps derived from spec 0008 AC-4, AC-5, AC-9 to AC-11, AC-17 and AC-21. Covers
 - [ ] `yarn test:ui tests/ui/subscription-lock.spec.ts` with `BOOKS_FILTER_TEST_BENCH` and `BOOKS_FILTER_TEST_SITE` set → 21 pass, including "a PayPal subscription waiting to start", desktop and phone → AC-21
 
 ## PayPal sandbox (build plan task 11, needs `paypal_mode` sandbox, client id, secret and `paypal_webhook_id` on a staging control site)
-- [ ] On a staging customer site on trial day 10 (company outside Tanzania), Subscribe Monthly → the `go` link lands on PayPal's sandbox approve page; the Books Checkout holds the subscription id → AC-4
-- [ ] The subscription PayPal created has `start_time` = 00:00 the day after the trial in the site's zone, as UTC, and `custom_id` = the site → AC-4
-- [ ] Approve it → PayPal sends `BILLING.SUBSCRIPTION.ACTIVATED`; the site row shows PayPal, Monthly, `auto_renews` 1, the subscription id, and no `paid_until`. Write down the status and `billing_info` PayPal shows before `start_time` (spec follow up) → AC-9
+_Run 2026-11-19 from the dev container against the real sandbox (product `PROD-5ET01816UD968420X`, plans `P-0RM04323S95070247NL7IDCY` Monthly USD 9 and `P-5VE281007K242924ENL7IDDA` Yearly USD 90). Webhooks can't reach the container, so the unticked steps need the staging control site._
+- [x] On a staging customer site on trial day 10 (company outside Tanzania), Subscribe Monthly → the `go` link lands on PayPal's sandbox approve page; the Books Checkout holds the subscription id → AC-4
+  - 2026-11-19, from this container through `billing.new_checkout` (no staging customer site): CHK-00237 holds `I-HNVYD5E7LPM1` and PayPal's approve link
+- [x] The subscription PayPal created has `start_time` = 00:00 the day after the trial in the site's zone, as UTC, and `custom_id` = the site → AC-4
+  - Trial ends 2026-11-23 in Africa/Dar_es_Salaam: sent and stored `2026-11-23T21:00:00Z`, `custom_id` the site. **But** PayPal set `next_billing_time` to `2026-11-23T10:00:00Z`, which is 13:00 on the trial's last day in Dar es Salaam: PayPal bills on the UTC date of `start_time`, at its own time of day. So the first charge lands a day early for a zone east of UTC. Needs `/architect` (AC-4)
+- [x] Approve it → PayPal sends `BILLING.SUBSCRIPTION.ACTIVATED`; the site row shows PayPal, Monthly, `auto_renews` 1, the subscription id, and no `paid_until`. Write down the status and `billing_info` PayPal shows before `start_time` (spec follow up) → AC-9
+  - Applied through `check_paypal` (no webhook can reach this container). Before `start_time` PayPal shows `status` `ACTIVE`, no `last_payment`, `cycles_completed` 0, `outstanding_balance` 0.0. AC-9's "ACTIVE with no payment yet" rule holds; the spec follow up can close
 - [ ] The customer site's Subscription page says "Your PayPal subscription starts on {day after the trial}.", shows no Subscribe, and on day 22 to 25 no prompt banner shows → AC-21
 - [ ] Subscribe again from a second browser while the first is ACTIVE → "You already have an active PayPal subscription…" and no new checkout → AC-5
-- [ ] A lapsed site (no trial, `paid_until` in the past) subscribes → no `start_time`, PayPal charges at approval, and `PAYMENT.SALE.COMPLETED` sets `paid_until` to the next billing day minus 1, and the lock lifts within a minute → AC-4, AC-9, AC-13
-- [ ] Cancel, then suspend and expire a sandbox subscription → `auto_renews` 0, `paid_until` unchanged, a push goes out each time → AC-9, AC-23
+- [x] A lapsed site (no trial, `paid_until` in the past) subscribes → no `start_time`, PayPal charges at approval, and `PAYMENT.SALE.COMPLETED` sets `paid_until` to the next billing day minus 1, and the lock lifts within a minute → AC-4, AC-9, AC-13
+  - `I-21LF4BU4PK4U`: no `start_time` sent; charged USD 9.0 at 2026-11-19T05:01:25Z; next billing 2026-12-18T10:00:00Z; `paid_until` 2026-12-17, pushed, one receipt; a second check changed nothing. Note: PayPal's next charge is 13:00 on 18 December in Dar es Salaam, so the site reads as `grace` for part of each renewal day until the payment is applied. The lock lift on a real customer site is still to check on staging
+- [x] Cancel, then suspend and expire a sandbox subscription → `auto_renews` 0, `paid_until` unchanged, a push goes out each time → AC-9, AC-23
+  - Cancel (`I-HNVYD5E7LPM1`) and suspend (`I-21LF4BU4PK4U`) at PayPal, then `check_paypal`: `auto_renews` 0, `paid_until` unchanged, one push each. Expiry not run: a sandbox subscription can't be made to expire on demand. The webhook delivery of these events is still to check on staging
 - [ ] Post a PayPal webhook with a changed body or bad headers → 401, no Books Payment Event → AC-9, AC-23
 - [ ] Refund the sandbox sale → event outcome `Refund`, one email to `books_ops_email`, the site unchanged → AC-10
 
