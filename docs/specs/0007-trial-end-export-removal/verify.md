@@ -85,9 +85,9 @@ _Built in the `rarebooks_control` repo (`removal.py`, `removal_mail.py`, `export
 
 ### Value sourcing (one step each)
 - [x] `removal_on`: report a later date while `Scheduled` → it moves; report an earlier date → it stays and an Error Log row says so; after `Exporting` no date moves → AC-1
-- [ ] Which warning: first report on the removal day itself with no warning sent → only the 1 day warning, worded "very soon"; a lapsed site 14 days out → offset 14 → AC-4
+- [x] Which warning: first report on the removal day itself with no warning sent → only the 1 day warning, worded "very soon"; a lapsed site 14 days out → offset 14 → AC-4
 - [ ] Owner address: change the site's `owner_email` on the site after the case opens → emails still go to the address copied at case open (the registry's, never the site's) → AC-4
-- [ ] Email language: a site reporting `language: sw` → the warning reads in Swahili ("itaondolewa"); `sw_TZ` too; `fr` → English → AC-4
+- [x] Email language: a site reporting `language: sw` → the warning reads in Swahili ("itaondolewa"); `sw_TZ` too; `fr` → English → AC-4
 - [x] "A warning 24 hours ago": with the earliest warning 23 hours old → no `export`; at 25 hours → `export`, case `Exporting` with `export_claimed_on` → AC-5
 - [x] Paid by the site's own report: the site reports phase `active` with no `removal_on` → the open case is `Cancelled` → AC-11
 - [x] Paid by the control site: set `paid_until` to today on the registry while the site still reports `locked` → the case is `Cancelled`; a `paid_until` 8 days back (past grace) → it stays open → AC-11
@@ -95,8 +95,8 @@ _Built in the `rarebooks_control` repo (`removal.py`, `removal_mail.py`, `export
 - [x] `delete_export_on`: after `export_ready` → upload day plus 90 days → AC-16
 - [x] Download link: open `/api/method/rarebooks_control.removal.download?token=<token from the email>` → 302 to a presigned R2 URL, `download_count` goes up by one; a wrong token or one past `link_expires_on` → 404 "This link has expired. Contact support." → AC-7
 - [ ] Daily cap: `books_removal_max_drops_per_day` 1 and two due cases → the first `drop_starting` says proceed, the second "the bench reached today's drop cap"; the next UTC day the second passes → AC-20
-- [ ] Approval: with `books_removal_require_approval` on, a due case gets no `drop` until Approve; with it off in `site_config.json`, `drop` comes with no approval → AC-20
-- [ ] Kill switch: tick `removal_paused` on the bench → no new `export` and every `drop_starting` says "removal is paused for the bench" → AC-20
+- [x] Approval: with `books_removal_require_approval` on, a due case gets no `drop` until Approve; with it off in `site_config.json`, `drop` comes with no approval → AC-20
+- [x] Kill switch: tick `removal_paused` on the bench → no new `export` and every `drop_starting` says "removal is paused for the bench" → AC-20
 - [x] R2 HEAD: delete the object in the bucket, or change its size → `drop_starting` refuses → AC-9
 - [x] Billing gates: `exempt`, `auto_renews` or a Books Checkout `Created` in the last 24 hours on the registry → `drop_starting` refuses, the case stays `Holding` → AC-9
 - [ ] Checkout freeze: `hold_until` 59 minutes away → the customer site's Subscribe shows the `being_removed` message; 2 hours away → checkout works → AC-11
