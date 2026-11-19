@@ -9,11 +9,11 @@ Setup on a v16 test site (`<site>`), run from the bench folder:
 ## UI / manual
 - [x] Locked trial (`locked` phase): open `/books` → banner reads "Your books are read only. Subscribe by {day 30} to keep this site. After that it is removed and a copy of your data is emailed to the owner." with the date in the System Settings date format → AC-2, AC-19
 - [x] Lapsed (`lapsed` phase): banner reads "Your books are read only. Renew by {paid_until + 67 days} to keep this site. After that it is removed and a copy of your data is emailed to the owner." → AC-1, AC-2
-- [ ] Subscription page on a locked trial and on a lapsed site → a "Removal on" row with that same date; an open trial (`trial`, `prompt`) shows no such row → AC-2
-- [ ] Locked trial with the hold set: `bench --site <site> execute frappe_books.subscription.removal.mark_export_sent --kwargs '{"export_sent_on": "<now UTC ISO>", "removal_hold_until": "<now + 72h UTC ISO>"}'` → banner reads "Your books are read only. A copy of your data was emailed to the owner. This site will be removed after {date}." and a System Manager still sees Subscribe → AC-8
-- [ ] Same, with System Settings time zone `Africa/Dar_es_Salaam` and `removal_hold_until` at 22:30 UTC → the banner date is the next day (site time zone, not UTC) → AC-8 (Value sourcing: banner date)
+- [x] Subscription page on a locked trial and on a lapsed site → a "Removal on" row with that same date; an open trial (`trial`, `prompt`) shows no such row → AC-2
+- [x] Locked trial with the hold set: `bench --site <site> execute frappe_books.subscription.removal.mark_export_sent --kwargs '{"export_sent_on": "<now UTC ISO>", "removal_hold_until": "<now + 72h UTC ISO>"}'` → banner reads "Your books are read only. A copy of your data was emailed to the owner. This site will be removed after {date}." and a System Manager still sees Subscribe → AC-8
+- [x] Same, with System Settings time zone `Africa/Dar_es_Salaam` and `removal_hold_until` at 22:30 UTC → the banner date is the next day (site time zone, not UTC) → AC-8 (Value sourcing: banner date)
 - [x] All three texts at phone width (390 px): wrap without overflow, Subscribe button reachable → AC-19
-- [ ] Change the user language: the new texts and "Removal on" go through `t` (they show translated once a translation exists) → AC-19
+- [x] Change the user language: the new texts and "Removal on" go through `t` (they show translated once a translation exists) → AC-19
 
 ## Commands
 - [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_removal` → 38 tests OK → AC-1 to AC-3, AC-5 to AC-8, AC-11, AC-12, AC-14, AC-15, AC-18
@@ -24,14 +24,14 @@ Setup on a v16 test site (`<site>`), run from the bench folder:
 - [x] `chmod 644 config/books-runner.json` → exit 1, "must be owned by the bench user with mode 600"; `chmod 600` → it goes on → AC-15
 - [x] `control_url` set to `http://...` → exit 1, "must start with https://" → AC-15
 - [x] Valid secrets file, control URL pointing at nothing → exit 1, "stopped, nothing done", no site touched → AC-3, AC-15
-- [ ] `bench --site <site> execute frappe_books.subscription.removal.removal_status` on a locked trial → `kind: Trial`, `removal_on` = day 30, `today` the site date, `company_name` from Books Accounting Settings, `language` from System Settings → AC-1 (Value sourcing: removal_status fields)
-- [ ] Same on the lapsed site → `kind: Lapsed`, `removal_on` = `paid_until` + 67 days; on an exempt or active site → `removal_on` null → AC-1
+- [x] `bench --site <site> execute frappe_books.subscription.removal.removal_status` on a locked trial → `kind: Trial`, `removal_on` = day 30, `today` the site date, `company_name` from Books Accounting Settings, `language` from System Settings → AC-1 (Value sourcing: removal_status fields)
+- [x] Same on the lapsed site → `kind: Lapsed`, `removal_on` = `paid_until` + 67 days; on an exempt or active site → `removal_on` null → AC-1
 - [x] Build an export by hand: `bench --site <site> console`, then `from frappe_books.subscription.removal import build_export; build_export("/tmp/books-export")` → `readable/` has a CSV per Frappe Books doctype (no `Books Subscription.csv`), child tables carry `parent`, `parenttype`, `parentfield`, `idx`, singles are `field,value`, `File.csv` lists attachments, `files/public` and `files/private` hold the uploads, `backup/database.sql.gz` exists, `README.txt` explains the restore, no `site_config.json` anywhere → AC-6
-- [ ] `head -c 3 "/tmp/books-export/readable/Books Sales Invoice.csv" | xxd` → `efbbbf` (byte order mark); open the CSV in Excel or LibreOffice → accents show correctly → AC-6
+- [x] `head -c 3 "/tmp/books-export/readable/Books Sales Invoice.csv" | xxd` → `efbbbf` (byte order mark); open the CSV in Excel or LibreOffice → accents show correctly → AC-6
 - [x] Run that export on a locked site → it succeeds, and Books Subscription's `modified` is unchanged → AC-18
 - [ ] Restore `backup/database.sql.gz` onto a fresh v16 site (`bench --site <new> restore ...`) → it opens with the same records, and users can log in → AC-6 (README promise)
 - [x] Push a newer `paid_until` while the hold is set: `bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'state': {'paid_until': '2027-12-31'}}"` → `export_sent_on` and `removal_hold_until` are empty → AC-11
-- [ ] Free disk check (Value sourcing): on a site whose database plus files is more than half the free disk, an `export` instruction fails with `DiskSpaceError` and a `step_failed` with step `export` → AC-12
+- [x] Free disk check (Value sourcing): on a site whose database plus files is more than half the free disk, an `export` instruction fails with `DiskSpaceError` and a `step_failed` with step `export` → AC-12
 
 ## Acceptance-criteria coverage
 - AC-1 removal dates: clock tests, `removal_status` commands, banners
@@ -59,12 +59,12 @@ _The runner side of the drop. The control site's `drop_starting` gates (approval
 - [ ] Repeat safe after a crash: on a second throwaway site, drop only its database by hand (`DROP DATABASE`), keep the folder, then `do_drop` → the database user and folder are removed and `drop_done` is called ("finished an earlier drop") → AC-10
 - [x] `bench books-removal-run` in `dry_run` with a `drop` instruction from the stub → log "would drop {site}, case {case}", no `drop_starting` call, the site still opens → AC-14
 - [ ] Mode check at that moment: change `books_removal_mode` to `off` while a run is between its report and its drop (or patch `read_mode`) → "books_removal_mode is now off", nothing dropped → AC-9
-- [ ] A `drop` for `../frappe-bench`, `.hidden`, `a/b.example.com` or case `archived` → "ignored an instruction", no folder touched → AC-15
+- [x] A `drop` for `../frappe-bench`, `.hidden`, `a/b.example.com` or case `archived` → "ignored an instruction", no folder touched → AC-15
 
 ### UI / manual
 - [x] `bench --site <site> execute frappe_books.tests.subscription.set_hosted_phase --kwargs '{"phase": "holding"}'`, open `/books` on desktop and at 390 px → the hold banner "Your books are read only. A copy of your data was emailed to the owner. This site will be removed after {date}." with no Dismiss, a Subscribe button in reach, and no sideways scroll; the Subscription page shows "Read only" and a "Removal on" row in the date format → AC-8, AC-19
 - [x] `lapsed` phase → `get_subscription` has a `removal_on`, and the Subscription page shows it as "Removal on" (no longer null, as spec 0005 had it) → AC-2
-- [ ] `BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` → all pass, the new "once the export is emailed the banner names the hold date" test included, on desktop and phone → AC-2, AC-8, AC-19
+- [x] `BOOKS_FILTER_TEST_BENCH=<bench> BOOKS_FILTER_TEST_SITE=<site> yarn test:ui tests/ui/subscription-lock.spec.ts` → all pass, the new "once the export is emailed the banner names the hold date" test included, on desktop and phone → AC-2, AC-8, AC-19
 
 ### Coverage
 - AC-9 runner side (fresh local read with phase, date and `payment_pending`; mode read again; only a signed `proceed: true`): drop tests and the mode step
@@ -79,35 +79,35 @@ _Built in the `rarebooks_control` repo (`removal.py`, `removal_mail.py`, `export
 ### Commands
 - [x] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_removal` → 40 tests OK → AC-1, AC-4, AC-5, AC-7 to AC-9, AC-11 to AC-15, AC-17, AC-20, AC-21
 - [x] `bench --site <control site> run-tests --app rarebooks_control` → 132 tests OK, spec 0008's included → spec 0008 AC-5, AC-17
-- [ ] A runner call signed with a site secret, with an `issued_at` 6 minutes old, or naming an unknown bench → 401 with an empty signed body, and no case opened → AC-15
-- [ ] `report_sites` naming a site that the registry puts on another bench, plus one entry that is not a dict → no case for that site, an Error Log row for each, and the other sites in the same call still get their cases → AC-15
-- [ ] One runner run against a control site on a real test bench (`bench books-removal-run` in `dry_run`, a test site moved to day 26 with `set_hosted_phase`) → a Books Removal Case `Scheduled` in `dry_run`, one warning row with offset 4, and the email in the Email Queue goes to `books_ops_email` with the owner's address in its first line → AC-4, AC-14
+- [x] A runner call signed with a site secret, with an `issued_at` 6 minutes old, or naming an unknown bench → 401 with an empty signed body, and no case opened → AC-15
+- [x] `report_sites` naming a site that the registry puts on another bench, plus one entry that is not a dict → no case for that site, an Error Log row for each, and the other sites in the same call still get their cases → AC-15
+- [x] One runner run against a control site on a real test bench (`bench books-removal-run` in `dry_run`, a test site moved to day 26 with `set_hosted_phase`) → a Books Removal Case `Scheduled` in `dry_run`, one warning row with offset 4, and the email in the Email Queue goes to `books_ops_email` with the owner's address in its first line → AC-4, AC-14
 
 ### Value sourcing (one step each)
-- [ ] `removal_on`: report a later date while `Scheduled` → it moves; report an earlier date → it stays and an Error Log row says so; after `Exporting` no date moves → AC-1
+- [x] `removal_on`: report a later date while `Scheduled` → it moves; report an earlier date → it stays and an Error Log row says so; after `Exporting` no date moves → AC-1
 - [ ] Which warning: first report on the removal day itself with no warning sent → only the 1 day warning, worded "very soon"; a lapsed site 14 days out → offset 14 → AC-4
 - [ ] Owner address: change the site's `owner_email` on the site after the case opens → emails still go to the address copied at case open (the registry's, never the site's) → AC-4
 - [ ] Email language: a site reporting `language: sw` → the warning reads in Swahili ("itaondolewa"); `sw_TZ` too; `fr` → English → AC-4
-- [ ] "A warning 24 hours ago": with the earliest warning 23 hours old → no `export`; at 25 hours → `export`, case `Exporting` with `export_claimed_on` → AC-5
-- [ ] Paid by the site's own report: the site reports phase `active` with no `removal_on` → the open case is `Cancelled` → AC-11
-- [ ] Paid by the control site: set `paid_until` to today on the registry while the site still reports `locked` → the case is `Cancelled`; a `paid_until` 8 days back (past grace) → it stays open → AC-11
+- [x] "A warning 24 hours ago": with the earliest warning 23 hours old → no `export`; at 25 hours → `export`, case `Exporting` with `export_claimed_on` → AC-5
+- [x] Paid by the site's own report: the site reports phase `active` with no `removal_on` → the open case is `Cancelled` → AC-11
+- [x] Paid by the control site: set `paid_until` to today on the registry while the site still reports `locked` → the case is `Cancelled`; a `paid_until` 8 days back (past grace) → it stays open → AC-11
 - [x] Hold and link times: mark the export email `Sent` in Email Queue → `hold_until` is its sent time plus 72 hours and `link_expires_on` plus 30 days, and `mark_sent` carries both as `+00:00` timestamps → AC-7, AC-8
 - [x] `delete_export_on`: after `export_ready` → upload day plus 90 days → AC-16
-- [ ] Download link: open `/api/method/rarebooks_control.removal.download?token=<token from the email>` → 302 to a presigned R2 URL, `download_count` goes up by one; a wrong token or one past `link_expires_on` → 404 "This link has expired. Contact support." → AC-7
+- [x] Download link: open `/api/method/rarebooks_control.removal.download?token=<token from the email>` → 302 to a presigned R2 URL, `download_count` goes up by one; a wrong token or one past `link_expires_on` → 404 "This link has expired. Contact support." → AC-7
 - [ ] Daily cap: `books_removal_max_drops_per_day` 1 and two due cases → the first `drop_starting` says proceed, the second "the bench reached today's drop cap"; the next UTC day the second passes → AC-20
 - [ ] Approval: with `books_removal_require_approval` on, a due case gets no `drop` until Approve; with it off in `site_config.json`, `drop` comes with no approval → AC-20
 - [ ] Kill switch: tick `removal_paused` on the bench → no new `export` and every `drop_starting` says "removal is paused for the bench" → AC-20
-- [ ] R2 HEAD: delete the object in the bucket, or change its size → `drop_starting` refuses → AC-9
-- [ ] Billing gates: `exempt`, `auto_renews` or a Books Checkout `Created` in the last 24 hours on the registry → `drop_starting` refuses, the case stays `Holding` → AC-9
+- [x] R2 HEAD: delete the object in the bucket, or change its size → `drop_starting` refuses → AC-9
+- [x] Billing gates: `exempt`, `auto_renews` or a Books Checkout `Created` in the last 24 hours on the registry → `drop_starting` refuses, the case stays `Holding` → AC-9
 - [ ] Checkout freeze: `hold_until` 59 minutes away → the customer site's Subscribe shows the `being_removed` message; 2 hours away → checkout works → AC-11
 
 ### UI / manual (control site desk)
-- [ ] As a Removal Manager open a `Holding` case → Approve and Pause buttons; Pause asks for a reason; a `Paused` case shows Resume, a `Failed` case shows Retry → AC-13
-- [ ] As a System Manager or Billing Manager → no buttons, and calling `rarebooks_control.removal.approve_case` gives 403 → AC-13
-- [ ] Retry a case whose export email went to `Error` → a new export email with a new link, the case `Holding`, and the hold starts from the new sent time → AC-12, AC-13
-- [ ] The case's Version list shows each status change, approval and download; no role sees Delete → AC-17
-- [ ] Hourly job with a bench silent for 4 hours and a case `Dropping` for 3 hours → one email each to `books_ops_email`; run it again → no second email → AC-21
-- [ ] Daily job → one email listing unapproved `Holding` cases, and the digest of the day's removals and cancellations → AC-21
+- [x] As a Removal Manager open a `Holding` case → Approve and Pause buttons; Pause asks for a reason; a `Paused` case shows Resume, a `Failed` case shows Retry → AC-13
+- [x] As a System Manager or Billing Manager → no buttons, and calling `rarebooks_control.removal.approve_case` gives 403 → AC-13
+- [x] Retry a case whose export email went to `Error` → a new export email with a new link, the case `Holding`, and the hold starts from the new sent time → AC-12, AC-13
+- [x] The case's Version list shows each status change, approval and download; no role sees Delete → AC-17
+- [x] Hourly job with a bench silent for 4 hours and a case `Dropping` for 3 hours → one email each to `books_ops_email`; run it again → no second email → AC-21
+- [x] Daily job → one email listing unapproved `Holding` cases, and the digest of the day's removals and cancellations → AC-21
 
 ### Coverage
 - AC-4, AC-5, AC-7, AC-8, AC-11, AC-12, AC-13, AC-14, AC-17, AC-20, AC-21: `test_removal.py` and the steps above
