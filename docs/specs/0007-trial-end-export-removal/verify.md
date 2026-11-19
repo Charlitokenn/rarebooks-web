@@ -72,3 +72,46 @@ _The runner side of the drop. The control site's `drop_starting` gates (approval
 - AC-14 dry run logs "would drop": drop tests and the dry run step
 - AC-19 the hold text at phone width: the Playwright hold test
 - Still Milestone 4: the control site half of AC-9 and AC-20, plus AC-4, AC-13, AC-16, AC-17, AC-21
+
+## Milestone 4: control site removal side · added 2026-11-19
+_Built in the `rarebooks_control` repo (`removal.py`, `removal_mail.py`, `export_storage.py`, Books Removal Case and Books Removal Warning). R2 is patched in the tests; the real bucket comes with Milestone 5._
+
+### Commands
+- [x] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_removal` → 40 tests OK → AC-1, AC-4, AC-5, AC-7 to AC-9, AC-11 to AC-15, AC-17, AC-20, AC-21
+- [x] `bench --site <control site> run-tests --app rarebooks_control` → 132 tests OK, spec 0008's included → spec 0008 AC-5, AC-17
+- [ ] A runner call signed with a site secret, with an `issued_at` 6 minutes old, or naming an unknown bench → 401 with an empty signed body, and no case opened → AC-15
+- [ ] `report_sites` naming a site that the registry puts on another bench, plus one entry that is not a dict → no case for that site, an Error Log row for each, and the other sites in the same call still get their cases → AC-15
+- [ ] One runner run against a control site on a real test bench (`bench books-removal-run` in `dry_run`, a test site moved to day 26 with `set_hosted_phase`) → a Books Removal Case `Scheduled` in `dry_run`, one warning row with offset 4, and the email in the Email Queue goes to `books_ops_email` with the owner's address in its first line → AC-4, AC-14
+
+### Value sourcing (one step each)
+- [ ] `removal_on`: report a later date while `Scheduled` → it moves; report an earlier date → it stays and an Error Log row says so; after `Exporting` no date moves → AC-1
+- [ ] Which warning: first report on the removal day itself with no warning sent → only the 1 day warning, worded "very soon"; a lapsed site 14 days out → offset 14 → AC-4
+- [ ] Owner address: change the site's `owner_email` on the site after the case opens → emails still go to the address copied at case open (the registry's, never the site's) → AC-4
+- [ ] Email language: a site reporting `language: sw` → the warning reads in Swahili ("itaondolewa"); `sw_TZ` too; `fr` → English → AC-4
+- [ ] "A warning 24 hours ago": with the earliest warning 23 hours old → no `export`; at 25 hours → `export`, case `Exporting` with `export_claimed_on` → AC-5
+- [ ] Paid by the site's own report: the site reports phase `active` with no `removal_on` → the open case is `Cancelled` → AC-11
+- [ ] Paid by the control site: set `paid_until` to today on the registry while the site still reports `locked` → the case is `Cancelled`; a `paid_until` 8 days back (past grace) → it stays open → AC-11
+- [ ] Hold and link times: mark the export email `Sent` in Email Queue → `hold_until` is its sent time plus 72 hours and `link_expires_on` plus 30 days, and `mark_sent` carries both as `+00:00` timestamps → AC-7, AC-8
+- [ ] `delete_export_on`: after `export_ready` → upload day plus 90 days → AC-16
+- [ ] Download link: open `/api/method/rarebooks_control.removal.download?token=<token from the email>` → 302 to a presigned R2 URL, `download_count` goes up by one; a wrong token or one past `link_expires_on` → 404 "This link has expired. Contact support." → AC-7
+- [ ] Daily cap: `books_removal_max_drops_per_day` 1 and two due cases → the first `drop_starting` says proceed, the second "the bench reached today's drop cap"; the next UTC day the second passes → AC-20
+- [ ] Approval: with `books_removal_require_approval` on, a due case gets no `drop` until Approve; with it off in `site_config.json`, `drop` comes with no approval → AC-20
+- [ ] Kill switch: tick `removal_paused` on the bench → no new `export` and every `drop_starting` says "removal is paused for the bench" → AC-20
+- [ ] R2 HEAD: delete the object in the bucket, or change its size → `drop_starting` refuses → AC-9
+- [ ] Billing gates: `exempt`, `auto_renews` or a Books Checkout `Created` in the last 24 hours on the registry → `drop_starting` refuses, the case stays `Holding` → AC-9
+- [ ] Checkout freeze: `hold_until` 59 minutes away → the customer site's Subscribe shows the `being_removed` message; 2 hours away → checkout works → AC-11
+
+### UI / manual (control site desk)
+- [ ] As a Removal Manager open a `Holding` case → Approve and Pause buttons; Pause asks for a reason; a `Paused` case shows Resume, a `Failed` case shows Retry → AC-13
+- [ ] As a System Manager or Billing Manager → no buttons, and calling `rarebooks_control.removal.approve_case` gives 403 → AC-13
+- [ ] Retry a case whose export email went to `Error` → a new export email with a new link, the case `Holding`, and the hold starts from the new sent time → AC-12, AC-13
+- [ ] The case's Version list shows each status change, approval and download; no role sees Delete → AC-17
+- [ ] Hourly job with a bench silent for 4 hours and a case `Dropping` for 3 hours → one email each to `books_ops_email`; run it again → no second email → AC-21
+- [ ] Daily job → one email listing unapproved `Holding` cases, and the digest of the day's removals and cancellations → AC-21
+
+### Coverage
+- AC-4, AC-5, AC-7, AC-8, AC-11, AC-12, AC-13, AC-14, AC-17, AC-20, AC-21: `test_removal.py` and the steps above
+- AC-9 and AC-20 control site half: `TestDropGates` (every gate) and the value steps
+- AC-15 control site half: `TestRunnerAuth`
+- AC-16: `delete_export_on` here; the lifecycle rules are Milestone 5
+- Not here: a real R2 bucket, Resend delivery and a full live cycle (Milestone 5, Rollout)
