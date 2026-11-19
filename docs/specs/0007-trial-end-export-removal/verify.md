@@ -57,7 +57,7 @@ _The runner side of the drop. The control site's `drop_starting` gates (approval
 - [ ] A real drop on a throwaway site (Frappe's drop is mocked in the tests): `bench new-site drop-test.localhost --install-app frappe_books`, set its `books_control_url`, lock it past day 30 (`set_hosted_phase` with `locked`, then move `trial_started_on` back 40 days), put `root_login` and `root_password` in `config/books-runner.json`, then call `Runner(...).do_drop({"site": "drop-test.localhost", "case": "RC-99999", "action": "drop"})` from `bench console` with `drop_starting` patched to answer `proceed: true` → the database and its users are gone (`SHOW DATABASES`, `SELECT user FROM mysql.user`), `sites/drop-test.localhost` is gone, `books-removal/archived/RC-99999` doesn't exist, and nothing else under `archived/` changed → AC-10
 - [ ] Repeat that `do_drop` call → it goes straight to `drop_done` ("already gone"), with no error → AC-10
 - [ ] Repeat safe after a crash: on a second throwaway site, drop only its database by hand (`DROP DATABASE`), keep the folder, then `do_drop` → the database user and folder are removed and `drop_done` is called ("finished an earlier drop") → AC-10
-- [ ] `bench books-removal-run` in `dry_run` with a `drop` instruction from the stub → log "would drop {site}, case {case}", no `drop_starting` call, the site still opens → AC-14
+- [x] `bench books-removal-run` in `dry_run` with a `drop` instruction from the stub → log "would drop {site}, case {case}", no `drop_starting` call, the site still opens → AC-14
 - [ ] Mode check at that moment: change `books_removal_mode` to `off` while a run is between its report and its drop (or patch `read_mode`) → "books_removal_mode is now off", nothing dropped → AC-9
 - [ ] A `drop` for `../frappe-bench`, `.hidden`, `a/b.example.com` or case `archived` → "ignored an instruction", no folder touched → AC-15
 
@@ -91,8 +91,8 @@ _Built in the `rarebooks_control` repo (`removal.py`, `removal_mail.py`, `export
 - [ ] "A warning 24 hours ago": with the earliest warning 23 hours old → no `export`; at 25 hours → `export`, case `Exporting` with `export_claimed_on` → AC-5
 - [ ] Paid by the site's own report: the site reports phase `active` with no `removal_on` → the open case is `Cancelled` → AC-11
 - [ ] Paid by the control site: set `paid_until` to today on the registry while the site still reports `locked` → the case is `Cancelled`; a `paid_until` 8 days back (past grace) → it stays open → AC-11
-- [ ] Hold and link times: mark the export email `Sent` in Email Queue → `hold_until` is its sent time plus 72 hours and `link_expires_on` plus 30 days, and `mark_sent` carries both as `+00:00` timestamps → AC-7, AC-8
-- [ ] `delete_export_on`: after `export_ready` → upload day plus 90 days → AC-16
+- [x] Hold and link times: mark the export email `Sent` in Email Queue → `hold_until` is its sent time plus 72 hours and `link_expires_on` plus 30 days, and `mark_sent` carries both as `+00:00` timestamps → AC-7, AC-8
+- [x] `delete_export_on`: after `export_ready` → upload day plus 90 days → AC-16
 - [ ] Download link: open `/api/method/rarebooks_control.removal.download?token=<token from the email>` → 302 to a presigned R2 URL, `download_count` goes up by one; a wrong token or one past `link_expires_on` → 404 "This link has expired. Contact support." → AC-7
 - [ ] Daily cap: `books_removal_max_drops_per_day` 1 and two due cases → the first `drop_starting` says proceed, the second "the bench reached today's drop cap"; the next UTC day the second passes → AC-20
 - [ ] Approval: with `books_removal_require_approval` on, a due case gets no `drop` until Approve; with it off in `site_config.json`, `drop` comes with no approval → AC-20
