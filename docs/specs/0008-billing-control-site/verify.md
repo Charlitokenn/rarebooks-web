@@ -141,9 +141,11 @@ _Steps derived from spec 0008 AC-4, AC-9 and AC-21 as amended 2026-11-19 (the sa
 
 ## PayPal sandbox (the check task 11a asks for before the rule is relied on)
 _2026-11-19: created from this container with `start_time` `2026-11-24T20:00:00Z` (a trial ending 23 November in Dar es Salaam). PayPal shows no `billing_info` until a buyer approves, so both wait for a sandbox buyer._
-- [ ] Approve Monthly `I-1X9M6LU63YXN` with a sandbox buyer, then read it → `next_billing_time` on 24 November (about 10:00 UTC), not the 23rd → AC-4
-- [ ] Approve Yearly `I-D3EMHU4N44BH` the same way → `next_billing_time` on 24 November → AC-4
-- [ ] Cancel both afterwards, so no sandbox charge runs on 24 November → housekeeping
+- [x] Approve Monthly `I-1X9M6LU63YXN` with a sandbox buyer, then read it → `next_billing_time` on 24 November (about 10:00 UTC), not the 23rd → AC-4
+  - 2026-11-19, approved by you: `ACTIVE`, `next_billing_time` `2026-11-24T10:00:00Z`, 24 November (13:00 in Dar es Salaam). The noon Pacific rule holds for Monthly
+- [x] Approve Yearly `I-D3EMHU4N44BH` the same way → `next_billing_time` on 24 November → AC-4
+  - 2026-11-19, approved by you: `ACTIVE`, `next_billing_time` `2026-11-24T10:00:00Z`, 24 November (13:00 in Dar es Salaam). The noon Pacific rule holds for Yearly
+- [ ] Let both charge on 24 November and check the charge day step below, then cancel them → housekeeping
 - [ ] Once the first charge lands (or on a lapsed site charged at approval), `paid_until` is PayPal's next charge day itself, and the customer site reads `active`, not `grace`, on that morning → AC-9
 
 ## Value sourcing (task 11a)
@@ -154,5 +156,5 @@ _2026-11-19: created from this container with `start_time` `2026-11-24T20:00:00Z
 
 ## Acceptance-criteria coverage
 - AC-4: the `start_time` unit tests, the sandbox approvals and the two Value sourcing `start_time` steps · AC-9: the `paid_until` unit tests, the integration tests on realistic 10:00 UTC charge times, the charge day step · AC-21: the clock, refusal, node and browser tests and the day 22 to 26 step
-- Not yet covered: the sandbox approvals above need a sandbox buyer login
+- Not yet covered: the charge day step waits for the 24 November sandbox charge
 
