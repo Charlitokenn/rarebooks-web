@@ -151,7 +151,7 @@ spec [0007](../specs/0007-trial-end-export-removal/index.md) · code in `frappe_
 - [ ] Build it: `/develop trial end export and site removal`
   - [x] One export end to end against stubs: lapsed `removal_on`, the two Books Subscription fields, `removal.py`, `build_export`, the `books-removal-run` command with its secrets file and signed calls, the new banner texts (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8, AC-15, AC-18, AC-19)
   - [x] Cancel and failure paths: `clear`, `step_failed` with secret scrubbing, deferred exports, control site down (AC-11, AC-12, AC-15)
-  - [ ] The drop behind dry run: local and remote checks, Frappe's in process drop with the case's archived path, repeat safe, phone layout and Playwright (AC-9, AC-10, AC-14, AC-19)
+  - [x] The drop behind dry run: local and remote checks, Frappe's in process drop with the case's archived path, repeat safe, phone layout and Playwright (AC-9, AC-10, AC-14, AC-19)
   - [ ] Control site removal side, in `rarebooks_control` (needs feature 8): hosting bench, removal case and warnings, signed endpoints, emails, download link, approval, cap, kill switch, alerts (AC-4, AC-5, AC-7, AC-9, AC-11 to AC-17, AC-20, AC-21)
   - [ ] Rollout: R2 bucket and lifecycle rules, host config and cron, a dry run cycle, then live with approval on (AC-3, AC-14, AC-16, AC-20)
 - [ ] Verify it: `/check verify trial end export and site removal`
