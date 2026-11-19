@@ -38,6 +38,8 @@ export interface SubscriptionStatus {
   auto_renews: boolean;
   /** The day after the trial, while a PayPal subscription made during it waits for its first payment (spec 0008 AC-21). */
   subscription_starts_on: string | null;
+  /** PayPal is retrying a first charge that failed on its start day (spec 0008 AC-21). */
+  first_payment_overdue: boolean;
   payment_pending: boolean;
   can_subscribe: boolean;
   offered_provider: string | null;
@@ -275,10 +277,17 @@ function getLockText(status: SubscriptionStatus | null): string {
   return t`This site is read only. Subscribe to make changes again.`;
 }
 
-/** "Your PayPal subscription starts on …" while it waits for its first payment, else null (spec 0008 AC-21). */
+/**
+ * The note for a PayPal subscription made in the trial with no payment yet: its start day up to that day,
+ * then that the first payment hasn't arrived. Null otherwise (spec 0008 AC-21).
+ */
 export function getSubscriptionStartsNote(
   status: SubscriptionStatus | null
 ): string | null {
+  if (status?.first_payment_overdue) {
+    return t`Your first PayPal payment hasn't arrived. Check the payment method in your PayPal account.`;
+  }
+
   if (!status?.subscription_starts_on) {
     return null;
   }

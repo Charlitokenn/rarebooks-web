@@ -440,16 +440,22 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 			self.assertRaisesRegex(frappe.ValidationError, "subscription is active", start_checkout, "Yearly")
 
 	def test_a_paypal_subscription_waiting_to_start_refuses_checkout(self):
-		# covers: spec 0008 AC-21
-		store_facts(
-			trial_started_on=utc_now() - timedelta(days=22), provider="PayPal", auto_renews=1, paid_until=None
-		)
-		stub = ControlStub()
-		with control_site(stub):
-			self.assertRaisesRegex(
-				frappe.ValidationError, "Your PayPal subscription starts on", start_checkout, "Monthly"
-			)
-		self.assertEqual(stub.calls, [])
+		# covers: spec 0008 AC-21. Day 22 is the first charge day, day 23 is after it with no payment.
+		for days_ago, message in (
+			(21, "Your PayPal subscription starts on"),
+			(22, "Your first PayPal payment hasn't arrived"),
+		):
+			with self.subTest(days_ago=days_ago):
+				store_facts(
+					trial_started_on=utc_now() - timedelta(days=days_ago),
+					provider="PayPal",
+					auto_renews=1,
+					paid_until=None,
+				)
+				stub = ControlStub()
+				with control_site(stub):
+					self.assertRaisesRegex(frappe.ValidationError, message, start_checkout, "Monthly")
+				self.assertEqual(stub.calls, [])
 
 	def test_a_plain_http_control_url_is_never_called_outside_developer_mode(self):
 		# covers: the security model (only https carries the secret)

@@ -158,6 +158,22 @@ for (const layout of LAYOUTS) {
       await expectNoSidewaysScroll(page);
     });
 
+    test('a missing first PayPal payment says so, keeps Subscribe hidden and brings the prompt back', async ({
+      page,
+    }) => {
+      // covers: spec 0008 AC-21
+      await setPhase(page, 'overdue');
+      await open(page, '/books');
+      await expect(banner(page)).toHaveCount(1);
+
+      await open(page, '/books/subscription');
+      await expect(page.getByTestId('subscription-starts-on')).toHaveText(
+        "Your first PayPal payment hasn't arrived. Check the payment method in your PayPal account."
+      );
+      await expect(page.getByTestId('subscription-plans')).toHaveCount(0);
+      await expectNoSidewaysScroll(page);
+    });
+
     test('a locked site keeps reads and refuses writes with the lock notice', async ({
       page,
     }) => {

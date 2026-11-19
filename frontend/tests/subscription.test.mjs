@@ -41,6 +41,7 @@ function trialStatus(day, overrides = {}) {
     billing_period: null,
     auto_renews: false,
     subscription_starts_on: null,
+    first_payment_overdue: false,
     payment_pending: false,
     can_subscribe: true,
     offered_provider: 'PayPal',
@@ -98,12 +99,30 @@ test('the starts on note names the day after the trial, only while waiting', () 
   // covers: spec 0008 AC-21
   assert.equal(
     getSubscriptionStartsNote(
-      trialStatus(23, { subscription_starts_on: '2026-11-22' })
+      trialStatus(22, { subscription_starts_on: '2026-11-22' })
     ),
     'Your PayPal subscription starts on 22/11/2026.'
   );
   assert.equal(getSubscriptionStartsNote(trialStatus(23)), null);
   assert.equal(getSubscriptionStartsNote(null), null);
+});
+
+test('after its start day a missing first PayPal payment gets its own note, and the prompt and lock return', () => {
+  // covers: spec 0008 AC-21
+  const overdue = {
+    provider: 'PayPal',
+    auto_renews: true,
+    first_payment_overdue: true,
+  };
+  assert.equal(
+    getSubscriptionStartsNote(trialStatus(23, overdue)),
+    "Your first PayPal payment hasn't arrived. Check the payment method in your PayPal account."
+  );
+  assert.ok(getSubscriptionBanner(trialStatus(23, overdue), null));
+  assert.equal(
+    getSubscriptionBanner(trialStatus(26, overdue), null)?.message,
+    TRIAL_LOCK
+  );
 });
 
 test('a dismissed prompt stays hidden until the next site day', () => {

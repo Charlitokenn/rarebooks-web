@@ -131,8 +131,8 @@ const checkoutPeriod = ref<SubscriptionPlan['billing_period'] | null>(null);
 const checkoutError = ref<string | null>(null);
 
 const startsNote = computed(() => getSubscriptionStartsNote(status.value));
-// An active plan is changed with the provider, and a PayPal subscription waiting to start needs no
-// second checkout, so neither offers plans (spec 0008 AC-21).
+// An active plan is changed with the provider, and a PayPal subscription waiting for its first payment
+// needs no second checkout (PayPal would refuse it), so neither offers plans (spec 0008 AC-21).
 const showPlans = computed(
   () =>
     !!status.value &&

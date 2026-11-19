@@ -84,8 +84,8 @@ _Run 2026-11-19 from the dev container against the real sandbox (product `PROD-5
 
 ## Value sourcing (PayPal)
 - [ ] `start_time` is 12:00 Pacific on the day after the trial whatever the site zone: a trial ending 2026-11-23 sends `2026-11-24T20:00:00Z`, and PayPal's first `next_billing_time` falls on 24 November (about 10:00 UTC, 13:00 in Dar es Salaam) → AC-4 (amended 2026-11-19, build plan task 11a)
-- [ ] `start_time` uses `paid_until` + 1 when it is later than the trial end, and is left out when the day is not more than 5 minutes ahead → AC-4
-- [ ] `paid_until` is the smaller of (next billing day in the site zone) and (payment day plus one period minus 1): a charge at 2026-11-19T05:01Z with the next at 2026-12-18T10:00Z gives 18 December in Dar es Salaam, and the site reads `active`, not `grace`, on the morning of 18 December; a moved `next_billing_time` with the same `last_payment.time` grants no days → AC-9 (amended 2026-11-19)
+- [ ] `start_time` uses `paid_until` + 1 when it is later than the trial end, and is left out when that day is not later than the site's today in its zone → AC-4 (amended 2026-11-19)
+- [ ] `paid_until` is the smaller of (next billing day in the site zone) and (payment day on the Pacific calendar plus one period, no minus 1): a charge at 2026-11-19T05:01Z with the next at 2026-12-18T10:00Z gives 18 December in Dar es Salaam, and the site reads `active`, not `grace`, on the morning of 18 December; a moved `next_billing_time` with the same `last_payment.time` grants no days → AC-9 (amended 2026-11-19)
 - [ ] The money check uses the Books Plan found by `paypal_plan_id` (a disabled plan too): 8.99 USD or 9.00 EUR on a 9 USD plan is `Mismatch` with an ops email naming the subscriber → AC-9, AC-10
 - [ ] Of two live subscriptions, the newer by PayPal `create_time` is cancelled, whichever event arrives first → AC-11
 - [ ] `subscription_starts_on` is trial day 21 plus 1 in the site's zone, and is empty once `paid_until` is set, for ClickPesa, or with `auto_renews` off → AC-21
@@ -126,3 +126,33 @@ _Steps derived from spec 0008 AC-10, AC-12, AC-13, AC-16, AC-18 and AC-19. Cover
 ## Acceptance-criteria coverage
 - AC-10: the digest steps · AC-12: the return page steps · AC-13: the push alert and sweep steps · AC-16: the reconcile and expiry steps · AC-18: the retention step · AC-19: the receipt steps · spec 0007: the `billing_state` step
 - Not yet covered: `being_removed` (AC-5), until spec 0007's Books Removal Case exists on the control site
+
+# Verify: billing control site, task 11a (PayPal billing dates) · spec 0008 · updated 2026-11-19
+_Steps derived from spec 0008 AC-4, AC-9 and AC-21 as amended 2026-11-19 (the sandbox run). Covers build plan task 11a._
+
+## Commands (rarebooks_control)
+- [ ] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_paypal` → 25 tests pass, including `UnitTestPayPalDates` (noon Pacific in winter and summer, the site's today gate, Monthly and Yearly, a lapsed renewal, no `next_billing_time`) → AC-4, AC-9
+- [ ] `bench --site <control site> run-tests --app rarebooks_control` → 92 tests pass → Milestones 1 to 3 so far
+
+## Commands (this repo)
+- [ ] `...test_subscription_clock` and `...test_subscription_control` → pass, including `test_a_paypal_first_payment_missing_after_its_day_is_overdue` and the two day refusal test → AC-21
+- [ ] `cd frontend && yarn test` → passes, including "after its start day a missing first PayPal payment gets its own note" → AC-21
+- [ ] `yarn test:ui tests/ui/subscription-lock.spec.ts` with `BOOKS_FILTER_TEST_BENCH` and `BOOKS_FILTER_TEST_SITE` set → 23 pass, including "a missing first PayPal payment says so", desktop and phone → AC-21
+
+## PayPal sandbox (the check task 11a asks for before the rule is relied on)
+_2026-11-19: created from this container with `start_time` `2026-11-24T20:00:00Z` (a trial ending 23 November in Dar es Salaam). PayPal shows no `billing_info` until a buyer approves, so both wait for a sandbox buyer._
+- [ ] Approve Monthly `I-1X9M6LU63YXN` with a sandbox buyer, then read it → `next_billing_time` on 24 November (about 10:00 UTC), not the 23rd → AC-4
+- [ ] Approve Yearly `I-D3EMHU4N44BH` the same way → `next_billing_time` on 24 November → AC-4
+- [ ] Cancel both afterwards, so no sandbox charge runs on 24 November → housekeeping
+- [ ] Once the first charge lands (or on a lapsed site charged at approval), `paid_until` is PayPal's next charge day itself, and the customer site reads `active`, not `grace`, on that morning → AC-9
+
+## Value sourcing (task 11a)
+- [ ] `start_time` ignores the site zone for the hour (always 12:00 Pacific) but uses it for the today gate: at 04:00 UTC on 19 November a trial ending the 18th sends none for Dar es Salaam and `2026-11-19T20:00:00Z` for New York → AC-4
+- [ ] In summer the same rule gives 19:00 UTC (Pacific daylight time): a trial ending 30 June 2027 sends `2027-07-01T19:00:00Z` → AC-4
+- [ ] The payment date is read in `America/Los_Angeles`, `next_billing_time` in the site zone: a charge at 2026-11-19T05:01Z (18 November Pacific) with the next at 2026-12-18T10:00Z gives 18 December → AC-9
+- [ ] With trial day 22 as the charge day: on day 22 the note says "starts on" and no prompt banner shows; on day 23 to 25 the note says "Your first PayPal payment hasn't arrived…", the prompt banner shows, plans stay hidden and `start_checkout` refuses with that text; on day 26 the lock comes as normal → AC-21
+
+## Acceptance-criteria coverage
+- AC-4: the `start_time` unit tests, the sandbox approvals and the two Value sourcing `start_time` steps · AC-9: the `paid_until` unit tests, the integration tests on realistic 10:00 UTC charge times, the charge day step · AC-21: the clock, refusal, node and browser tests and the day 22 to 26 step
+- Not yet covered: the sandbox approvals above need a sandbox buyer login
+

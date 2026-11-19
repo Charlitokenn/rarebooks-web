@@ -81,14 +81,28 @@ class SubscriptionClock:
 		return self.phase in LOCKED_PHASES
 
 	@property
-	def subscription_starts_on(self) -> date | None:
-		"""The day after the trial, when a PayPal subscription made during it is still waiting for its first
-		payment (spec 0008 AC-21). Subscribe is hidden meanwhile and the prompt banner stays away."""
+	def _first_paypal_charge_on(self) -> date | None:
+		"""The day after the trial, for a PayPal subscription made during it that has no payment yet."""
 		if self.phase not in UNPAID_TRIAL_PHASES or not self.facts.trial_started_on:
 			return None
 		if self.facts.provider != "PayPal" or not self.facts.auto_renews:
 			return None
 		return self._trial_day(TRIAL_LAST_DAY) + timedelta(days=1)
+
+	@property
+	def subscription_starts_on(self) -> date | None:
+		"""The day PayPal first charges, up to and including that day (spec 0008 AC-21). Subscribe is hidden
+		meanwhile and the prompt banner stays away."""
+		charge_on = self._first_paypal_charge_on
+		return charge_on if charge_on and self.today <= charge_on else None
+
+	@property
+	def first_payment_overdue(self) -> bool:
+		"""After that day with no payment, PayPal is retrying the first charge and the subscription stays
+		`ACTIVE`, so a new checkout would be refused (spec 0008 AC-21). Subscribe stays hidden, and the prompt
+		banner and the day 26 lock work as normal."""
+		charge_on = self._first_paypal_charge_on
+		return bool(charge_on) and self.today > charge_on
 
 	@property
 	def removal_kind(self) -> str | None:
@@ -137,6 +151,7 @@ class SubscriptionClock:
 			"billing_period": self.facts.billing_period or None,
 			"auto_renews": bool(self.facts.auto_renews),
 			"subscription_starts_on": _iso(self.subscription_starts_on),
+			"first_payment_overdue": self.first_payment_overdue,
 			"payment_pending": self._payment_pending(),
 			"can_subscribe": can_subscribe(),
 			"offered_provider": offered_provider,

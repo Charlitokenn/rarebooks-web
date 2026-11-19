@@ -142,11 +142,11 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 	def test_a_paypal_subscription_made_in_the_trial_starts_the_day_after_it(self):
 		# covers: spec 0008 AC-21
 		waiting = {"provider": "PayPal", "auto_renews": 1}
-		for day in (5, 23, 27):
+		for day in (5, 21, 22):
 			with self.subTest(day=day):
-				self.assertEqual(
-					clock(on_day(day), **waiting).status()["subscription_starts_on"], "2031-01-22"
-				)
+				status = clock(on_day(day), **waiting).status()
+				self.assertEqual(status["subscription_starts_on"], "2031-01-22")
+				self.assertFalse(status["first_payment_overdue"])
 		for values in (
 			{},
 			{"provider": "PayPal", "auto_renews": 0},
@@ -156,7 +156,20 @@ class IntegrationTestSubscriptionClock(IntegrationTestCase):
 			{**waiting, "trial_started_on": None},
 		):
 			with self.subTest(values=values):
-				self.assertIsNone(clock(on_day(23), **values).status()["subscription_starts_on"])
+				status = clock(on_day(23), **values).status()
+				self.assertIsNone(status["subscription_starts_on"])
+				self.assertFalse(status["first_payment_overdue"])
+
+	def test_a_paypal_first_payment_missing_after_its_day_is_overdue(self):
+		# covers: spec 0008 AC-21. PayPal is retrying the first charge; the prompt and the lock run as normal.
+		waiting = {"provider": "PayPal", "auto_renews": 1}
+		for day, phase in ((23, "prompt"), (25, "prompt"), (26, "locked"), (29, "locked")):
+			with self.subTest(day=day):
+				status = clock(on_day(day), **waiting).status()
+				self.assertEqual(
+					(status["phase"], status["subscription_starts_on"], status["first_payment_overdue"]),
+					(phase, None, True),
+				)
 
 	def test_status_dates_follow_day_one(self):
 		status = clock(on_day(23)).status()
