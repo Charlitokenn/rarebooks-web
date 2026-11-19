@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import frappe
 import requests
+from frappe.installer import update_site_config
 from frappe.utils import get_bench_path, get_sites, getdate
 
 from frappe_books.subscription.control import SIGNATURE_HEADER, is_valid_signature, issued_now, sign
@@ -45,7 +46,12 @@ MIN_SECRET_LENGTH = 32
 ERROR_CHARACTERS = 2000
 # A bigger site briefly needs about twice its size free while its export is built and zipped.
 DISK_HEADROOM = 2
-ACTION_ORDER = ("clear", "mark_sent", "export", "drop")
+# `rotate_secret` (spec 0008 AC-15) comes first, so the rest of the run already talks with the new secret.
+ACTION_ORDER = ("rotate_secret", "clear", "mark_sent", "export", "drop")
+# Actions about a site, not a removal case, so they carry no `case`.
+SITE_ACTIONS = ("rotate_secret",)
+# A site secret from the control site: 32 random bytes as hex (spec 0008 AC-1).
+SITE_SECRET = re.compile(r"^[0-9a-f]{64}$")
 # Case names go into folder and R2 key paths, so only the control site's autoname shape is accepted.
 CASE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,63}$")
 # A site name from the control site goes into a folder path, so no leading dot and no `..`.
@@ -270,14 +276,14 @@ class Runner:
 	def carry_out_one(self, item: dict):
 		handler = getattr(self, f"do_{item['action']}", None)
 		if not handler:
-			self.note(item["site"], f"{item['action']} {item['case']} not handled by this runner")
+			self.note(item["site"], f"{_label(item)} not handled by this runner")
 			return
 		try:
 			handler(item)
 		except Exception as error:
 			cause = error.__cause__ if isinstance(error, StepError) else error
 			text = self.scrub(_describe(cause))[:ERROR_CHARACTERS]
-			self.note(item["site"], f"{item['action']} {item['case']} failed: {text}")
+			self.note(item["site"], f"{_label(item)} failed: {text}")
 			if isinstance(error, StepError):
 				self.report_failure(item, error.step, text)
 
@@ -303,12 +309,35 @@ class Runner:
 			if action == "drop" and isinstance(site, str):
 				known_site = bool(SITE_NAME.match(site))
 			safe_case = isinstance(case, str) and bool(CASE_NAME.match(case)) and case != ARCHIVE_FOLDER
+			if action in SITE_ACTIONS:
+				safe_case = isinstance(item.get("secret"), str) and bool(SITE_SECRET.match(item["secret"]))
 			if action in ACTION_ORDER and known_site and safe_case:
 				return True
+		shown = (
+			{key: value for key, value in item.items() if key != "secret"} if isinstance(item, dict) else item
+		)
 		self.log(
-			_line(str(site or "-"), f"ignored an instruction: {self.scrub(json.dumps(item, default=str))}")
+			_line(str(site or "-"), f"ignored an instruction: {self.scrub(json.dumps(shown, default=str))}")
 		)
 		return False
+
+	def do_rotate_secret(self, item: dict):
+		"""Write the site's new control secret, then tell the control site, which swaps it in (spec 0008 AC-15).
+
+		Runs in `dry_run` too: a rotation is billing, not a removal write. If `secret_rotated` isn't heard, the
+		next run's report carries the same instruction, and writing the same secret again is harmless.
+		"""
+		site = item["site"]
+		with open_site(site):
+			update_site_config("books_control_secret", item["secret"])
+		try:
+			self.call("secret_rotated", {"site": site})
+		except ControlRefused as error:
+			self.note(
+				site, f"rotate_secret written, but secret_rotated wasn't heard: {self.scrub(str(error))}"
+			)
+			return
+		self.note(site, "rotate_secret done")
 
 	def do_clear(self, item: dict):
 		"""Empty the hold fields of a site that paid before its drop (AC-11). A dry run never writes to a site."""
@@ -633,6 +662,11 @@ def _folder_size(folder: str) -> int:
 
 def _describe(error: Exception) -> str:
 	return f"{type(error).__name__}: {error}"
+
+
+def _label(item: dict) -> str:
+	"""How a log line names an instruction: its action and case. Never the secret a rotation carries."""
+	return " ".join(part for part in (item.get("action"), item.get("case")) if part)
 
 
 def _line(site: str, text: str) -> str:
