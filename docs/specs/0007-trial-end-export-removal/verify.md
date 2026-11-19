@@ -115,3 +115,31 @@ _Built in the `rarebooks_control` repo (`removal.py`, `removal_mail.py`, `export
 - AC-15 control site half: `TestRunnerAuth`
 - AC-16: `delete_export_on` here; the lifecycle rules are Milestone 5
 - Not here: a real R2 bucket, Resend delivery and a full live cycle (Milestone 5, Rollout)
+
+## Milestone 5: rollout · added 2026-11-19
+_The helpers are in `frappe_books/subscription/rollout.py` (`bench books-removal-setup-bucket`, `bench books-removal-check`). Everything below runs on your Cloudflare account and the hosting server, so tick it there._
+
+### Commands
+- [x] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_rollout` → 19 tests OK → AC-3, AC-15, AC-16
+- [ ] With an R2 admin token in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: `bench books-removal-setup-bucket --endpoint-url https://<account id>.r2.cloudflarestorage.com --bucket <bucket>` → two `ok` lines; run it again → the same two lines, and the R2 dashboard shows each rule once → AC-16
+- [ ] In the R2 dashboard: the bucket is private (no public access, no r2.dev URL), and its lifecycle shows `exports/` deleted after 90 days and multipart aborted after 1 day → AC-16
+- [ ] The runner's token can upload but not change the lifecycle (`bench books-removal-setup-bucket` with the runner's keys → `FAIL ... AccessDenied`); the control site's token can HEAD and delete → AC-7, AC-9
+- [ ] On the host, as the bench user: `bench books-removal-check` → every line `ok`, with the cron line it found echoed → AC-3, AC-15
+- [ ] `bench books-removal-check --upload-probe` → `ok R2 upload: wrote exports/preflight/...`, and the object shows in the bucket → AC-7, AC-16
+- [ ] `chmod 644 config/books-runner.json` then `bench books-removal-check` → `FAIL secrets file`; set it back to 600 → AC-15
+
+### Dry run cycle on the real bench
+- [ ] Set `books_removal_mode` to `dry_run`, take a test site to day 26 with `set_hosted_phase`, wait for the next hourly run → a Books Removal Case `Scheduled` in `dry_run`, and the warning arrives in the `books_ops_email` inbox with the owner's address in its first line → AC-4, AC-14
+- [ ] Move the test site to day 30 → the export zip reaches R2 under `exports/<case>/`, the ops inbox gets the download link, the link downloads the zip, and the site's `export_sent_on` stays empty → AC-7, AC-14
+- [ ] After the 72 hour hold → `logs/books-removal.log` shows "would drop {site}" each hour, the site still opens, the case stays `Holding` → AC-14
+- [ ] `logs/books-removal.log` holds no runner secret, R2 key, root password or download token → AC-15
+
+### Going live
+- [ ] Before the switch, `books_removal_require_approval` is on and `books_removal_max_drops_per_day` is set low on the control site → AC-20
+- [ ] Set `books_removal_mode` to `live` → the first live report cancels every open `dry_run` case of the bench and deletes its exports → AC-14
+- [ ] The first real case due for its drop waits for a Removal Manager's Approve, and the daily digest lists it → AC-20, AC-21
+
+### Coverage
+- AC-16 lifecycle rules: `UnitTestLifecycleRules` and the bucket steps above
+- AC-3 cron line and AC-15 host checks: `UnitTestPreflight`, `UnitTestCronLine` and the host steps
+- AC-14 and AC-20 on the real bench: the dry run and going live steps
