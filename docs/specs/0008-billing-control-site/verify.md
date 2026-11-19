@@ -87,3 +87,36 @@ _Steps derived from spec 0008 AC-4, AC-5, AC-9 to AC-11, AC-17 and AC-21. Covers
 ## Acceptance-criteria coverage
 - AC-4: the checkout and `start_time` steps · AC-5: the `already_subscribed` step · AC-9: the activation, payment, cancel and verify steps · AC-10: the refund and mismatch steps · AC-11: the two subscription step · AC-17: the `test_paypal` command (unknown site, removed site, no checkout) · AC-21: the starts on steps · AC-23: the sandbox cancel, suspend, expiry and bad signature steps
 - Not yet covered: the return page (AC-12) and receipts (AC-19) come with Milestone 3; the `Dropping` removal case check needs spec 0007's Books Removal Case on the control site (task 15)
+
+# Verify: billing control site, Milestone 3 (reliability) · spec 0008 · updated 2026-11-19
+_Steps derived from spec 0008 AC-10, AC-12, AC-13, AC-16, AC-18 and AC-19. Covers build plan tasks 12 to 15, except the `being_removed` refusal, which waits for spec 0007's Books Removal Case on the control site._
+
+## Commands (rarebooks_control)
+- [ ] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_reliability` → 18 tests pass → AC-10, AC-12, AC-13, AC-16, AC-18, AC-19
+- [ ] `bench --site <control site> run-tests --app rarebooks_control` → 89 tests pass → Milestones 1 to 3
+- [ ] `bench --site <control site> execute rarebooks_control.reconcile.hourly` and `...reconcile.daily` → run with no error; `scheduler_events` lists `push.sweep`, `reconcile.hourly` and `reconcile.daily` → AC-16, AC-18
+
+## Control site, by hand (staging, with the scheduler on)
+- [ ] Stop a customer site and make a payment → the row is `Failing`; leave it down past 6 hours (or set `failing_since` back) → exactly one email to `books_ops_email`, sent at once; later retries send none → AC-13
+- [ ] Make a customer site answer 400 to the push → one email at once; the next hourly retry sends none → AC-13
+- [ ] Start the customer site again → the sweep pushes, the row returns to `Synced` and the streak fields clear → AC-13
+- [ ] Approve a PayPal sandbox subscription that charges at approval → the return page applies the payment before the webhook arrives, then 302s to the site's Subscription page; the webhook that follows changes nothing and sends no second receipt → AC-12, AC-19
+- [ ] Pay a ClickPesa checkout and come back through its return → the `books_checkout` cookie finds the checkout, the site unlocks, the browser lands on the Subscription page → AC-12
+- [ ] Open `/api/method/rarebooks_control.billing.returned` in a fresh browser → "You can close this page and go back to your books." with HTTP 200 → AC-12
+- [ ] Turn the ClickPesa webhook off, pay, and wait for the hourly job → the payment is applied once; the webhook turned back on adds nothing → AC-16
+- [ ] A ClickPesa checkout older than 24 hours turns `Expired`; a payment on it found by the hourly job still buys the year → AC-16
+- [ ] A PayPal renewal with its webhook missed is applied by the daily job → AC-16
+- [ ] A receipt for a site with `language` `sw` is in Swahili, for `fr` or empty in English; each names the company, plan, amount and currency, billing period, paid until date and reference, and says it is not a tax invoice → AC-19
+- [ ] A Payment Event older than 90 days has an empty `raw_payload` after the daily job and keeps every other field → AC-18
+- [ ] A day with a `BILLING.SUBSCRIPTION.PAYMENT.FAILED` event sends one queued digest to `books_ops_email`; a quiet day sends none → AC-10
+
+## Value sourcing (Milestone 3)
+- [ ] The 6 hour alert counts from `failing_since`, the start of the current streak, and `failing_alerted` keeps it to one per streak → AC-13
+- [ ] The return page finds the checkout from PayPal's `subscription_id` first, else the cookie token's hash; an older cookie from a reused checkout finds nothing → AC-12
+- [ ] Reconcile windows: ClickPesa `Created` or `Expired` under 48 hours, PayPal unpaid checkouts under 7 days plus every renewing PayPal site → AC-16
+- [ ] The receipt language reads `sw`, `sw-TZ` and `sw_TZ` as Swahili, anything else as English; the amount is the provider's confirmed amount → AC-19
+- [ ] `billing_state()` counts a `Created` checkout under 24 hours, or one `Paid` in the last 24 hours, as a recent checkout → spec 0007
+
+## Acceptance-criteria coverage
+- AC-10: the digest steps · AC-12: the return page steps · AC-13: the push alert and sweep steps · AC-16: the reconcile and expiry steps · AC-18: the retention step · AC-19: the receipt steps · spec 0007: the `billing_state` step
+- Not yet covered: `being_removed` (AC-5), until spec 0007's Books Removal Case exists on the control site
