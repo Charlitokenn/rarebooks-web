@@ -602,6 +602,12 @@ class UnitTestSigningVectors(UnitTestCase):
 
 
 class UnitTestSigning(UnitTestCase):
+	def test_a_signature_with_non_ascii_characters_is_refused_not_raised(self):
+		# covers: spec 0005 AC-11 (a forged header answers 401, never a 500 from compare_digest)
+		for forged in ("sha256=\u00e9", "sha256=\u20ac" * 10, "sha256=\ud800"):
+			with self.subTest(forged=forged):
+				self.assertFalse(is_valid_signature(b"{}", forged, b"secret"))
+
 	def test_issued_at_must_carry_a_time_zone(self):
 		self.assertIsNone(parse_issued_at("2026-11-18T10:00:00"))
 		self.assertEqual(str(parse_issued_at("2026-11-18T13:00:00+03:00")), "2026-11-18 10:00:00")
