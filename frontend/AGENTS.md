@@ -10,6 +10,7 @@ The Books user interface: a Vue 3 + frappe-ui 1.0.0 single page app that renders
 |---|---|
 | `src/frappe/` | The Frappe data layer: meta, schema, `FrappeDoc`, `/api/v2` calls, field state. Mapped in [docs/framework-backed-doctypes.md](../docs/framework-backed-doctypes.md) |
 | `src/web/api.ts` | `call()` for whitelisted methods, server errors, session expiry |
+| `src/utils/supportChat.ts` | The tawk.to support chat: the only place that loads the tawk.to script or calls `Tawk_API`, from the server signed `books.support_chat` boot block, on the first pick only (spec 0009) |
 | `models/index.ts` | `frappeModels`: one model per schema name, extending `FrappeDoc` ([models/README.md](models/README.md)) |
 | `fyo/` | Shared primitives: the `fyo` singleton, translation, formatting, money, observer events ([fyo/README.md](fyo/README.md)) |
 | `src/web/main.ts`, `src/initFyo.ts`, `src/router.ts` | Startup and routes ([src/README.md](src/README.md)) |
