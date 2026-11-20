@@ -119,7 +119,7 @@ Control site desk actions (whitelisted, `frappe.only_for`):
 | `rotate_secret(site)` | Billing Manager | AC-12 | 403; 417 Removed, rotation pending, or `config_status` not Active |
 | spec 0007's `approve_case`, `pause_case`, `resume_case`, `retry_case` | Removal Manager | unchanged | unchanged |
 
-Frappe Cloud client, `rarebooks_control/providers/frappe_cloud.py`: `get_site(name)` (returns `name`, `status`, `group`; `group` is empty unless your team owns the bench group), `update_config(name, config: dict)` (sent as a JSON list of `{key, value, type}` rows; returns config rows, nothing stored), `archive(name)` (`force: false`; returns nothing). Base URL `https://frappecloud.com`.
+Frappe Cloud client, `rarebooks_control/providers/frappe_cloud.py`: `get_site(name)` (returns `name`, `status`, `group`; `group` is empty unless your team owns the bench group), `update_config(name, config: dict)` (sent as a JSON list of `{key, value, type}` rows; returns config rows, nothing stored), `archive(name)` (`force: false`; returns nothing). Base URL `https://cloud.frappe.io` (`frappecloud.com` answers its API with a 308 there, and the client follows no redirects; changed 2026-11-20).
 
 **Value sourcing**:
 
