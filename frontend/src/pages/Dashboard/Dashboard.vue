@@ -49,13 +49,18 @@
             <Expenses class="h-96 min-w-0 md:h-80" :period="period" />
           </div>
         </template>
-        <template v-if="(canRead.ledger && canRead.accounts) || canRead.sales">
+        <template
+          v-if="
+            (canRead.ledger && canRead.accounts && canRead.settings) ||
+            canRead.sales
+          "
+        >
           <div class="border-t border-outline-gray-2 max-md:hidden" />
           <!-- Without Account balances, Best sellers moves into the left column. -->
           <div class="grid gap-4 md:gap-8 lg:grid-cols-2">
             <!-- No period: the balances are as of today. -->
             <AccountBalances
-              v-if="canRead.ledger && canRead.accounts"
+              v-if="canRead.ledger && canRead.accounts && canRead.settings"
               class="h-72 min-w-0 md:h-80"
             />
             <BestSellers
@@ -106,6 +111,8 @@ export default {
       purchases: fyo.can(ModelNameEnum.PurchaseInvoice, 'read'),
       ledger: fyo.can(ModelNameEnum.AccountingLedgerEntry, 'read'),
       accounts: fyo.can(ModelNameEnum.Account, 'read'),
+      // Account balances reads the picked accounts from the settings.
+      settings: fyo.can(ModelNameEnum.AccountingSettings, 'read'),
     };
     return { isMobile, canRead };
   },

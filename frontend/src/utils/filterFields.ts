@@ -2,6 +2,7 @@ import type { ListViewColumn } from 'fyo/model/types';
 import { t } from 'fyo/utils/translation';
 import { Field, FieldTypeEnum } from 'schemas/types';
 import type { Filter } from 'src/frappe/api';
+import { fyo } from 'src/initFyo';
 
 // These values have direct database mappings. Other read-only values may be derived.
 const storedReadOnlyFields = new Set([
@@ -37,6 +38,15 @@ export function getFilterFields(
 
   const filteredFields = fields.flatMap(expandDocStatus).filter((f) => {
     if (excludedFieldsTypes.includes(f.fieldtype)) {
+      return false;
+    }
+
+    // Its value picker searches the target, which the user may not read (a Books User and accounts).
+    if (
+      f.fieldtype === FieldTypeEnum.Link &&
+      f.target &&
+      !fyo.can(f.target, 'read')
+    ) {
       return false;
     }
 

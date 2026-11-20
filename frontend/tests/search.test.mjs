@@ -44,6 +44,7 @@ test('the palette searches the schemas the DocType search fields name', () => {
   assert.deepEqual(fields('SalesInvoice'), ['name', 'party']);
   assert.deepEqual(fields('Party'), ['name', 'email', 'role', 'phone']);
   assert.deepEqual(fields('Tax'), ['name']);
+  assert.deepEqual(fields('Expense'), ['name', 'party', 'reference_number']);
   assert.equal(fields('SalesInvoiceItem'), undefined);
   assert.equal(fields('Account'), undefined);
 });
@@ -51,13 +52,14 @@ test('filter chips show transactions first, by schema label', () => {
   const { search } = makeSearch();
   const labels = search.schemaFilterOptions.map(({ label }) => label);
 
-  assert.deepEqual(labels.slice(0, 3), [
+  assert.deepEqual(labels.slice(0, 4), [
+    'Expense',
     'Journal Entry',
     'Payment',
     'Purchase Invoice',
   ]);
   assert.deepEqual(labels.slice(-2), ['Serial Number', 'Tax Template']);
-  assert.equal(labels.length, 18);
+  assert.equal(labels.length, 19);
 });
 test('one request searches the text in the doctypes the filters allow', async () => {
   const { search, requests } = makeSearch();
@@ -70,7 +72,7 @@ test('one request searches the text in the doctypes the filters allow', async ()
   assert.equal(requests.length, 2);
   assert.equal(requests[0].path, '/api/method/frappe_books.search.search');
   assert.equal(requests[0].body.text, 'Karen SINV-1');
-  assert.equal(requests[0].body.doctypes.length, 18);
+  assert.equal(requests[0].body.doctypes.length, 19);
   assert.equal(requests[0].body.doctypes.includes('Books Sales Invoice'), true);
   assert.equal(requests[1].body.doctypes.includes('Books Sales Invoice'), false);
   assert.equal(requests[1].body.doctypes.includes('Books Party'), true);

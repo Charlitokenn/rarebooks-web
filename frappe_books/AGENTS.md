@@ -2,13 +2,16 @@
 
 ## Overview
 
-The server side of Books: 65 `books_*` DocTypes with their controllers, plus plain Python modules for accounting, inventory, commerce (POS, pricing, loyalty) and reports. It owns every business rule; the Vue app in `frontend/` only renders and calls into it.
+The server side of Books: 68 `books_*` DocTypes with their controllers, plus plain Python modules for accounting, inventory, commerce (POS, pricing, loyalty) and reports. It owns every business rule; the Vue app in `frontend/` only renders and calls into it.
 
 ## Key files
 
 | File | Owns |
 |---|---|
-| `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags |
+| `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags, and the subscription lock hooks (`before_request`, `before_job`, `on_session_creation`, wildcard `doc_events`) |
+| `subscription/` | Trial clock, subscription state and the read only lock ([subscription/AGENTS.md](subscription/AGENTS.md)) |
+| `support_chat.py` | The tawk.to chat block in the boot (`books.support_chat`): the Secure Mode visitor hash and the support attributes; never raises, off unless all three `books_tawk_*` keys are set (spec 0009) |
+| `commands.py` | Bench commands from the module level `commands` list: `bench books-removal-run`, the hourly removal runner (spec 0007 trial end export removal); `books-removal-check` and `books-removal-setup-bucket`, its rollout checks; `books-register-site` (spec 0008) |
 | `frappe_books/doctype/books_*/` | One DocType each: `.json`, `.py` controller, optional `.js`, `test_*.py` |
 | `frappe_books/report/`, `print_format/`, `workspace/` | "Books " script reports, print formats, the workspace |
 | `accounting/`, `inventory/`, `commerce/` | Shared domain logic the controllers call (ledger, settlement, stock posting, FIFO valuation, POS, pricing, loyalty) |
@@ -35,10 +38,12 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - Whitelisted methods must have type annotations (`require_type_annotated_api_methods = True`), or Frappe refuses them. Requests send a JSON body (`use_json_request_body = True`).
 - Server filled values come from a whitelisted `preview` method that fills and does not save. Mapped documents come from a whitelisted mapper in the source DocType's controller.
 - Labels, placeholders (use `placeholder`, not `description`), options, defaults and required live in the DocType JSON.
+- A message that warns without blocking the save is `frappe.msgprint(..., indicator="orange")` (red for something worse), so /books shows a toast that stays until closed. With no indicator it fades. When the user must act, throw instead (spec 0006).
 - Shared logic goes in the domain modules (`accounting/`, `inventory/`, `reports/`), not copied between controllers.
 - Reports read through `frappe.get_list` with dict aggregate fields (`{"SUM": "debit"}`, `{"SUB": [...], "as": "balance"}`) and link filters like `"account.root_type"`, so the caller's read rights apply. See `reports/dashboard.py`. No raw SQL, and no `ignore_permissions` in reports.
 - Tests use `frappe.tests.IntegrationTestCase` (or `UnitTestCase` when no database is needed).
 - Patches are listed in `patches.txt` by section and named for what they do, for example `patches/grant_cashier_core_permissions.py`.
+- A numbered DocType adds its entry to `NUMBER_SERIES` in `series.py` (prefix, reference type, Books Defaults field), the reference type to Books Number Series, the field to Books Defaults, and a patch that gives existing sites the series (see `patches/add_expense_number_series.py`).
 
 ## Gotchas
 
@@ -48,9 +53,10 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - `Sum` comes back as a Decimal on MariaDB: wrap it with `as_decimal` and `rounded` before comparing or returning.
 - To read child table fields through a parent's `frappe.get_list`, qualify them with the table name, for example `` `tabBooks Sales Invoice Item`.amount `` (see `SALES_ITEM` in `reports/dashboard.py`).
 - Rows a test writes stay visible to the later tests in its `IntegrationTestCase` class, so each dashboard test keeps its invoices in its own months of 2031.
-- There are no `doc_events`; the search index updates through Frappe's `sqlite_search` hook.
+- The only `doc_events` are the wildcard (`"*"`) lock guard from `subscription/`; the search index updates through Frappe's `sqlite_search` hook.
 - The test site must have the setup wizard completed (`books_setup_wizard.complete_setup`) before the Playwright tests run.
 - No ERPNext doctypes exist. Do not add links, checks or fallbacks for them.
+- Support chat rollout (spec 0009): set `books_tawk_property_id`, `books_tawk_widget_id`, `books_tawk_api_key` and optionally `books_support_email` with `bench set-config -g` on the hosting bench, and turn on Secure Mode for the tawk.to property, or the hash is ignored and identities are unverified. The API key is a secret: it lives only in the bench config and is read only in `support_chat.py`, but `bench get-config` and `bench show-config` print it, so don't paste their output anywhere. The browser tests put test keys in the site's own config (`tests/support_chat.py`), so they assume no real keys in `common_site_config.json` on a test bench.
 
 ## Agent skills
 

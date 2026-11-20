@@ -211,3 +211,13 @@ def make_number_series(reference_type):
 
 def unique_name(label):
 	return f"{label} {frappe.generate_hash(length=8)}"
+
+
+def set_dashboard_accounts(*accounts):
+	"""Save the accounts the dashboard's balances card lists; with none, clear the table."""
+	settings = frappe.get_single("Books Accounting Settings")
+	settings.set("dashboard_accounts", [{"account": account} for account in accounts])
+	# A test site skips the setup wizard that fills the company details.
+	settings.flags.ignore_mandatory = True
+	settings.save()
+	return settings

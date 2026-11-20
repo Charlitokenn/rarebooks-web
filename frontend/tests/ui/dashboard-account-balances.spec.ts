@@ -1,7 +1,13 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { useBooksSession, waitForBooks } from './helpers/session';
+import {
+  useBooksSession,
+  waitForBooks,
+  withoutBootRights,
+} from './helpers/session';
 
 useBooksSession();
+
+const SETTINGS = 'Books Accounting Settings';
 
 const METHOD = /reports\.dashboard\.get_cash_balances/;
 const AS_OF = '2031-12-15';
@@ -10,6 +16,10 @@ const card = (page: Page) =>
   page.locator('[data-slot="chart-container"]', {
     hasText: 'Account balances',
   });
+
+// A button with a route renders as a link.
+const chooseAccounts = (page: Page) =>
+  card(page).getByRole('link', { name: 'Choose accounts', exact: true });
 
 function balances(accounts: { account: string; balance: number }[]) {
   const total = accounts.reduce((sum, row) => sum + row.balance, 0);
@@ -308,4 +318,97 @@ test('the card takes the left half of its row', async ({ page }) => {
   expect(box && row).toBeTruthy();
   expect(box!.width).toBeLessThan(row!.width * 0.6);
   expect(Math.abs(box!.x - row!.x)).toBeLessThan(2);
+});
+
+// covers: AC-7
+test('"Choose accounts" shows while loading, on error, empty and loaded', async ({
+  page,
+}) => {
+  const first = gate();
+  let calls = 0;
+  await routeBalances(page, async (route) => {
+    calls++;
+    if (calls === 1) {
+      await first.opened;
+      return route.fulfill({ status: 500, json: {} });
+    }
+    return route.fulfill({
+      json: balances(calls === 2 ? [] : [{ account: 'Cash', balance: 1 }]),
+    });
+  });
+
+  for (const [state, next] of [
+    ['loading', () => first.open()],
+    [
+      'error',
+      () => card(page).getByRole('button', { name: 'Try again' }).click(),
+    ],
+    ['empty', () => revisitDashboard(page)],
+    ['ready', async () => {}],
+  ] as const) {
+    await expect(card(page)).toHaveAttribute('data-state', state);
+    await expect(chooseAccounts(page)).toBeVisible();
+    await next();
+  }
+});
+
+// covers: AC-7
+test('"Choose accounts" opens the General tab of the settings dialog', async ({
+  page,
+}) => {
+  await routeBalances(page, (route) =>
+    route.fulfill({ json: balances([{ account: 'Cash', balance: 1 }]) })
+  );
+
+  // Hover once the card has loaded, so the header is not redrawn under the pointer.
+  await expect(card(page)).toHaveAttribute('data-state', 'ready');
+  // The tooltip opens on pointer movement, so leave and enter again until it shows.
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await chooseAccounts(page).hover();
+    await expect(page.locator('[data-slot="bubble"]')).toHaveText(
+      'Choose accounts',
+      { timeout: 2000 }
+    );
+  }).toPass();
+  await chooseAccounts(page).click();
+
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await expect(settings.getByRole('tab', { name: 'General' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  );
+  await expect(settings.getByText('Dashboard Accounts')).toBeVisible();
+});
+
+test.describe('with fewer rights on the settings', () => {
+  // The Books service worker answers a reload from its cache, past the page's routes.
+  test.use({ serviceWorkers: 'block' });
+
+  // covers: AC-7
+  test('without write the card shows but the button does not', async ({
+    page,
+  }) => {
+    await withoutBootRights(page, SETTINGS, ['write']);
+    await routeBalances(page, (route) =>
+      route.fulfill({ json: balances([{ account: 'Cash', balance: 1 }]) })
+    );
+
+    await expect(card(page).getByRole('link', { name: 'Cash' })).toBeVisible();
+    await expect(chooseAccounts(page)).toHaveCount(0);
+  });
+
+  // covers: AC-9
+  test('without read the card is not shown', async ({ page }) => {
+    await withoutBootRights(page, SETTINGS, ['read', 'write']);
+    await page.reload();
+    await waitForBooks(page);
+
+    await expect(
+      page.locator('[data-slot="chart-container"]', {
+        hasText: 'Best sellers',
+      })
+    ).toBeVisible();
+    await expect(card(page)).toHaveCount(0);
+  });
 });

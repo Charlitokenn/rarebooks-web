@@ -8,6 +8,8 @@ export enum ModelNameEnum {
   Currency = 'Currency',
   GetStarted = 'GetStarted',
   Defaults = 'Defaults',
+  Expense = 'Expense',
+  ExpenseAccount = 'ExpenseAccount',
   Item = 'Item',
   ItemGroup = 'ItemGroup',
   ItemEnquiry = 'ItemEnquiry',

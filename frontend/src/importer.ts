@@ -28,6 +28,7 @@ export function getImportableSchemaNames(fyo: Fyo): ModelNameEnum[] {
     ModelNameEnum.SalesInvoice,
     ModelNameEnum.PurchaseInvoice,
     ModelNameEnum.Payment,
+    ModelNameEnum.Expense,
     ModelNameEnum.Party,
     ModelNameEnum.Item,
     ModelNameEnum.JournalEntry,

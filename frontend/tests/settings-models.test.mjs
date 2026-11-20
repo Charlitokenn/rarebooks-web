@@ -25,7 +25,8 @@ stubFrappe(({ path, body }) =>
 registerFrappeModels(frappeModels);
 await loadFrappeDocTypes();
 
-const hidden = (doc, fieldname) => doc.getFieldState(doc.fieldMap[fieldname]).hidden;
+const hidden = (doc, fieldname) =>
+  doc.getFieldState(doc.fieldMap[fieldname]).hidden;
 const readOnly = (doc, fieldname) =>
   doc.getFieldState(doc.fieldMap[fieldname]).readOnly;
 const fieldnames = (schemaName) =>
@@ -182,6 +183,45 @@ test('the General tab shows the fields, placeholders and sections it showed', ()
     'tax_id | CHE-123.456.789 | Default |',
     'gstin | 27AAAAA0000A1Z5 | Default |',
   ]);
+});
+
+test('the General tab picks dashboard accounts from leaf assets and liabilities, with no Create', () => {
+  const table = getSchema('AccountingSettings').fields.find(
+    ({ fieldname }) => fieldname === 'dashboard_accounts'
+  );
+  assert.equal(table.fieldtype, 'Table');
+  assert.equal(table.target, 'DashboardAccount');
+  assert.equal(table.section, 'Dashboard');
+  assert.match(
+    table.sub_label,
+    /Leave empty to list every cash and bank account/
+  );
+
+  const account = getSchema('DashboardAccount').fields.find(
+    ({ fieldname }) => fieldname === 'account'
+  );
+  assert.ok(!account.create);
+  assert.deepEqual(account.linkFilters, [
+    ['is_group', '=', 0],
+    ['root_type', 'in', ['Asset', 'Liability']],
+  ]);
+});
+
+// covers: AC-1, AC-2
+test('dashboard account rows added or loaded are Dashboard Account models', async () => {
+  const DashboardAccount =
+    frappeModels.AccountingSettings.rowModels.dashboard_accounts;
+  const settings = newFrappeDoc('AccountingSettings');
+
+  await settings.append('dashboard_accounts', { account: 'Cash' });
+  const [added] = settings.dashboard_accounts;
+  await loadSaved(settings);
+
+  assert.ok(added instanceof DashboardAccount);
+  const [loaded] = settings.dashboard_accounts;
+  assert.ok(loaded instanceof DashboardAccount);
+  assert.equal(loaded.account, 'Cash');
+  assert.ok(!loaded.fieldMap.account.create);
 });
 
 test('General settings show the regional tax ID of the company country', async () => {

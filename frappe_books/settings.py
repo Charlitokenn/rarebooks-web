@@ -64,6 +64,11 @@ def company_country() -> str | None:
 	return frappe.db.get_single_value("System Settings", "country")
 
 
+def company_name() -> str | None:
+	"""The company name the setup wizard saved on Books Accounting Settings."""
+	return frappe.db.get_single_value("Books Accounting Settings", "company_name") or None
+
+
 def regional_code() -> str:
 	"""The regional schema code /books loads for the company country, or "-" for none."""
 	country = company_country()

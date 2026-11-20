@@ -36,6 +36,7 @@ test('the create menu opens a new sales invoice', async ({ page }) => {
     'Receive payment',
     'Purchase Invoice',
     'Make payment',
+    'Expense',
     'Customer',
     'Item',
   ]) {
@@ -44,6 +45,16 @@ test('the create menu opens a new sales invoice', async ({ page }) => {
 
   await menu.getByRole('menuitem', { name: 'Sales Invoice' }).click();
   await expect(page).toHaveURL(/\/books\/edit\/SalesInvoice\/[^/]+$/);
+});
+
+// covers: AC-9
+test('the create menu opens a new expense', async ({ page }) => {
+  await createButton(page).click();
+  await page
+    .getByRole('menu')
+    .getByRole('menuitem', { name: 'Expense' })
+    .click();
+  await expect(page).toHaveURL(/\/books\/edit\/Expense\/[^/]+$/);
 });
 
 test('a tap on a chart shows the tapped month', async ({ page }) => {
@@ -165,4 +176,23 @@ test('invoice cards name their totals in sentence case', async ({ page }) => {
   ]) {
     await expect(page.getByText(title, { exact: true })).toBeVisible();
   }
+});
+
+// covers: AC-7
+test('"Choose accounts" opens the General settings page on a phone', async ({
+  page,
+}) => {
+  const balances = page.locator('[data-slot="chart-container"]', {
+    hasText: 'Account balances',
+  });
+  const choose = balances.getByRole('link', {
+    name: 'Choose accounts',
+    exact: true,
+  });
+  await choose.scrollIntoViewIfNeeded();
+  await choose.tap();
+
+  await expect(page).toHaveURL(/\/books\/settings\?tab=AccountingSettings$/);
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0);
+  await expect(page.getByText('Dashboard Accounts')).toBeVisible();
 });

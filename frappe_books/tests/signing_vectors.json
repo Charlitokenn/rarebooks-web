@@ -1,0 +1,35 @@
+{
+ "about": "Golden vectors for the X-Books-Signature contract (spec 0008, build plan task 3). The same file lives in rarebooks_control; both repos must sign every body to the same header. `body` is the exact UTF-8 bytes that are signed; `secret` is used as its UTF-8 bytes.",
+ "vectors": [
+  {
+   "name": "empty body",
+   "secret": "5f0c3e1a9b7d24e68c1f0a3b5d7e9f21436587a9bcdef0123456789abcdef012",
+   "body": "",
+   "signature": "sha256=e3b6736b26683aea9a314a467c58d0ef552e0743adb97cc80fc35e30dfb137bc"
+  },
+  {
+   "name": "get_state request",
+   "secret": "5f0c3e1a9b7d24e68c1f0a3b5d7e9f21436587a9bcdef0123456789abcdef012",
+   "body": "{\"site\":\"acme.rarebooks.app\",\"issued_at\":\"2026-11-18T10:00:00+00:00\",\"trial_ends_on\":\"2026-12-08\",\"time_zone\":\"Africa/Dar_es_Salaam\",\"language\":\"sw\",\"company_name\":\"Duka la Mama\"}",
+   "signature": "sha256=78cd43e6517a40f6ad696d877c56d737e141bd7939c3828216d66ee959a8b1e5"
+  },
+  {
+   "name": "push with spaces, as json.dumps writes it",
+   "secret": "5f0c3e1a9b7d24e68c1f0a3b5d7e9f21436587a9bcdef0123456789abcdef012",
+   "body": "{\"site\": \"acme.rarebooks.app\", \"issued_at\": \"2026-11-18T10:00:00+00:00\", \"paid_until\": \"2027-12-08\", \"provider\": \"ClickPesa\", \"billing_period\": \"Yearly\", \"auto_renews\": 0, \"provider_reference\": \"RB00000042\", \"exempt\": 0}",
+   "signature": "sha256=5e13c6309d770e490f115f3c5161db26a6851d4d6d3f73ac1fcbe4ea303285cb"
+  },
+  {
+   "name": "signed refusal",
+   "secret": "5f0c3e1a9b7d24e68c1f0a3b5d7e9f21436587a9bcdef0123456789abcdef012",
+   "body": "{\"refusal\":\"already_subscribed\"}",
+   "signature": "sha256=244134f9e9892d5a845ce58f0d5f5e5ef8156aac5a889b665501b1a38d835e47"
+  },
+  {
+   "name": "non ASCII bytes, UTF-8",
+   "secret": "5f0c3e1a9b7d24e68c1f0a3b5d7e9f21436587a9bcdef0123456789abcdef012",
+   "body": "{\"company_name\":\"Café Ñandú — Zürich\"}",
+   "signature": "sha256=379a8c45a4c91c8b29ad6f4e9f8fd33aaedf0955296f921a0c5332f2fc2a4c89"
+  }
+ ]
+}

@@ -66,6 +66,7 @@ export class GeneralLedger extends Report {
       { label: t`Purchase Invoices`, value: 'Books Purchase Invoice' },
       { label: t`Payments`, value: 'Books Payment' },
       { label: t`Journal Entries`, value: 'Books Journal Entry' },
+      { label: t`Expenses`, value: 'Books Expense' },
     ];
 
     if (this.fyo.singles.AccountingSettings?.enable_inventory) {

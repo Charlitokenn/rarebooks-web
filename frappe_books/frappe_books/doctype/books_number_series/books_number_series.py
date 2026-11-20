@@ -29,6 +29,7 @@ class BooksNumberSeries(Document):
 			"Shipment",
 			"PurchaseReceipt",
 			"PricingRule",
+			"Expense",
 		]
 		start: DF.Int
 	# end: auto-generated types

@@ -1,7 +1,7 @@
 # 0001. Account balances card on the version-16 dashboard
 
 **Date**: 2026-11-09
-**Status**: In Progress
+**Status**: Accepted
 
 Decision history: [rationale.md](rationale.md).
 

@@ -21,6 +21,7 @@
   "shipment_number_series",
   "purchase_receipt_number_series",
   "sales_quote_number_series",
+  "expense_number_series",
   "terms_section_break_16",
   "sales_invoice_terms",
   "purchase_invoice_terms",
@@ -133,6 +134,12 @@
    "fieldname": "sales_quote_number_series",
    "fieldtype": "Link",
    "label": "Sales Quote Number Series",
+   "options": "Books Number Series"
+  },
+  {
+   "fieldname": "expense_number_series",
+   "fieldtype": "Link",
+   "label": "Expense Number Series",
    "options": "Books Number Series"
   },
   {
@@ -293,7 +300,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-30 12:00:00.000000",
+ "modified": "2026-11-12 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Books",
  "name": "Books Defaults",

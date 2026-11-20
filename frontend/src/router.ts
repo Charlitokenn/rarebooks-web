@@ -10,6 +10,7 @@ import ReportPrintView from 'src/pages/PrintView/ReportPrintView.vue';
 import QuickEditForm from 'src/pages/QuickEditForm.vue';
 import Report from 'src/pages/Report.vue';
 import Settings from 'src/pages/Settings/Settings.vue';
+import Subscription from 'src/pages/Subscription/Subscription.vue';
 import TemplateBuilder from 'src/pages/TemplateBuilder/TemplateBuilder.vue';
 import { t } from 'fyo';
 import POS from 'src/pages/POS/POS.vue';
@@ -149,6 +150,11 @@ const routes: RouteRecordRaw[] = [
       default: true,
       edit: (route) => route.query,
     },
+  },
+  {
+    path: '/subscription',
+    name: 'Subscription',
+    component: Subscription,
   },
   {
     path: '/search',

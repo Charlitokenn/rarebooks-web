@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import frappe
+from frappe.permissions import add_permission
 from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate
 
@@ -14,7 +15,13 @@ from frappe_books.reports.dashboard import (
 	get_top_expenses,
 )
 from frappe_books.reports.financial_statements import get_account_balances
-from frappe_books.tests.accounting import insert_sales_invoice, make_account, unique_name
+from frappe_books.tests.accounting import (
+	ensure_user,
+	insert_sales_invoice,
+	make_account,
+	set_dashboard_accounts,
+	unique_name,
+)
 
 TODAY = "2031-12-15"
 PERIODS = ("This Year", "This Quarter", "This Month", "YTD")
@@ -216,6 +223,127 @@ class IntegrationTestCashBalances(IntegrationTestCase):
 		)
 		others = sum(balance for name, balance in balances.items() if name != overdrawn.name)
 		self.assertEqual(result["total"], others - 60)
+
+
+class IntegrationTestDashboardAccounts(IntegrationTestCase):
+	def setUp(self):
+		# A picked account blocks its own delete, so clear the table before teardown removes test data.
+		self.addCleanup(set_dashboard_accounts)
+
+	def test_picked_accounts_are_listed_in_chart_order_and_a_liability_lowers_the_total(self):
+		bank = make_account("Picked Bank", account_type="Bank")
+		loan = make_account("Picked Loan", root_type="Liability")
+		other = make_account("Unpicked Cash", account_type="Cash")
+		_post(bank, 300, 0)
+		_post(loan, 0, 120)
+		_post(other, 50, 0)
+		set_dashboard_accounts(loan.name, bank.name)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		names = [row["account"] for row in result["accounts"]]
+		lft = {name: frappe.db.get_value("Books Account", name, "lft") for name in names}
+		self.assertEqual(sorted(names), sorted([bank.name, loan.name]))
+		self.assertEqual(names, sorted(names, key=lft.get))
+		balances = {row["account"]: row["balance"] for row in result["accounts"]}
+		self.assertEqual((balances[bank.name], balances[loan.name]), (Decimal("300.00"), Decimal("-120.00")))
+		self.assertEqual(result["total"], Decimal("180.00"))
+
+	def test_an_empty_table_lists_the_cash_and_bank_accounts(self):
+		cash = make_account("Fallback Cash", account_type="Cash")
+		set_dashboard_accounts()
+
+		with self.freeze_time(TODAY):
+			names = [row["account"] for row in get_cash_balances()["accounts"]]
+
+		self.assertIn(cash.name, names)
+
+	# covers: AC-5
+	def test_the_fallback_leaves_out_cash_and_bank_accounts_outside_asset_and_liability(self):
+		asset_cash = make_account("Fallback Asset Cash", account_type="Cash")
+		loan_bank = make_account("Fallback Loan Bank", root_type="Liability", account_type="Bank")
+		equity_cash = make_account("Fallback Equity Cash", root_type="Equity", account_type="Cash")
+		income_bank = make_account("Fallback Income Bank", root_type="Income", account_type="Bank")
+		set_dashboard_accounts()
+
+		with self.freeze_time(TODAY):
+			names = [row["account"] for row in get_cash_balances()["accounts"]]
+
+		self.assertIn(asset_cash.name, names)
+		self.assertIn(loan_bank.name, names)
+		self.assertNotIn(equity_cash.name, names)
+		self.assertNotIn(income_bank.name, names)
+
+	def test_a_pick_that_stopped_qualifying_is_skipped(self):
+		cash = make_account("Stale Fallback Cash", account_type="Cash")
+		stale = make_account("Stale Pick", account_type="Bank")
+		valid = make_account("Valid Pick", root_type="Liability")
+		set_dashboard_accounts(stale.name, valid.name)
+		frappe.db.set_value("Books Account", stale.name, "is_group", 1)
+		self.addCleanup(frappe.db.set_value, "Books Account", stale.name, "is_group", 0)
+
+		with self.freeze_time(TODAY):
+			one_valid = [row["account"] for row in get_cash_balances()["accounts"]]
+		frappe.db.set_value("Books Account", valid.name, "root_type", "Income")
+		with self.freeze_time(TODAY):
+			none_valid = [row["account"] for row in get_cash_balances()["accounts"]]
+
+		self.assertEqual(one_valid, [valid.name])
+		self.assertIn(cash.name, none_valid)
+		self.assertNotIn(stale.name, none_valid)
+		self.assertNotIn(valid.name, none_valid)
+
+	# covers: AC-4
+	def test_a_picked_accounts_balance_leaves_out_entries_after_today_and_reverted_entries(self):
+		loan = make_account("Cut Off Loan", root_type="Liability")
+		_post(loan, 0, 100, TODAY)
+		_post(loan, 0, 70, "2031-12-16")
+		_post(loan, 25, 0, reverted=1)
+		_post(loan, 0, 25, reverted=1)
+		set_dashboard_accounts(loan.name)
+
+		with self.freeze_time(TODAY):
+			result = get_cash_balances()
+
+		self.assertEqual(result["accounts"], [{"account": loan.name, "balance": Decimal("-100.00")}])
+		self.assertEqual((result["total"], result["as_of"]), (Decimal("-100.00"), getdate(TODAY)))
+
+	# covers: AC-5
+	def test_a_pick_moved_to_equity_is_never_listed(self):
+		moved = make_account("Moved Equity Pick", root_type="Liability")
+		kept = make_account("Kept Bank Pick", account_type="Bank")
+		set_dashboard_accounts(moved.name, kept.name)
+		frappe.db.set_value("Books Account", moved.name, "root_type", "Equity")
+
+		with self.freeze_time(TODAY):
+			names = [row["account"] for row in get_cash_balances()["accounts"]]
+
+		self.assertEqual(names, [kept.name])
+
+	def test_a_picked_account_cannot_be_deleted(self):
+		bank = make_account("Undeletable Bank", account_type="Bank")
+		set_dashboard_accounts(bank.name)
+
+		with self.assertRaises(frappe.LinkExistsError) as raised:
+			frappe.delete_doc("Books Account", bank.name)
+
+		self.assertIn("Books Accounting Settings", str(raised.exception))
+		self.assertTrue(frappe.db.exists("Books Account", bank.name))
+
+	def test_the_picks_need_read_on_accounting_settings(self):
+		bank = make_account("Rights Bank", account_type="Bank")
+		set_dashboard_accounts(bank.name)
+		role = frappe.get_doc({"doctype": "Role", "role_name": unique_name("Books Ledger Reader")}).insert()
+		for doctype in ("Books Ledger Entry", "Books Account"):
+			add_permission(doctype, role.name)
+		reader = ensure_user(f"{frappe.generate_hash(length=8)}@example.com", role.name)
+		manager = ensure_user("books-manager-dashboard@example.com", "Books Manager")
+
+		with self.set_user(reader):
+			self.assertRaises(frappe.PermissionError, get_cash_balances)
+		with self.set_user(manager):
+			self.assertEqual([row["account"] for row in get_cash_balances()["accounts"]], [bank.name])
 
 
 class IntegrationTestBestSellers(IntegrationTestCase):

@@ -44,6 +44,7 @@ class BooksDefaults(Document):
 
 		cancel_button_colour: DF.Color | None
 		held_button_colour: DF.Color | None
+		expense_number_series: DF.Link | None
 		journal_entry_number_series: DF.Link | None
 		journal_entry_print_template: DF.Link | None
 		pay_button_colour: DF.Color | None

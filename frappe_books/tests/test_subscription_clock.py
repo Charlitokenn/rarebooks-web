@@ -1,0 +1,334 @@
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from unittest.mock import patch
+
+import frappe
+from frappe.tests import IntegrationTestCase
+
+from frappe_books.subscription.clock import (
+	SubscriptionClock,
+	current_clock,
+	is_locked,
+	offered_plan,
+	site_zone,
+)
+from frappe_books.tests.subscription import managed_site
+
+# 10:00 UTC on 1 January 2031 is day 1 in UTC and in Dar es Salaam (UTC+3).
+STARTED = datetime(2031, 1, 1, 10, 0)
+
+
+def facts(**values):
+	defaults = {
+		"trial_started_on": STARTED,
+		"paid_until": None,
+		"provider": "",
+		"billing_period": "",
+		"auto_renews": 0,
+		"exempt": 0,
+		"checkout_started_on": None,
+	}
+	return frappe._dict({**defaults, **values})
+
+
+def on_day(day: int, hour: int = 12) -> datetime:
+	return datetime(2031, 1, 1, hour) + timedelta(days=day - 1)
+
+
+@contextmanager
+def site_time_zone(name):
+	"""get_system_settings reads frappe.local.system_settings first."""
+	previous = getattr(frappe.local, "system_settings", None)
+	frappe.local.system_settings = frappe._dict(time_zone=name)
+	try:
+		yield
+	finally:
+		frappe.local.system_settings = previous
+
+
+@contextmanager
+def stored_clock(time_zone, now, **values):
+	"""A hosted site whose cached facts are `values` and whose clock reads `now`, as the lock hooks see it."""
+	with (
+		site_time_zone(time_zone),
+		managed_site(),
+		patch("frappe.get_cached_doc", return_value=facts(**values)),
+		patch("frappe_books.subscription.clock.utc_now", return_value=now),
+	):
+		yield
+
+
+def flush_error_log():
+	"""Deferred Error Log rows wait in Redis; write them, as the scheduler's Administrator would."""
+	import frappe.deferred_insert
+
+	user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		frappe.deferred_insert.save_to_db()
+	finally:
+		frappe.set_user(user)
+
+
+def clock(now, managed=True, time_zone="UTC", **values):
+	with site_time_zone(time_zone):
+		return SubscriptionClock(facts(**values), managed, now)
+
+
+class IntegrationTestSubscriptionClock(IntegrationTestCase):
+	def test_trial_days_give_trial_prompt_and_locked(self):
+		expected = {1: "trial", 21: "trial", 22: "prompt", 25: "prompt", 26: "locked", 30: "locked"}
+		for day, phase in expected.items():
+			with self.subTest(day=day):
+				subject = clock(on_day(day))
+				self.assertEqual(subject.day_number, day)
+				self.assertEqual(subject.phase, phase)
+				self.assertEqual(subject.locked, phase == "locked")
+
+	def test_the_lock_starts_at_local_midnight(self):
+		late_on_day_25 = on_day(25, hour=23) + timedelta(minutes=30)
+		self.assertEqual(clock(late_on_day_25, time_zone="UTC").phase, "prompt")
+		dar = clock(late_on_day_25, time_zone="Africa/Dar_es_Salaam")
+		self.assertEqual((dar.day_number, dar.phase), (26, "locked"))
+
+	def test_an_empty_time_zone_uses_utc_not_kolkata(self):
+		# 22:00 UTC on 1 January is already 2 January in Kolkata.
+		started_late = datetime(2031, 1, 1, 22, 0)
+		self.assertEqual(
+			clock(on_day(1, hour=23), time_zone=None, trial_started_on=started_late).day_number, 1
+		)
+		kolkata = clock(on_day(2, hour=23), time_zone="Asia/Kolkata", trial_started_on=started_late)
+		self.assertEqual(kolkata.day_number, 2)
+
+	def test_an_unknown_time_zone_falls_back_to_utc(self):
+		# covers: spec 0007 AC-4. A directory name like "America" is not a zone either.
+		late_on_day_25 = on_day(25, hour=23) + timedelta(minutes=30)
+		for name in ("Mars/Olympus", "America", "../etc/passwd"):
+			with self.subTest(name=name):
+				subject = clock(late_on_day_25, time_zone=name)
+				self.assertEqual(str(subject.zone), "UTC")
+				self.assertEqual((subject.day_number, subject.phase), (25, "prompt"))
+
+	def test_an_unknown_time_zone_never_raises(self):
+		# covers: spec 0007 AC-4 (the lock hooks call site_zone before login).
+		with site_time_zone("Mars/Olympus"):
+			for _ in range(3):
+				self.assertEqual(str(site_zone()), "UTC")
+
+	def test_the_lock_check_counts_utc_days_with_an_unknown_time_zone(self):
+		# covers: spec 0007 AC-4. `is_locked` is what `lock_request` and `lock_job` ask before every request and job.
+		# 23:30 UTC on day 25 is already day 26 in any zone ahead of UTC.
+		late_on_day_25 = on_day(25, hour=23) + timedelta(minutes=30)
+		early_on_day_26 = on_day(26, hour=0) + timedelta(minutes=30)
+		with stored_clock(time_zone="Mars/Olympus", now=late_on_day_25):
+			self.assertFalse(is_locked())
+			self.assertEqual(current_clock().status()["today"], "2031-01-25")
+		with stored_clock(time_zone="Mars/Olympus", now=early_on_day_26):
+			self.assertTrue(is_locked())
+			self.assertEqual(current_clock().status()["day_number"], 26)
+
+	def test_an_unknown_time_zone_writes_no_log_of_its_own(self):
+		# covers: spec 0007 AC-4. Frappe's now() can't stamp a row with the same zone, so this app logs nothing.
+		flush_error_log()
+		before = frappe.db.count("Error Log")
+		with stored_clock(time_zone="Mars/Olympus", now=on_day(27)):
+			for _ in range(3):
+				site_zone()
+				is_locked()
+				current_clock().status()
+		flush_error_log()
+		self.assertEqual(frappe.db.count("Error Log"), before)
+
+	def test_a_paypal_subscription_made_in_the_trial_starts_the_day_after_it(self):
+		# covers: spec 0008 AC-21
+		waiting = {"provider": "PayPal", "auto_renews": 1}
+		for day in (5, 21, 22):
+			with self.subTest(day=day):
+				status = clock(on_day(day), **waiting).status()
+				self.assertEqual(status["subscription_starts_on"], "2031-01-22")
+				self.assertFalse(status["first_payment_overdue"])
+		for values in (
+			{},
+			{"provider": "PayPal", "auto_renews": 0},
+			{"provider": "ClickPesa", "auto_renews": 1},
+			{**waiting, "paid_until": datetime(2031, 2, 21).date()},
+			{**waiting, "exempt": 1},
+			{**waiting, "trial_started_on": None},
+		):
+			with self.subTest(values=values):
+				status = clock(on_day(23), **values).status()
+				self.assertIsNone(status["subscription_starts_on"])
+				self.assertFalse(status["first_payment_overdue"])
+
+	def test_a_paypal_first_payment_missing_after_its_day_is_overdue(self):
+		# covers: spec 0008 AC-21. PayPal is retrying the first charge; the prompt and the lock run as normal.
+		waiting = {"provider": "PayPal", "auto_renews": 1}
+		for day, phase in ((23, "prompt"), (25, "prompt"), (26, "locked"), (29, "locked")):
+			with self.subTest(day=day):
+				status = clock(on_day(day), **waiting).status()
+				self.assertEqual(
+					(status["phase"], status["subscription_starts_on"], status["first_payment_overdue"]),
+					(phase, None, True),
+				)
+
+	def test_status_dates_follow_day_one(self):
+		status = clock(on_day(23)).status()
+		self.assertEqual(status["phase"], "prompt")
+		self.assertEqual(status["today"], "2031-01-23")
+		self.assertEqual(status["trial_ends_on"], "2031-01-21")
+		self.assertEqual(status["lock_starts_on"], "2031-01-26")
+		self.assertEqual(status["removal_on"], "2031-01-30")
+		self.assertIsNone(status["paid_until"])
+
+	def test_paid_lifecycle_boundaries(self):
+		today = on_day(100)
+		paid = lambda days, **values: clock(today, paid_until=(today + timedelta(days=days)).date(), **values)  # noqa: E731
+		self.assertEqual(paid(0, auto_renews=1).phase, "active")
+		self.assertEqual(paid(400, auto_renews=1).phase, "active")
+		self.assertEqual(paid(15).phase, "active")
+		self.assertEqual(paid(14, provider="ClickPesa").phase, "renew_soon")
+		self.assertEqual(paid(0).phase, "renew_soon")
+		self.assertEqual(paid(-1).phase, "grace")
+		self.assertEqual(paid(-7).phase, "grace")
+		lapsed = paid(-8)
+		self.assertEqual((lapsed.phase, lapsed.locked), ("lapsed", True))
+
+	def test_a_paid_site_never_returns_to_the_trial_rows(self):
+		# Paid early in the trial, then lapsed long ago: still lapsed, never "trial".
+		self.assertEqual(clock(on_day(5), paid_until=on_day(-30).date()).phase, "lapsed")
+
+	def test_paid_status_has_grace_end_and_a_lapsed_removal(self):
+		# covers: spec 0007 AC-2 (lapsed now carries removal_on, which spec 0005 left empty)
+		status = clock(on_day(100), paid_until=on_day(90).date(), provider="PayPal").status()
+		self.assertEqual(status["phase"], "lapsed")
+		self.assertEqual(status["grace_ends_on"], on_day(97).date().isoformat())
+		self.assertEqual(status["removal_on"], on_day(157).date().isoformat())
+		self.assertEqual(status["provider"], "PayPal")
+
+	def test_removal_on_is_day_30_for_an_unpaid_trial(self):
+		# covers: spec 0007 AC-1
+		for day in (1, 22, 26, 30, 45):
+			with self.subTest(day=day):
+				subject = clock(on_day(day))
+				self.assertEqual(subject.removal_on, on_day(30).date())
+				self.assertEqual(subject.removal_kind, "Trial")
+
+	def test_removal_on_is_paid_until_plus_67_days_for_a_lapsed_site(self):
+		# covers: spec 0007 AC-1 (grace end plus 60), across a month end
+		paid_until = datetime(2031, 1, 31).date()
+		subject = clock(datetime(2031, 2, 8, 12), paid_until=paid_until)
+		self.assertEqual(subject.phase, "lapsed")
+		self.assertEqual(subject.removal_on, datetime(2031, 4, 8).date())
+		self.assertEqual(subject.removal_kind, "Lapsed")
+
+	def test_only_unpaid_trials_and_lapsed_sites_have_a_removal_date(self):
+		# covers: spec 0007 AC-1
+		today = on_day(100)
+		never_removed = {
+			"grace": clock(today, paid_until=on_day(95).date()),
+			"active": clock(today, paid_until=on_day(300).date(), auto_renews=1),
+			"renew_soon": clock(today, paid_until=on_day(105).date()),
+			"exempt": clock(today, exempt=1),
+			"unmanaged": clock(today, managed=False),
+			"no_trial_start": clock(today, trial_started_on=None),
+		}
+		for name, subject in never_removed.items():
+			with self.subTest(site=name):
+				self.assertIsNone(subject.removal_on)
+				self.assertIsNone(subject.removal_kind)
+				self.assertIsNone(subject.status()["removal_on"])
+
+	def test_the_hold_date_is_shown_in_the_site_time_zone(self):
+		# covers: spec 0007 AC-8. 22:30 UTC on 3 February is already 4 February in Dar es Salaam (UTC+3).
+		values = {
+			"export_sent_on": datetime(2031, 1, 31, 22, 30),
+			"removal_hold_until": datetime(2031, 2, 3, 22, 30),
+		}
+		utc = clock(on_day(32), **values).status()
+		self.assertEqual((utc["export_sent_on"], utc["removal_hold_until"]), ("2031-01-31", "2031-02-03"))
+		dar = clock(on_day(32), time_zone="Africa/Dar_es_Salaam", **values).status()
+		self.assertEqual((dar["export_sent_on"], dar["removal_hold_until"]), ("2031-02-01", "2031-02-04"))
+
+	def test_no_hold_fields_read_as_none(self):
+		status = clock(on_day(27)).status()
+		self.assertIsNone(status["export_sent_on"])
+		self.assertIsNone(status["removal_hold_until"])
+
+	def test_grace_end_rolls_into_the_next_month(self):
+		# covers: AC-14 (Renew by is paid_until plus 7 days, across a month end)
+		status = clock(
+			datetime(2031, 2, 2, 12), paid_until=datetime(2031, 1, 31).date(), provider="ClickPesa"
+		).status()
+		self.assertEqual(status["phase"], "grace")
+		self.assertEqual(status["grace_ends_on"], "2031-02-07")
+
+	def test_a_paid_site_lapses_at_local_midnight(self):
+		# covers: AC-14, AC-18. paid_until 1 January: grace ends 8 January, so 9 January locks.
+		# 23:30 UTC on 8 January is already 02:30 on 9 January in Dar es Salaam (UTC+3).
+		late_on_grace_end = datetime(2031, 1, 8, 23, 30)
+		paid_until = datetime(2031, 1, 1).date()
+		in_utc = clock(late_on_grace_end, paid_until=paid_until)
+		in_dar = clock(late_on_grace_end, time_zone="Africa/Dar_es_Salaam", paid_until=paid_until)
+		self.assertEqual((in_utc.phase, in_utc.locked), ("grace", False))
+		self.assertEqual((in_dar.phase, in_dar.locked), ("lapsed", True))
+
+	def test_a_hosted_site_with_no_trial_start_is_locked(self):
+		# A missing trial start must not read as a fresh day 1 every day (free access forever).
+		for now in (on_day(1), on_day(60)):
+			with self.subTest(now=now):
+				self.assertEqual(clock(now, trial_started_on=None).phase, "locked")
+		self.assertEqual(clock(on_day(60), trial_started_on=None, exempt=1).phase, "exempt")
+		paid = clock(on_day(60), trial_started_on=None, paid_until=on_day(200).date(), auto_renews=1)
+		self.assertEqual(paid.phase, "active")
+		self.assertEqual(clock(on_day(60), managed=False, trial_started_on=None).phase, "unmanaged")
+
+	def test_a_lock_with_no_trial_start_has_a_reason_and_no_trial_dates(self):
+		# covers: AC-8. No day 1, so no day number or trial dates, and the client can tell this lock apart.
+		status = clock(on_day(60), trial_started_on=None).status()
+		self.assertEqual((status["phase"], status["lock_reason"]), ("locked", "no_trial_start"))
+		for field in ("day_number", "trial_ends_on", "lock_starts_on", "removal_on"):
+			self.assertIsNone(status[field], field)
+		self.assertIsNone(clock(on_day(27)).status()["lock_reason"])
+
+	def test_unmanaged_and_exempt_sites_are_never_locked(self):
+		self.assertEqual(clock(on_day(40), managed=False).phase, "unmanaged")
+		self.assertEqual(clock(on_day(40), exempt=1).phase, "exempt")
+		self.assertFalse(clock(on_day(40), managed=False).locked)
+		# Unmanaged beats exempt and paid facts: the site is simply not on the clock.
+		self.assertEqual(clock(on_day(40), managed=False, exempt=1).phase, "unmanaged")
+
+	def test_is_locked_reads_nothing_on_an_unmanaged_site(self):
+		# Unmanaged on its own terms, whatever `books_control_url` the test site was left with (spec 0007 AC-8).
+		with managed_site(False), patch("frappe.get_cached_doc") as get_cached_doc:
+			self.assertFalse(is_locked())
+		get_cached_doc.assert_not_called()
+
+	def test_payment_pending_lasts_24_hours(self):
+		now = on_day(27)
+		self.assertTrue(clock(now, checkout_started_on=now - timedelta(hours=23)).status()["payment_pending"])
+		self.assertFalse(
+			clock(now, checkout_started_on=now - timedelta(hours=25)).status()["payment_pending"]
+		)
+		self.assertFalse(clock(now).status()["payment_pending"])
+
+	def test_can_subscribe_only_for_system_and_books_managers(self):
+		for roles, expected in (
+			(["System Manager"], True),
+			(["Books Manager"], True),
+			(["Books User"], False),
+			(["Books Cashier"], False),
+		):
+			with self.subTest(roles=roles), patch("frappe.get_roles", return_value=roles):
+				self.assertEqual(clock(on_day(1)).status()["can_subscribe"], expected)
+
+	def test_offered_plan_follows_the_company_country(self):
+		for country, expected in (
+			("Tanzania", ("ClickPesa", ["Yearly"])),
+			("Kenya", ("PayPal", ["Monthly", "Yearly"])),
+			(None, (None, [])),
+		):
+			with (
+				self.subTest(country=country),
+				patch("frappe_books.subscription.clock.company_country", return_value=country),
+			):
+				self.assertEqual(offered_plan(), expected)

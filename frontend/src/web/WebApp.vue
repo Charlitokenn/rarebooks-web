@@ -56,6 +56,8 @@ import { getFrappeDoc } from 'src/frappe/documents';
 import { fyo } from 'src/initFyo';
 import { Search } from 'src/utils/search';
 import { Shortcuts } from 'src/utils/shortcuts';
+import { setSubscriptionStatus } from 'src/utils/subscription';
+import { setSupportChat } from 'src/utils/supportChat';
 import { deskTheme, getColorScheme } from 'src/utils/theme';
 import { isMobile } from 'src/utils/viewport';
 import { useKeys } from 'src/utils/vueUtils';
@@ -140,6 +142,8 @@ export default defineComponent({
       fyo.store.indianStates = books.indian_states;
       fyo.setCurrencySymbols(boot.docs);
       fyo.user = boot.user.name;
+      setSubscriptionStatus(books.subscription);
+      setSupportChat(books.support_chat);
 
       registerFrappeModels(frappeModels);
       registerFrappeModels(await getRegionalFrappeModels(books.country_code));

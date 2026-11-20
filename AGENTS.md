@@ -55,6 +55,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`.
 
 - [code-style](.agents/skills/code-style/): `frappe/skills`, Frappe's Python and JS code style
 - [frappe-code-review](.agents/skills/frappe-code-review/): `frappe/skills`, checklist for reviewing Frappe changes
+- [paypal-best-practices](.agents/skills/paypal-best-practices/): `paypal/AI-Toolkit`, PayPal checkout, subscriptions and webhooks (for the planned billing control site)
 
 Area skills are listed in each nested doc. MCP servers: Frappe built in MCP (recommended), Playwright MCP (recommended), MariaDB MCP (recommended)
 
@@ -62,5 +63,6 @@ Area skills are listed in each nested doc. MCP servers: Frappe built in MCP (rec
 
 - [frappe_books/AGENTS.md](frappe_books/AGENTS.md): the Frappe app, its `books_*` DocTypes, reports, hooks and Python tests
 - [frontend/AGENTS.md](frontend/AGENTS.md): the Vue app at /books, its Frappe data layer, models and tests
+- [frappe_books/subscription/AGENTS.md](frappe_books/subscription/AGENTS.md): the trial clock, subscription state, control site contract and read only lock (spec 0005)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

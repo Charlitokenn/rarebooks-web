@@ -93,6 +93,42 @@ test('an invoice template keeps Books’ column order, without the quantity the 
   assert.ok(!headers.includes('Qty (Items)'));
 });
 
+// covers: AC-12
+test('an expense template holds its rows, without the values the server sets', () => {
+  const importer = new Importer('Expense', fyo);
+  const headers = parseCSV(importer.getCSVTemplate())[0];
+
+  assert.deepEqual(headers, [
+    'Expense No',
+    'Number Series',
+    'Date',
+    'Paid From',
+    'Supplier',
+    'Reference Number',
+    'Remark',
+    'ID (Expenses)',
+    'Account (Expenses)',
+    'Description (Expenses)',
+    'Amount (Expenses)',
+  ]);
+
+  importer.assignedTemplateFields = [
+    'Expense.name',
+    'Expense.paid_from',
+    'ExpenseAccount.account',
+    'ExpenseAccount.amount',
+  ];
+  importer.valueMatrix = [
+    [{ value: 'A' }, { value: 'Cash' }, { value: 'Rent' }, { value: 100 }],
+    [{ value: 'A' }, { value: null }, { value: 'Fuel' }, { value: 20 }],
+  ];
+  assert.deepEqual(parseCSV(importer.getImportFile().csv), [
+    ['docstatus', 'paid_from', 'accounts.account', 'accounts.amount'],
+    ['0', 'Cash', 'Rent', '100.00000000000'],
+    ['', '', 'Fuel', '20.00000000000'],
+  ]);
+});
+
 test('each table’s columns start with its row ID, which is not imported', () => {
   const importer = new Importer('SalesInvoice', fyo);
   const headers = parseCSV(importer.getCSVTemplate())[0];

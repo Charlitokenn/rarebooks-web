@@ -13,9 +13,15 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 |---|---------|-------|--------|
 | A | Dashboard (period picker, invoice cards, cashflow, profit and loss, top expenses) | Existing | existing |
 | 1 | Project context for version-16 | Foundation | done |
-| 2 | Account balances card | Slice 1 | in-progress |
+| 2 | Account balances card | Slice 1 | done |
 | 3 | Best sellers chart | Slice 2 | done |
-| 4 | Choose dashboard accounts | Slice 3 | in-progress |
+| 4 | Choose dashboard accounts | Slice 3 | done |
+| 5 | Expenses | Slice 4 | done |
+| 6 | Trial and read only lock | Slice 5 | done |
+| 9 | Lock hardening | Slice 5 | in-progress |
+| 7 | Trial end export and site removal | Slice 5 | in-progress |
+| 8 | Billing control site | Slice 5 | in-progress |
+| 10 | Support chat | Slice 6 | in-progress |
 
 ## Already built
 
@@ -31,7 +37,7 @@ version-16 has no `AGENTS.md`, so `/architect` and `/develop` have no project ru
 
 ## Slice 1: Account balances card
 
-### 2. Account balances card · in-progress
+### 2. Account balances card · done
 A dashboard card that lists each leaf cash and bank account's balance as of today, with the total. Each account links to the General Ledger for that account. Ported from develop's spec 0001.
 **Done when:** a ledger reader sees each cash and bank balance as of today and the total, the balances don't reload on a period change, a user without ledger read gets a permission error from the server and sees no card, and the card works on a phone.
 spec [0001](../specs/0001-account-balances-card/index.md)
@@ -44,8 +50,8 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Ac
   - [x] Layout polish and Playwright tests, desktop and phone (AC-2, AC-3, AC-6, AC-7, AC-9, AC-10, AC-11, AC-12)
 - [x] Verify it: `/check verify account balances card`
 - [x] Test it: `/test account balances card`
-- [ ] Review it (fresh model): `/check review account balances card`
-- [ ] Document it: `/document account balances card`
+- [x] Review it (fresh model): `/check review account balances card`
+- [x] Document it: `/document account balances card`
 
 ## Slice 2: Best sellers chart
 
@@ -67,22 +73,136 @@ code in `frappe_books/reports/dashboard.py` and `frontend/src/pages/Dashboard/Be
 
 ## Slice 3: Choose dashboard accounts
 
-### 4. Choose dashboard accounts · in-progress
+### 4. Choose dashboard accounts · done
 Let a user who can save Accounting Settings pick which leaf asset and liability accounts the balances card lists, from a Dashboard section in Accounting Settings. With none picked, the card falls back to every cash and bank account. Ported from develop's spec 0003.
 **Done when:** picked accounts show on the card in chart order. A duplicate or a non leaf, non asset, non liability pick is refused on save. A saved pick that later stops qualifying is skipped on the card and doesn't block saving other settings. The "Choose accounts" button shows only to users who can write Accounting Settings.
 spec [0003](../specs/0003-choose-dashboard-accounts/index.md)
+code in `frappe_books/reports/dashboard.py`, `frappe_books/frappe_books/doctype/books_accounting_settings/`, `frappe_books/frappe_books/doctype/books_dashboard_account/` and `frontend/src/pages/Dashboard/AccountBalances.vue`
 - [x] Design it (spec): `/architect choose dashboard accounts` (port develop's spec 0003; merge into v16's own Accounting Settings model and controller, which differ from develop's)
-- [ ] Build it: `/develop choose dashboard accounts`
-  - [ ] Server thread: Books Dashboard Account child table, `_dashboard_accounts()` read through `get_list` with the Settings check and the Cash and Bank fallback, delete block, test helper, read path and delete tests first (AC-4, AC-5, AC-8, AC-9, AC-10)
-  - [ ] Settings end to end: `DashboardAccount` row model with no Create, help line in `SettingsField.vue`, read only check for non writers, node test, pick shows on the card after the reload (AC-1, AC-2, AC-6)
-  - [ ] Save rules and the gate: `validate_dashboard_accounts()` with the stale row rule, `canRead.settings` on the dashboard row and card, Python rule, mirror and permission tests (AC-3, AC-4, AC-5, AC-9)
-  - [ ] "Choose accounts" button in every card state, then Playwright tests for the settings flow, the button and the gate, desktop and phone (AC-1, AC-2, AC-4, AC-5, AC-6, AC-7, AC-9)
-- [ ] Verify it: `/check verify choose dashboard accounts`
-- [ ] Test it: `/test choose dashboard accounts`
-- [ ] Review it (fresh model): `/check review choose dashboard accounts`
-- [ ] Document it: `/document choose dashboard accounts`
+- [x] Build it: `/develop choose dashboard accounts`
+  - [x] Server thread: Books Dashboard Account child table, `_dashboard_accounts()` read through `get_list` with the Settings check and the Cash and Bank fallback, delete block, test helper, read path and delete tests first (AC-4, AC-5, AC-8, AC-9, AC-10)
+  - [x] Settings end to end: `DashboardAccount` row model with no Create, help line in `SettingsField.vue`, read only check for non writers, node test, pick shows on the card after the reload (AC-1, AC-2, AC-6)
+  - [x] Save rules and the gate: `validate_dashboard_accounts()` with the stale row rule, `canRead.settings` on the dashboard row and card, Python rule, mirror and permission tests (AC-3, AC-4, AC-5, AC-9)
+  - [x] "Choose accounts" button in every card state, then Playwright tests for the settings flow, the button and the gate, desktop and phone (AC-1, AC-2, AC-4, AC-5, AC-6, AC-7, AC-9)
+- [x] Verify it: `/check verify choose dashboard accounts`
+- [x] Test it: `/test choose dashboard accounts`
+- [x] Review it (fresh model): `/check review choose dashboard accounts`
+- [x] Document it: `/document choose dashboard accounts`
+
+## Slice 4: Expenses
+
+### 5. Expenses · done
+Let you record, view and change the money the business spends that isn't a purchase invoice (rent, utilities, fees). Expenses get their own list and form, reached from the sidebar under Purchases. Bulk upload goes through the Import Wizard: Managers only, and each expense is saved as a draft (AC-12).
+**Done when:** a user with the right role can create, view, edit and list expenses from Purchases → Expenses in the sidebar. The server checks the caller's rights for every action. The list and form work on a phone.
+spec [0004](../specs/0004-expenses/index.md) · code in `frappe_books/frappe_books/doctype/books_expense/`, `frappe_books/accounting/accounts.py` and `frontend/models/baseModels/Expense/`
+- [x] Design it (spec): `/architect expenses` (settle the data model, whether an expense posts to the ledger and feeds the dashboard's Top Expenses, which roles can record or change one, and what editing means once it is submitted)
+- [x] Build it: `/develop expenses`
+  - [x] Server thread: Books Expense and its rows, the EXP- series and patch, the controller that validates, posts, cancels and deletes, and its Python tests (AC-4, AC-5, AC-6, AC-8, AC-16)
+  - [x] Thin screen end to end: models, sidebar item, list, General Ledger Ref Type, node tests and a Playwright happy path (AC-1, AC-2, AC-3, AC-5, AC-6)
+  - [x] Pickers and rules: the Paid From server search with the `linkQueries` hook, supplier filters, the duplicate warning, and tests (AC-3, AC-4, AC-7, AC-8)
+  - [x] Entry points and extras: phone create menu, search, linked entries, import, print format, Duplicate (AC-9, AC-10, AC-11, AC-12, AC-13, AC-14)
+  - [x] Phone layout and the full Playwright suite, desktop and phone, with the Cashier gate (AC-8, AC-15)
+  - [x] Books User pickers: two account searches gated on the expense rights, so a Books User records expenses without account rights (AC-3, AC-8, AC-17)
+  - [x] Server messages: show a message returned with a successful save as a toast, so the duplicate warning reaches you, per spec [0006](../specs/0006-server-messages-on-success.md) (AC-7)
+- [x] Verify it: `/check verify expenses`
+- [x] Test it: `/test expenses`
+- [x] Review it (fresh model): `/check review expenses`
+- [x] Document it: `/document expenses`
+
+## Slice 5: Subscription gating
+
+A new site gets a 30 day clock: days 1 to 21 are the free trial, and days 22 to 30 are the window to pay. A site that hasn't subscribed by day 26 turns read only. On day 30 the data is sent to the owner and the site is removed.
+
+### 6. Trial and read only lock · done
+Track each site's trial clock and subscription state. Show how many days are left and how to subscribe. From day 26, without a subscription, the site turns read only: you can still view and export your records, but you can't add or change anything. Paying lifts the lock at once.
+**Done when:** a new site has full access on days 1 to 25, sees a subscribe prompt from day 22, and from day 26 without a subscription the server refuses every create, edit, submit, cancel and delete (no matter the role) while viewing and export still work. A subscribed site is never locked. The prompt and the lock notice work on a phone.
+spec [0005](../specs/0005-trial-read-only-lock/index.md) · code in `frappe_books/subscription/` and `frappe_books/frappe_books/doctype/books_subscription/`
+- [x] Design it (spec): `/architect trial and read only lock` (settle where the trial clock and subscription state live and who can change them, how payment is taken and confirmed, how the server enforces read only across every doctype and whitelisted method, what export covers, and what happens with time zones and a payment that arrives late in the window)
+- [x] Build it: `/develop trial and read only lock`
+  - [x] Server thread: the read only transaction spike first, Books Subscription single and its guard, phase and time zone rules, install and patch, `before_request` and `before_job` locks with the allowlist, wildcard `doc_events`, `apply_state`, Python tests (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-9, AC-17, AC-18)
+  - [x] Thin UI end to end: status in boot, the banner in the app shell, lock error mapping in `api.ts`, the Subscription page and sidebar item, node tests and one Playwright locked save test (AC-2, AC-3, AC-4, AC-5, AC-8)
+  - [x] Control site contract: signing helpers, `receive_state` with rate limit and replay rule, signed pull, `start_checkout`, plans and the return refresh, payment pending and Retry states, the control stub and tests (AC-10, AC-11, AC-12, AC-15, AC-16)
+  - [x] Paid lifecycle: active, renew soon, grace and lapsed texts and boundary tests (AC-13, AC-14)
+  - [x] Phone layout and the full Playwright suite, desktop and phone, across every phase (AC-19, rechecks AC-2 to AC-16)
+  - [x] Review follow ups (spec 0005 milestone 6): `lock_reason` and no dates for a site locked with no trial start, and an atomic claim of the 10 second pull window that a push clears (AC-8, AC-12, AC-16)
+- [x] Verify it: `/check verify trial and read only lock`
+- [x] Test it: `/test trial and read only lock`
+- [x] Review it (fresh model): `/check review trial and read only lock`
+- [x] Document it: `/document trial and read only lock`
+
+### 9. Lock hardening · in-progress
+Close the minor findings from the fresh model review of feature 6, so the paywall holds up under real traffic and real mistakes, and make its tests independent of what the test site was left in. (from review 2026-11-18-v16-dashboard-features-trial-lock)
+**Done when:** two pushes at once never answer 400 or log a false "bad value"; a checkout link is accepted only over https outside developer mode; a bad time zone in System Settings falls back to UTC and logs once instead of failing every request; Frappe's own maintenance mode no longer shows "Subscribe to make changes again"; the first refused write after a site turns read only shows the current phase's text; the time zone and concurrent push paths have tests; and the two order sensitive tests (`test_is_locked_reads_nothing_on_an_unmanaged_site`, `test_a_bad_value_answers_400_and_changes_nothing`) set their own starting state, with the Milestone 6 setup line in `verify.md` fixed.
+spec [0007](../specs/0007-lock-hardening/index.md) · code in `frappe_books/subscription/` and `frontend/src/utils/subscription.ts`
+- [x] Design it (spec): `/architect lock hardening` (most items update spec 0005: how concurrent pushes are serialized, the wording for a real maintenance mode, the time zone fallback, and whether the client waits for a fresh status before the first lock notice)
+- [x] Build it: `/develop lock hardening`
+  - [x] Server hardening: the locking read for pushes, pulls and checkout, the 400 or 500 split, the https checkout rule, and the UTC fallback in the subscription clock, with no log of its own (AC-1, AC-2, AC-3, AC-4)
+  - [x] The right notice on the first refused write: `with_plans` on `get_subscription`, the awaited status, the maintenance text and the loop guard (AC-5, AC-6, AC-7)
+  - [x] Tests that don't depend on the site: `clear_trial_start()`, the two order sensitive tests, and spec 0005's verify.md setup line (AC-8)
+- [ ] Verify it: `/check verify lock hardening`
+- [x] Test it: `/test lock hardening`
+- [x] Review it (fresh model): `/check review lock hardening`
+- [x] Document it: `/document lock hardening`
+
+### 7. Trial end export and site removal · in-progress
+On day 30, if the site still hasn't subscribed, zip every record, email it to the owner, then remove the site for good. This can't be undone, so warnings go out before it happens.
+**Done when:** an unsubscribed site gets warnings before day 30, then on day 30 the owner receives a zip of all their records and the site is removed. A site that subscribes at any point before the removal is never removed. A failed export or email stops the removal and gets flagged, it doesn't delete anyway.
+spec [0007](../specs/0007-trial-end-export-removal/index.md) · code in `frappe_books/subscription/removal.py`, `frappe_books/subscription/runner.py`, `frappe_books/commands.py`, and the `rarebooks_control` repo (Milestone 4)
+- [x] Design it (spec): `/architect trial end export and site removal` (settle what runs the removal, since a site can't safely remove itself, what the zip holds and in what format, how a large zip reaches the owner, the warning schedule, retries and a safety hold, and what is kept for legal or audit reasons; spec 0005 gives the day 30 `removal_on` date and the `lapsed` phase, and suggests the billing control site as the runner)
+- [ ] Build it: `/develop trial end export and site removal`
+  - [x] One export end to end against stubs: lapsed `removal_on`, the two Books Subscription fields, `removal.py`, `build_export`, the `books-removal-run` command with its secrets file and signed calls, the new banner texts (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8, AC-15, AC-18, AC-19)
+  - [x] Cancel and failure paths: `clear`, `step_failed` with secret scrubbing, deferred exports, control site down (AC-11, AC-12, AC-15)
+  - [x] The drop behind dry run: local and remote checks, Frappe's in process drop with the case's archived path, repeat safe, phone layout and Playwright (AC-9, AC-10, AC-14, AC-19)
+  - [x] Control site removal side, in `rarebooks_control` (needs feature 8): hosting bench, removal case and warnings, signed endpoints, emails, download link, approval, cap, kill switch, alerts (AC-4, AC-5, AC-7, AC-9, AC-11 to AC-17, AC-20, AC-21)
+  - [ ] Rollout: R2 bucket and lifecycle rules, host config and cron, a dry run cycle, then live with approval on (AC-3, AC-14, AC-16, AC-20)
+- [ ] Verify it: `/check verify trial end export and site removal`
+- [ ] Test it: `/test trial end export and site removal`
+- [ ] Review it (fresh model): `/check review trial end export and site removal`
+- [ ] Document it: `/document trial end export and site removal`
+
+### 8. Billing control site · in-progress
+A small central Frappe app of yours (`rarebooks_control`, its own repo) that keeps the list of hosted sites and their per site secrets, takes payment (ClickPesa yearly for Tanzania, PayPal Subscriptions monthly or yearly for everyone else), and pushes each change to the customer site through the signed contract in spec 0005. Production use of feature 6 waits on it. (from spec 0005)
+**Done when:** a customer site's Subscribe button reaches a real ClickPesa or PayPal checkout, a confirmed payment pushes a `paid_until` that lifts the lock within a minute, a PayPal cancel, suspend or expiry pushes the change, and a bad webhook signature changes nothing.
+spec [0008](../specs/0008-billing-control-site/index.md) · code in the `rarebooks_control` repo, plus `frappe_books/commands.py`, `frappe_books/subscription/control.py` and the Subscription page in this repo
+- [x] Design it (spec): `/architect billing control site` (settle the site registry and secret rotation, ClickPesa checkout links, its webhook checksum header and key, and its dashboard return URL, PayPal plans and webhook verification, how `paid_until` is computed (the paid period starts at trial end when someone pays early), push retries, and where it is hosted)
+- [ ] Build it: `/develop billing control site`
+  - [x] The thread, one ClickPesa payment end to end against stubs: new repo and CI, the data model and Billing Manager role, signing with golden vectors and signed responses, `register_site` and `books-register-site`, `get_state`, ClickPesa checkout and webhook, lock then fetch then write, one push; this repo's contract update (AC-1, AC-2, AC-3, AC-6, AC-7, AC-8, AC-13, AC-21)
+  - [x] PayPal: subscriptions with `start_time` at trial end, verified webhooks, `provider_reference` rule, money checks, refunds, double subscription cancel, the "starts on" note and refusal messages on the customer site, a sandbox run, then the sandbox date fixes: noon Pacific `start_time` and the charge day counted as paid (AC-4, AC-5, AC-9, AC-10, AC-11, AC-21, AC-23)
+  - [x] Reliability: versioned push queue with retries and alerts, the return page, reconcile jobs, mismatch and unknown payment alerts, receipts, retention, `being_removed` and `billing_state()` for spec 0007 (AC-5, AC-10, AC-12, AC-13, AC-16, AC-17, AC-18, AC-19)
+  - [x] Operator tools and hardening: manual edit and Push now, secret rotation through the runner, two factor sign in, per site rate limits, signature failure alert (AC-14, AC-15, AC-20, AC-22)
+  - [ ] Rollout: `control` user and bench on the hosting server, Redis passwords, nginx and TLS, R2 backups, Resend, ClickPesa and PayPal live setup, the TZS 1,000 launch check (AC-3, AC-4, AC-19, AC-22, AC-23)
+- [ ] Verify it: `/check verify billing control site`
+- [ ] Test it: `/test billing control site`
+- [x] Review it (fresh model): `/check review billing control site`
+- [ ] Document it: `/document billing control site`
+
+## Slice 6: Support chat
+
+### 10. Support chat · in-progress · Beta
+Add a tawk.to chat widget to every /books screen, so a signed in user can reach support from anywhere, including the Subscription page and the read only lock. When they start a chat, their name, email and organization show up on the visitor in the tawk.to dashboard, so you don't have to ask who they are.
+**Done when:** a signed in user on any /books screen can open the chat, and the tawk.to dashboard shows their name, email and organization on that chat; the details come from the server for the signed in user, so a user can't pose as someone else; the widget still loads on a locked site; it doesn't cover key controls on a phone; and the app works normally if tawk.to is blocked or down.
+spec [0009](../specs/0009-support-chat/index.md) · code in `frappe_books/support_chat.py` and `frontend/src/utils/supportChat.ts`
+- [x] Design it (spec): `/architect support chat` (settle where the widget keys live and who can change them, how the name, email and organization are sent and whether they are signed so a visitor can't fake them, what counts as the organization on this site, the language the widget shows, and what users are told about the data going to tawk.to)
+- [ ] Build it: `/develop support chat`
+  - [x] Thin thread: the signed `support_chat` boot block from the bench config keys, and a "Chat with support" item in the app menu that loads tawk.to on first open with the bubble hidden (AC-1, AC-2, AC-3, AC-4, AC-10)
+  - [x] Support details and entry points: company, site, roles, version, live phase and screen path, plus buttons on the locked banner and the Subscription page (AC-5, AC-6, AC-7)
+  - [x] Failure and sign out: the load timeout toast with the support email, late load guard, `Tawk_API.logout` at sign out and the expired session guard (AC-3, AC-8, AC-9, AC-11)
+  - [ ] Tests and rollout: Playwright with a stub tawk.to, rollout notes, Secure Mode on, the privacy policy naming tawk.to, and a manual check with the real widget on a hosted site (AC-1, AC-3 to AC-10)
+- [ ] Verify it: `/check verify support chat`
+- [ ] Test it: `/test support chat`
 
 ## Deferred
+
+- Support chat: load tawk.to at app start for proactive chat if the team wants to reach out first; a widget per language keyed by the user's Frappe language (from spec 0009)
+
+- Self serve signup: a public form that provisions a hosted site and calls `register_site`; fiscal (TRA VFD/EFD) receipts for Tanzanian payments; rotation of the runner secrets in `books_runner_secrets` (from spec 0008)
+
+- Delete a dropped site's own TLS certificate in the runner, or move the hosting bench to a wildcard certificate; and a "Removed" page so a removed site's URL explains what happened (from spec 0007)
+
+- Small polish from the feature 6 review: clamp a future `issued_at` to now when storing `last_synced_on`, return `plans_error` as a typed object, and send `days_left` in the status so the client stops copying `LOCK_DAY` and `TRIAL_LAST_DAY` (from review 2026-11-18-v16-dashboard-features-trial-lock)
+
+- Tax on expenses (a Books Tax per row, posting to tax accounts), if input tax needs claiming back (from spec 0004)
+- Foreign currency expenses with an exchange rate, if foreign bills become common (from spec 0004)
 
 - Label the balances card's Total "Net" (or add a tooltip) when a picked liability is listed; revisit after real users pick one (from spec 0003)
 

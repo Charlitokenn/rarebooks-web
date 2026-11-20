@@ -10,6 +10,7 @@ import {
   getImportableSchemaNames,
   getModel,
   getSidebarConfig,
+  ListFilters,
   loadDocPermissions,
   loadSaved,
   Search,
@@ -105,6 +106,12 @@ test('the import wizard offers only the schemas the user may import', () => {
     user: { can_import: ['Books Party'] },
   };
   assert.deepEqual(getImportableSchemaNames(fyo), ['Party']);
+
+  fyo.store.permissions = {
+    doctypes: { Expense: 'Books Expense', Party: 'Books Party' },
+    user: { can_import: ['Books Expense', 'Books Party'] },
+  };
+  assert.deepEqual(getImportableSchemaNames(fyo), ['Expense', 'Party']);
 });
 
 test('export granted only to owners exports only the user’s documents', () => {
@@ -183,6 +190,34 @@ test('purchase payments show only to users who can read purchase invoices', () =
     'Purchase Invoices',
     'Purchase Payments',
   ]);
+});
+
+test('Expenses show under Purchases, after Purchase Payments, only to users who can read them', () => {
+  const purchaseItems = (canRead) => {
+    fyo.store.permissions = {
+      doctypes: {
+        Expense: 'Books Expense',
+        Party: 'Books Party',
+        Payment: 'Books Payment',
+        PurchaseInvoice: 'Books Purchase Invoice',
+      },
+      user: { can_read: canRead },
+    };
+    const purchases = getSidebarConfig().find(
+      ({ label }) => label === 'Purchases'
+    );
+    return purchases?.items.map((item) => item.label);
+  };
+
+  const others = ['Books Party', 'Books Payment', 'Books Purchase Invoice'];
+  assert.deepEqual(purchaseItems([...others, 'Books Expense']), [
+    'Purchase Invoices',
+    'Purchase Payments',
+    'Expenses',
+    'Suppliers',
+  ]);
+  assert.equal(purchaseItems(others).includes('Expenses'), false);
+  assert.deepEqual(purchaseItems(['Books Expense']), ['Expenses']);
 });
 
 test('Setup lists Number Series for a user who can read them', () => {
@@ -305,4 +340,89 @@ test('the palette offers the Setup pages only to users who can use them', () => 
   assert.ok(pages.includes('Dashboard'));
   assert.ok(!pages.includes('Settings'));
   assert.ok(!pages.includes('Chart of Accounts'));
+});
+
+/** A Books User's boot, or a Books Manager's: both record expenses, only the Manager reads accounts. */
+function bootExpenseUser({ readsAccounts }) {
+  const schemas = ['Expense', 'Account', 'Party', 'NumberSeries'];
+  const doctypes = Object.fromEntries(
+    schemas.map((name) => [name, getDocType(name).doctype])
+  );
+  const readable = Object.values(doctypes).filter(
+    (doctype) => readsAccounts || doctype !== 'Books Account'
+  );
+  fyo.store.permissions = {
+    doctypes,
+    user: {
+      can_read: readable,
+      can_create: ['Books Expense'],
+      can_write: ['Books Expense'],
+      can_submit: ['Books Expense'],
+    },
+  };
+  window.frappe.boot.allowed_reports = readsAccounts
+    ? { 'Books General Ledger': {} }
+    : {};
+}
+
+// covers: AC-17
+test('a Books User gets no Paid From filter on Expenses, a Books Manager does', () => {
+  const filterNames = () =>
+    new ListFilters('Expense').fields.map(({ fieldname }) => fieldname);
+
+  bootExpenseUser({ readsAccounts: false });
+  const user = filterNames();
+  bootExpenseUser({ readsAccounts: true });
+  const manager = filterNames();
+  delete window.frappe.boot.allowed_reports;
+
+  assert.ok(!user.includes('paid_from'));
+  assert.ok(user.includes('party'), 'other links still filter');
+  assert.ok(manager.includes('paid_from'));
+});
+
+// covers: AC-17
+test('a Books User sees no account in the search palette, a Books Manager does', () => {
+  const palette = () => {
+    const search = new Search(fyo);
+    search.initialize();
+    const routes = search._nonDocSearchList.map(
+      ({ route }) => decodeURI(route ?? '').split('?')[0]
+    );
+    return { schemas: Object.keys(search.searchables), routes };
+  };
+  const accountRoutes = (routes) =>
+    routes.filter(
+      (route) =>
+        route === '/chart-of-accounts' ||
+        route.startsWith('/list/Account') ||
+        route === '/report/GeneralLedger'
+    );
+
+  bootExpenseUser({ readsAccounts: false });
+  const user = palette();
+  bootExpenseUser({ readsAccounts: true });
+  const manager = palette();
+  delete window.frappe.boot.allowed_reports;
+
+  assert.ok(user.schemas.includes('Expense'));
+  assert.ok(!user.schemas.includes('Account'), 'no account documents');
+  assert.deepEqual(accountRoutes(user.routes), []);
+  assert.ok(user.routes.includes('/list/Expense'));
+  assert.ok(manager.routes.includes('/chart-of-accounts'));
+  assert.ok(manager.routes.includes('/report/GeneralLedger'));
+});
+
+// covers: AC-17
+test('a submitted expense offers Accounting entries to a Books Manager only', () => {
+  const submitted = { isSubmitted: true, schemaName: 'Expense' };
+
+  bootExpenseUser({ readsAccounts: false });
+  const user = shownActions('Expense', submitted);
+  bootExpenseUser({ readsAccounts: true });
+  const manager = shownActions('Expense', submitted);
+  delete window.frappe.boot.allowed_reports;
+
+  assert.ok(!user.includes('Accounting entries'));
+  assert.ok(manager.includes('Accounting entries'));
 });

@@ -3,6 +3,17 @@ import { validateEmail } from 'src/frappe/validation';
 import { FrappeDoc } from 'src/frappe/document';
 import { withoutCreate } from 'src/frappe/schema';
 
+/** A row of the accounts the dashboard's balances card lists. */
+export class DashboardAccount extends FrappeDoc {
+  // The account is picked, not created, from the settings.
+  static override presentation = {
+    label: 'Dashboard Account',
+    fields: withoutCreate(['account']),
+  };
+
+  declare account?: string;
+}
+
 /**
  * Books Accounting Settings, served by Frappe. Its country is Frappe's
  * System Settings country; the DocType shows it read only.
@@ -18,6 +29,7 @@ export class AccountingSettings extends FrappeDoc {
       'discount_account',
     ]),
   };
+  static override rowModels = { dashboard_accounts: DashboardAccount };
 
   declare fullname?: string;
   declare company_name?: string;
@@ -45,6 +57,7 @@ export class AccountingSettings extends FrappeDoc {
   declare enableitem_group?: boolean;
   declare enable_point_of_sale_with_out_inventory?: boolean;
   declare enable_partial_payment?: boolean;
+  declare dashboard_accounts?: (FrappeDoc & { account?: string })[];
 
   static filters: FiltersMap = {
     write_off_account: () => [

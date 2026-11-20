@@ -10,6 +10,7 @@ The Books user interface: a Vue 3 + frappe-ui 1.0.0 single page app that renders
 |---|---|
 | `src/frappe/` | The Frappe data layer: meta, schema, `FrappeDoc`, `/api/v2` calls, field state. Mapped in [docs/framework-backed-doctypes.md](../docs/framework-backed-doctypes.md) |
 | `src/web/api.ts` | `call()` for whitelisted methods, server errors, session expiry |
+| `src/utils/supportChat.ts` | The tawk.to support chat: the only place that loads the tawk.to script or calls `Tawk_API`, from the server signed `books.support_chat` boot block, on the first pick only (spec 0009) |
 | `models/index.ts` | `frappeModels`: one model per schema name, extending `FrappeDoc` ([models/README.md](models/README.md)) |
 | `fyo/` | Shared primitives: the `fyo` singleton, translation, formatting, money, observer events ([fyo/README.md](fyo/README.md)) |
 | `src/web/main.ts`, `src/initFyo.ts`, `src/router.ts` | Startup and routes ([src/README.md](src/README.md)) |
@@ -33,6 +34,9 @@ yarn lint        # eslint .
 - Models extend `FrappeDoc` and carry no `formulas`, `defaults` or data code. Presentation only settings go in `static presentation`; see the "Where each part goes" table in the framework doc.
 - The schema name (for example `SalesInvoice`, `Item`) is the route key and the `frappeModels` key. Table rows use the child DocType name without `Books ` (for example `SalesInvoiceItem`).
 - Talk to the server through `src/frappe/` and `src/web/api.ts`. No raw `fetch` in components, and no `createResource`.
+- Screens never handle server messages. A `msgprint` sent with a successful write or `call()` shows as a toast through `src/frappe/serverMessages.ts`, which only `request()` in `src/frappe/api.ts` and the `serverMessagesHandler` set in `src/web/api.ts` call. The form's preview passes `quiet` (spec 0006).
+- On a locked hosted site a write fails with `SiteLockedError` (403) or `InReadOnlyMode` (503). `src/web/api.ts` turns both into the lock notice by error type (`isLockErrorType` in `src/utils/subscription.ts`), never by status alone, so screens don't handle them (spec 0005).
+- Before it words that notice, `getLockStatus` in `src/web/api.ts` awaits a fresh status (`fetchLockStatus`, one shared `get_subscription` call with `with_plans: false`): always for `InReadOnlyMode`, which may be Frappe's own maintenance mode, and for `SiteLockedError` while the stored status says open. The status call itself passes `skipLockStatus`, so it can't start another one (spec 0007 lock hardening).
 - No store library: shared state is the `fyo` singleton (`fyo.singles`, `fyo.observer`), refs in `src/utils/refs.ts`, and `provide`/`inject` with keys from `src/utils/injectionKeys.ts`.
 - Dashboard cards extend `src/pages/Dashboard/BaseDashboardChart.vue` (the `period` prop, `loadData` around their own `setData`, `cardClass` for phones) and show `ChartLoadError` on a failed load.
 - Charts come from `frappe-ui/charts`; check that frappe-ui 1.0.0 has a prop before you use it, since `develop` is on a newer frappe-ui.

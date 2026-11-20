@@ -30,6 +30,10 @@ await build({
       export { getRowDetails } from './src/components/Controls/rowDetails';
       export { getRowSummary } from './src/components/Controls/rowSummary';
       export * as errors from './fyo/utils/errors';
+      export * as frappeApi from './src/frappe/api';
+      export { call } from './src/web/api';
+      export { parseServerMessages, showServerMessages } from './src/frappe/serverMessages';
+      export { toast } from 'frappe-ui';
       export { frappeModels, getRegionalFrappeModels } from './models';
       export { getLedgerLink, getStockTransferActions } from './models/helpers';
       export { createFilters, routeFilters } from './src/utils/filters';
@@ -37,7 +41,8 @@ await build({
       export { getFilterFields } from './src/utils/filterFields';
       export { getSidebarConfig } from './src/utils/sidebarConfig';
       export { getAppMenuItems } from './src/utils/appMenu';
-      export { docsPathRef } from './src/utils/refs';
+      export { docsPathRef, subscriptionStatus } from './src/utils/refs';
+      export * as supportChat from './src/utils/supportChat';
       export { deskTheme, getColorScheme } from './src/utils/theme';
       export { default as ListView } from './src/pages/ListView/ListView.vue';
       export { default as POS } from './src/pages/POS/POS.vue';
@@ -165,6 +170,11 @@ export const {
   getRowDetails,
   getRowSummary,
   errors,
+  frappeApi,
+  call,
+  parseServerMessages,
+  showServerMessages,
+  toast,
   frappeModels,
   getRegionalFrappeModels,
   getMappedDoc,
@@ -207,6 +217,8 @@ export const {
   getSidebarConfig,
   getAppMenuItems,
   docsPathRef,
+  subscriptionStatus,
+  supportChat,
   deskTheme,
   getColorScheme,
   ListView,

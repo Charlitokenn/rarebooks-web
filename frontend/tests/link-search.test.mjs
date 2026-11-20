@@ -23,6 +23,24 @@ const metas = [
       { fieldname: 'email', fieldtype: 'Data', label: 'Email' },
     ],
   },
+  {
+    name: 'Books Spend',
+    permissions: [],
+    fields: [
+      {
+        fieldname: 'paid_from',
+        fieldtype: 'Link',
+        options: 'Books Account',
+        label: 'Paid From',
+      },
+      {
+        fieldname: 'party',
+        fieldtype: 'Link',
+        options: 'Books Party',
+        label: 'Party',
+      },
+    ],
+  },
 ];
 const requests = [];
 let records = [];
@@ -49,7 +67,13 @@ class Party extends FrappeDoc {
   static doctype = 'Books Party';
   static presentation = { label: 'Party' };
 }
-registerFrappeModels({ Account, Party });
+const SPEND_QUERY = 'frappe_books.accounting.accounts.search_spend_accounts';
+class Spend extends FrappeDoc {
+  static doctype = 'Books Spend';
+  static presentation = { label: 'Spend' };
+  static linkQueries = { paid_from: SPEND_QUERY };
+}
+registerFrappeModels({ Account, Party, Spend });
 await loadFrappeDocTypes();
 
 function makeControl(component, props) {
@@ -113,4 +137,37 @@ test("a link without model filters searches by its DocField's link_filters", asy
   assert.deepEqual(await link.getFilters(), linkFilters);
   fyo.singles.SystemSettings = { remove_filter: true };
   assert.equal(await link.getFilters(), null);
+});
+
+test("a link with a model link query sends it as the search's query", async () => {
+  requests.length = 0;
+  records = [{ name: 'Petty Cash' }];
+  const link = makeControl(Link, {
+    df: { target: 'Account', schemaName: 'Spend', fieldname: 'paid_from' },
+  });
+
+  const options = await link.getOptions('pet', null);
+
+  assert.deepEqual(options, [{ label: 'Petty Cash', value: 'Petty Cash' }]);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].args.query, SPEND_QUERY);
+  assert.equal(requests[0].args.doctype, 'Books Account');
+});
+
+test('a link the model gives no query searches without one', async () => {
+  requests.length = 0;
+  records = [];
+  const party = makeControl(Link, {
+    df: { target: 'Party', schemaName: 'Spend', fieldname: 'party' },
+  });
+  const unmodelled = makeControl(Link, {
+    df: { target: 'Account', schemaName: 'Defaults', fieldname: 'paid_from' },
+  });
+
+  await party.getOptions('', null);
+  await unmodelled.getOptions('', null);
+
+  assert.equal(requests.length, 2);
+  assert.equal('query' in requests[0].args, false);
+  assert.equal('query' in requests[1].args, false);
 });

@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AutoComplete, Color, Select } from './helpers/ui.mjs';
+import { getBooksMeta } from './helpers/doctypes.mjs';
+import { stubFrappe } from './helpers/frappe.mjs';
+import {
+  AutoComplete,
+  Color,
+  frappeModels,
+  fyo,
+  loadFrappeDocTypes,
+  newFrappeDoc,
+  registerFrappeModels,
+  Select,
+} from './helpers/ui.mjs';
+
+stubFrappe(({ body }) => ({ message: getBooksMeta(body.doctypes) }));
+registerFrappeModels(frappeModels);
+await loadFrappeDocTypes();
 
 /** A control's script, without its template or its Base parent. */
 function getControl(Component, values) {
@@ -69,4 +84,36 @@ test('a Color takes a hex value, and an emptied one clears it, as Frappe desk do
   color.setColorValue('#12');
   color.setColorValue('');
   assert.deepEqual(changes, ['#ff0000', null]);
+});
+
+// covers: AC-17
+test('expense account links open their entry only for a user who can read accounts', () => {
+  const expense = newFrappeDoc('Expense', {
+    paid_from: 'Cash',
+    accounts: [{ account: 'Rent' }],
+  });
+  const [row] = expense.accounts;
+  const openable = (canRead) => {
+    fyo.store.permissions = {
+      doctypes: { Account: 'Books Account', Expense: 'Books Expense' },
+      user: { can_read: canRead },
+    };
+    return [
+      [expense, 'paid_from'],
+      [row, 'account'],
+    ].map(([doc, fieldname]) => {
+      const df = doc.schema.fields.find(
+        (field) => field.fieldname === fieldname
+      );
+      return getControl(AutoComplete, { df, doc, value: doc[fieldname] })
+        .canLink;
+    });
+  };
+
+  const booksUser = openable(['Books Expense']);
+  const booksManager = openable(['Books Expense', 'Books Account']);
+  fyo.store.permissions = null;
+
+  assert.deepEqual(booksUser, [false, false], 'a Books User sees plain names');
+  assert.deepEqual(booksManager, [true, true]);
 });

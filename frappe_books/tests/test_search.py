@@ -16,6 +16,7 @@ from frappe_books.tests.accounting import (
 USER = "books-search-user@example.com"
 MANAGER = "books-search-manager@example.com"
 INVOICE = "Books Sales Invoice"
+EXPENSE = "Books Expense"
 
 
 class IntegrationTestSearchPalette(IntegrationTestCase):
@@ -74,6 +75,28 @@ class IntegrationTestSearchPalette(IntegrationTestCase):
 			found = search_widget("Books Account", translated.lower(), page_length=5, as_dict=True)
 
 		self.assertEqual([row.name for row in found], [account])
+
+	def test_an_expense_is_found_by_its_name_supplier_and_reference(self):
+		supplier = make_party(
+			make_account("Search Payable", root_type="Liability", account_type="Payable").name, "Supplier"
+		)
+		expense = frappe.get_doc(
+			{
+				"doctype": EXPENSE,
+				"paid_from": make_account("Search Cash", account_type="Cash").name,
+				"party": supplier.name,
+				"reference_number": "RCPT58213",
+				"accounts": [
+					{"account": make_account("Search Rent", root_type="Expense").name, "amount": 10}
+				],
+			}
+		).insert()
+		BooksSearch().index_documents_by_name(EXPENSE, [expense.name])
+
+		for text in (expense.name, supplier.name.split()[-1], "RCPT58213"):
+			self.assertIn(expense.name, self._found(text, [EXPENSE]), text)
+		with self.set_user(ensure_user("books-search-cashier@example.com", "Books Cashier")):
+			self.assertEqual(search("RCPT58213", [EXPENSE]), [])
 
 	def _found(self, text, doctypes):
 		with self.set_user(ensure_user(USER, "Books User")):
