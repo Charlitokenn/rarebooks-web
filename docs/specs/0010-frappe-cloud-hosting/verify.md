@@ -53,14 +53,14 @@ _Steps come from the spec 0010 acceptance criteria. `/check verify` runs them; `
 - [ ] On a Pending or Failed site → no Rotate secret button; Retry config is there. → AC-11, AC-12
 
 ### Commands
-- [ ] `bench --site <control> run-tests --app rarebooks_control --module rarebooks_control.tests.test_registry` → 19 tests OK → AC-10, AC-11, AC-12, AC-16
-- [ ] Back date a Pending site's `config_sent_on` by 61 minutes while its config is wrong, run `rarebooks_control.registry.ping_sites` twice → `config_status` Failed, one email to `books_ops_email`. → AC-11
+- [ ] `bench --site <control> run-tests --app rarebooks_control --module rarebooks_control.tests.test_registry` → 18 tests OK → AC-10, AC-11, AC-12, AC-13, AC-16
+- [ ] Back date a Pending site's `config_sent_on` by 61 minutes while its config is wrong, run `rarebooks_control.registry.run_pings` twice → `config_status` Failed, one email to `books_ops_email`. → AC-11
 - [ ] Retry config on that site → Pending, `config_sent_on` now, Frappe Cloud shows the config again. → AC-11
-- [ ] With a site holding only the new secret during a rotation, run `rarebooks_control.removal.call_site("<site>", "removal_report")` → succeeds on the second try with `pending_secret`. → AC-12
-- [ ] Back date `rotation_started_on` by 61 minutes on a rotation the site never took, run `ping_sites` twice → one email; both secrets still pass `get_state`. → AC-12
+- [ ] With a site holding only the new secret during a rotation, run `rarebooks_control.site_calls.call_site("<site>", "removal_report")` → succeeds on the second try with `pending_secret`. → AC-12
+- [ ] Back date `rotation_started_on` by 61 minutes on a rotation the site never took, run `rarebooks_control.registry.run_pings` twice → one email; both secrets still pass `get_state`. → AC-12
 - [ ] A `get_state` from a Pending site, signed with its secret → signed 409 `{"refusal": "config_pending"}`; `push.push_site` sends nothing for it. → AC-11
-- [ ] Set Books Removal Settings `last_run_on` 4 hours back, run `ping_sites` twice → one "hasn't run for 3 hours" email that day. → AC-16
-- [ ] Two `swap_secret` calls with the same verified secret → the first swaps, the second does nothing. → AC-12
+- [ ] Set Books Removal Settings `last_run_on` 4 hours back, run `rarebooks_control.registry.run_pings` twice → one "hasn't run for 3 hours" email that day. → AC-16
+- [ ] Two `rarebooks_control.registry.ping_rotation` calls once the site holds the new secret → the first swaps, the second does nothing. → AC-12
 
 ### Value sourcing
 - [ ] The secret comes from `secrets.token_hex(32)`: 64 hex characters, never returned by `register_site`. → AC-10
@@ -75,3 +75,42 @@ _Steps come from the spec 0010 acceptance criteria. `/check verify` runs them; `
 - Milestone 3: AC-10 register, refusals, config written · AC-11 ping, Failed, Retry config, gating · AC-12 rotate, both secrets, swap once, 401 retry, alert · AC-16 stale run alert (the digest lines come in Milestone 4)
 - AC-1: round, off, skipped site cancel, dry run steps · AC-2: ping, 401 cases, fresh secret · AC-3: start_export checks, cap, slot back, stuck rule, key and link · AC-4: link expiry, upload scrub, 503 retry, 409, disk, size cap · AC-5: locked site calls and job · AC-9: settings steps · AC-13: error scrub · AC-17: per site limit
 - Not yet in this file: AC-6, AC-7, AC-8 (Milestone 2 built, steps not added yet); AC-14, AC-15, the digest part of AC-16 (Milestone 4 and 5)
+
+## Update 2026-11-20 · Milestones 2 and 4, and spec 0011
+_Steps for the drop through Frappe Cloud, the cleanup and alerts, and spec 0011's archive mark and config rules. "0011 AC-n" is spec 0011._
+
+### UI / manual
+- [ ] On a staging site in `live` with approval on, take a case to `Holding` past `hold_until`, approve it, and run the round → one `removal_report` before the archive, the case is `Dropping` with `drop_started_on` and `archive_requested_on` set, and Frappe Cloud shows the site archiving. → AC-6, 0011 AC-1
+- [ ] Next hourly run while Frappe Cloud still shows the archive running → the case stays `Dropping`, no second archive in Frappe Cloud's activity. Once it shows Archived → the case and the Books Hosted Site are `Removed`. → AC-7, 0011 AC-2
+- [ ] The export email and the zip's `README.txt` say the hosting provider may keep backups for a limited time; neither says no other copy exists. → AC-8
+- [ ] On a Books Hosted Site form, Retry config on an Active site → `config_status` Pending, and Active again within 5 minutes. Mid rotation → it stays Active and `rotation_started_on` restarts. → 0011 AC-4
+- [ ] Rotate secret is missing on a Pending or Failed site, and calling `rarebooks_control.registry.rotate_secret` there gives "use Retry config instead". → 0011 AC-6
+- [ ] Desk shows no Books Hosting Bench, and the Billing workspace links Removal Settings instead. → AC-9, AC-15
+
+### Commands
+- [ ] `bench --site <control> run-tests --app rarebooks_control` → 33 unit and 157 integration tests OK → AC-1 to AC-17, 0011 AC-1 to AC-11
+- [ ] `bench --site <site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_remote` and `...test_subscription_removal` → OK → AC-2, AC-4, AC-5, AC-8
+- [ ] `bench --help` on the customer bench lists no `books-` command, and `grep -rn "runner\|books_removal_mode\|books_runner_secrets" frappe_books rarebooks_control --include=*.py` finds nothing but the bench removal patch. → AC-15
+- [ ] With the fake Frappe Cloud archive raising a read timeout → `archive_requested_on` set, `attempts` 0; with an HTTP 500 → no mark, `attempts` 1; three 500s → `Failed` and one ops email. → 0011 AC-1, AC-7
+- [ ] Make every save of the mark fail (patch `removal._write_archive_mark`) → no mark and an Error Log "couldn't be marked"; set Frappe Cloud back to Active and run the job → every guard again, then one more archive. → 0011 AC-1, AC-2
+- [ ] A `Dropping` case on a site with `config_status` Failed is still enqueued by `run_round` and goes `Removed` when Frappe Cloud shows Archived, with no call to the site. → 0011 AC-10
+- [ ] A `Failed` case with `drop_started_on` set whose site Frappe Cloud shows Archived → `send_digest` makes it `Removed` and lists it as "archived after failing". → 0011 AC-11
+- [ ] System Settings `dormant_days` 4 on the control site, run `run_round` twice → one email that day; after `after_install` it is 0. → AC-14
+- [ ] The daily digest shows "Last removal run" and every site whose `config_status` isn't Active. → AC-16
+
+### Value sourcing
+- [ ] "The archive was requested" comes only from the case's `archive_requested_on`: with it set, Frappe Cloud showing Active still gives no call. → 0011 AC-2
+- [ ] The time written is UTC (`signing.utc_now`): it matches the UTC clock, not the site's time zone. → 0011 AC-1
+- [ ] "Unknown outcome" is the client's own split: a connect timeout or refused connection is a clear error, a read timeout or a reset after sending is unknown. → 0011 AC-1
+- [ ] The bench group comes from Frappe Cloud's `group` compared exactly with `books_bench_group`: another group, an empty group, or an empty setting each stop the archive. → 0011 AC-3
+- [ ] "Not the control site" comes from `frappe.local.site`: a registered site named like the control site is never archived. → AC-6
+- [ ] The daily cap counts cases with `drop_started_on` on the current UTC date across all sites: six due sites with a cap of 5 start exactly 5 drops. → AC-6, AC-9
+- [ ] The fresh report is a `removal_report` in the same job: `payment_pending` true, phase `active`, or `removal_on` after today each stop the archive. → AC-6
+- [ ] Retry config's secret is `pending_secret` when set, else `control_secret`; its URL is `books_control_public_url`. → 0011 AC-4
+- [ ] `get_state`'s refusal comes from the calling site's `config_status`: Pending or Failed gives the signed 409, and the signature failure counter doesn't move. → 0011 AC-5
+- [ ] The digest's failed drops to reconcile are `Failed` cases with `drop_started_on` set; a `Failed` export case is never sent to Frappe Cloud. → 0011 AC-11
+
+### Acceptance criteria coverage
+- AC-6, AC-7, AC-8: drop, guards, poll, wording · AC-14: dormant days · AC-15: removed code · AC-16: digest lines · 0011 AC-1 to AC-11: archive mark, poll order, group, config rules, digest reconciliation
+- Still owed: Milestone 5 (rollout on Frappe Cloud, AC-13 and AC-14 on the real site), which no local run can cover
+
