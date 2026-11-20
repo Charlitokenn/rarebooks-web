@@ -1,24 +1,32 @@
-"""The customer site's side of trial end removal (spec 0007): its removal status, the export, and the hold fields.
+"""The customer site's side of trial end removal (specs 0007 and 0010): its removal status, the export job,
+and the hold fields.
 
-The bench command `books-removal-run` (`frappe_books/commands.py`) calls these in process. None is whitelisted,
-and none is in `ALLOWED_METHODS`: they run outside a web request and outside a background job, so the read only
-lock never applies to them (AC-18).
+The control site reaches these through the signed endpoints in `remote.py`. `export_job` runs on the long
+queue, and `lock_job` lets it past the read only lock by name, so it can open its own snapshot transaction on
+a locked site. It writes nothing to the database, only files under its own folder (spec 0010 AC-5).
 """
 
 import csv
+import hashlib
 import os
 import shutil
 import tempfile
+import time
+import zipfile
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from urllib.parse import urlsplit
 
 import frappe
+import requests
 from frappe.utils import get_datetime, get_url
 
 from frappe_books.settings import company_name
 from frappe_books.subscription import clock as subscription_clock
 from frappe_books.subscription.clock import DOCTYPE, SubscriptionClock, utc_now
+from frappe_books.subscription.control import ControlSiteUnreachable, parse_issued_at, post_signed
 from frappe_books.subscription.state import set_removal_hold
 
 MODULE = "Frappe Books"
@@ -38,9 +46,40 @@ ISOLATION_LEVELS = ("READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SE
 # A byte order mark, so Excel opens the CSVs as UTF-8.
 CSV_ENCODING = "utf-8-sig"
 
+# Spec 0010 AC-4: the export job.
+EXPORT_FOLDER = "books-removal"
+# The job needs this much time left on its upload link to start, so a slow build can't outlive it.
+MIN_LINK_LEFT = timedelta(hours=2)
+# Below R2's single PUT limit; a bigger site needs the operator's help.
+MAX_UPLOAD_BYTES = 5_000_000_000
+# A bigger site briefly needs about twice its size free while its export is built and zipped.
+DISK_HEADROOM = 2
+# `export_ready` answered 503 (R2 couldn't be asked) or couldn't be reached: try again this many minutes later.
+READY_RETRY_MINUTES = (1, 5, 15)
+EXPORT_READY = "rarebooks_control.removal.export_ready"
+STEP_FAILED = "rarebooks_control.removal.step_failed"
+# Connect, then read: the read waits for R2 to take the whole body.
+UPLOAD_TIMEOUT = (30, 60 * 60)
+ERROR_CHARACTERS = 2000
+# Files that are already compressed are stored in the zip as they are.
+STORED_SUFFIXES = (".gz", ".zip", ".png", ".jpg", ".jpeg", ".pdf")
+OK, SERVICE_UNAVAILABLE = 200, 503
+
 
 class PendingWritesError(frappe.ValidationError):
 	"""`build_export` opens its own snapshot transaction, which would commit the caller's writes."""
+
+
+class DiskSpaceError(Exception):
+	"""Not enough free disk to build this site's export."""
+
+
+class ExportStepError(Exception):
+	"""A failed `export` or `upload` step, reported to the control site with `step_failed`."""
+
+	def __init__(self, step: str, text: str):
+		super().__init__(text)
+		self.step, self.text = step, text
 
 
 def removal_status() -> dict:
@@ -99,6 +138,134 @@ def build_export(out_dir: str) -> dict:
 	_write_readme(os.path.join(out_dir, "README.txt"))
 	counts["bytes"] = _folder_size(out_dir)
 	return counts
+
+
+def export_job(case: str, attempt_id: str, upload_url: str, expires_at: str):
+	"""Build this site's export, zip it, PUT it to the presigned `upload_url`, then tell the control site
+	(spec 0010 AC-4). Any failure is reported with `step_failed`, its text cleared of every secret and of the
+	upload URL. The folder is deleted in every case."""
+	folder = os.path.abspath(frappe.get_site_path(EXPORT_FOLDER, case))
+	scrub = _scrubber(upload_url)
+	try:
+		size, digest = _build_and_upload(folder, attempt_id, upload_url, expires_at)
+	except ExportStepError as error:
+		_report_failure(case, error.step, scrub(error.text))
+		return
+	finally:
+		shutil.rmtree(folder, ignore_errors=True)
+	_report_ready(case, attempt_id, size, digest)
+
+
+def _build_and_upload(folder: str, attempt_id: str, upload_url: str, expires_at: str) -> tuple[int, str]:
+	expires = parse_issued_at(expires_at)
+	if not expires or expires - utc_now() < MIN_LINK_LEFT:
+		raise ExportStepError("export", "link_expiring")
+
+	shutil.rmtree(folder, ignore_errors=True)
+	archive = os.path.join(folder, f"{attempt_id}.zip")
+	with _failing_step("export"):
+		check_disk()
+		build_export(os.path.join(folder, "export"))
+		zip_folder(os.path.join(folder, "export"), archive)
+		size, digest = file_digest(archive)
+	if size > MAX_UPLOAD_BYTES:
+		raise ExportStepError("upload", "too_large")
+	with _failing_step("upload"):
+		upload(archive, upload_url, size)
+	return size, digest
+
+
+def check_disk():
+	"""Free disk must exceed twice the site's database plus its uploaded files."""
+	database = frappe.db.sql(
+		"select coalesce(sum(data_length + index_length), 0) from information_schema.tables "
+		"where table_schema = %s",
+		frappe.conf.db_name,
+	)[0][0]
+	files = sum(_folder_size(frappe.get_site_path(part, "files")) for part in ("public", "private"))
+	needed = DISK_HEADROOM * (int(database) + files)
+	free = shutil.disk_usage(frappe.get_site_path()).free
+	if free <= needed:
+		raise DiskSpaceError(f"needs {needed} bytes free, has {free}")
+
+
+def zip_folder(folder: str, archive: str):
+	"""ZIP64, so a large export still opens."""
+	with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as bundle:
+		for root, _dirs, files in os.walk(folder):
+			for name in sorted(files):
+				path = os.path.join(root, name)
+				kind = zipfile.ZIP_STORED if name.lower().endswith(STORED_SUFFIXES) else zipfile.ZIP_DEFLATED
+				bundle.write(path, os.path.relpath(path, folder), compress_type=kind)
+
+
+def file_digest(path: str) -> tuple[int, str]:
+	with open(path, "rb") as handle:
+		digest = hashlib.file_digest(handle, "sha256").hexdigest()
+	return os.path.getsize(path), digest
+
+
+def upload(archive: str, upload_url: str, size: int):
+	"""One streamed PUT to the presigned URL. No redirect is followed, so the body only ever goes to R2."""
+	with open(archive, "rb") as handle:
+		response = requests.put(
+			upload_url,
+			data=handle,
+			headers={"Content-Length": str(size)},
+			timeout=UPLOAD_TIMEOUT,
+			allow_redirects=False,
+		)
+	if response.status_code != OK:
+		raise RuntimeError(f"upload answered HTTP {response.status_code}")
+
+
+def _report_ready(case: str, attempt_id: str, size: int, digest: str):
+	"""`export_ready`, tried again 1, 5 and 15 minutes later while the control site answers 503 or can't be
+	reached. A 409 means the control site waits for another attempt or none: stop, and delete nothing."""
+	payload = {"case": case, "attempt_id": attempt_id, "bytes": size, "sha256": digest}
+	for wait in (0, *READY_RETRY_MINUTES):
+		if wait:
+			time.sleep(wait * 60)
+		try:
+			status, _answer = post_signed(EXPORT_READY, payload)
+		except ControlSiteUnreachable:
+			continue
+		if status == SERVICE_UNAVAILABLE:
+			continue
+		if status != OK:
+			frappe.log_error(f"Books removal: export_ready for {case} answered {status}")
+		return
+	# The control site's 6 hour stuck export rule takes it from here (AC-3).
+	frappe.log_error(f"Books removal: export_ready for {case} was never accepted")
+
+
+def _report_failure(case: str, step: str, text: str):
+	try:
+		post_signed(STEP_FAILED, {"case": case, "step": step, "error": text[:ERROR_CHARACTERS]})
+	except ControlSiteUnreachable:
+		frappe.log_error(f"Books removal: step_failed for {case} couldn't be sent", text[:ERROR_CHARACTERS])
+
+
+@contextmanager
+def _failing_step(step: str) -> Iterator[None]:
+	try:
+		yield
+	except Exception as error:
+		raise ExportStepError(step, f"{type(error).__name__}: {error}") from error
+
+
+def _scrubber(upload_url: str) -> Callable[[str], str]:
+	"""Removes the site secret, the upload URL and its signed query from error text (AC-4, AC-13)."""
+	values = [upload_url, urlsplit(upload_url).query if isinstance(upload_url, str) else None]
+	values.append(frappe.conf.get("books_control_secret"))
+	values = [value for value in values if isinstance(value, str) and value]
+
+	def scrub(text: str) -> str:
+		for value in values:
+			text = text.replace(value, "***")
+		return text
+
+	return scrub
 
 
 @contextmanager
@@ -319,4 +486,10 @@ How to restore it on your own Frappe bench
 Users keep their logins after a restore. Stored secrets (password fields, such
 as an email account's password) can't be read on the new site, because the
 key that protected them is not in this zip. Enter them again after you restore.
+
+Other copies
+------------
+
+After the site is removed, the hosting provider may keep backups of the site
+for a limited time under its own policy.
 """

@@ -21,6 +21,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Lock hardening | Slice 5 | in-progress |
 | 7 | Trial end export and site removal | Slice 5 | in-progress |
 | 8 | Billing control site | Slice 5 | in-progress |
+| 11 | Hosting on Frappe Cloud | Slice 5 | in-progress |
 | 10 | Support chat | Slice 6 | in-progress |
 
 ## Already built
@@ -154,7 +155,7 @@ spec [0007](../specs/0007-trial-end-export-removal/index.md) · code in `frappe_
   - [x] Cancel and failure paths: `clear`, `step_failed` with secret scrubbing, deferred exports, control site down (AC-11, AC-12, AC-15)
   - [x] The drop behind dry run: local and remote checks, Frappe's in process drop with the case's archived path, repeat safe, phone layout and Playwright (AC-9, AC-10, AC-14, AC-19)
   - [x] Control site removal side, in `rarebooks_control` (needs feature 8): hosting bench, removal case and warnings, signed endpoints, emails, download link, approval, cap, kill switch, alerts (AC-4, AC-5, AC-7, AC-9, AC-11 to AC-17, AC-20, AC-21)
-  - [ ] Rollout: R2 bucket and lifecycle rules, host config and cron, a dry run cycle, then live with approval on (AC-3, AC-14, AC-16, AC-20)
+  - [ ] Rollout: replaced by feature 11 (spec 0010), which moves the runner onto the control site and the Frappe Cloud API
 - [ ] Verify it: `/check verify trial end export and site removal`
 - [ ] Test it: `/test trial end export and site removal`
 - [ ] Review it (fresh model): `/check review trial end export and site removal`
@@ -170,11 +171,28 @@ spec [0008](../specs/0008-billing-control-site/index.md) · code in the `rareboo
   - [x] PayPal: subscriptions with `start_time` at trial end, verified webhooks, `provider_reference` rule, money checks, refunds, double subscription cancel, the "starts on" note and refusal messages on the customer site, a sandbox run, then the sandbox date fixes: noon Pacific `start_time` and the charge day counted as paid (AC-4, AC-5, AC-9, AC-10, AC-11, AC-21, AC-23)
   - [x] Reliability: versioned push queue with retries and alerts, the return page, reconcile jobs, mismatch and unknown payment alerts, receipts, retention, `being_removed` and `billing_state()` for spec 0007 (AC-5, AC-10, AC-12, AC-13, AC-16, AC-17, AC-18, AC-19)
   - [x] Operator tools and hardening: manual edit and Push now, secret rotation through the runner, two factor sign in, per site rate limits, signature failure alert (AC-14, AC-15, AC-20, AC-22)
-  - [ ] Rollout: `control` user and bench on the hosting server, Redis passwords, nginx and TLS, R2 backups, Resend, ClickPesa and PayPal live setup, the TZS 1,000 launch check (AC-3, AC-4, AC-19, AC-22, AC-23)
+  - [ ] Rollout: the control bench group on Frappe Cloud comes from feature 11 (spec 0010); here, Resend, ClickPesa and PayPal live setup and the TZS 1,000 launch check (AC-3, AC-4, AC-19, AC-23)
 - [ ] Verify it: `/check verify billing control site`
 - [ ] Test it: `/test billing control site`
 - [x] Review it (fresh model): `/check review billing control site`
 - [ ] Document it: `/document billing control site`
+
+### 11. Hosting on Frappe Cloud · in-progress
+Run removal, registration and secret rotation on your Frappe Cloud dedicated server, where there is no root login, host cron or database root password. The control site drives the hourly removal round over signed HTTPS, each site builds its export in a background job and uploads it through a presigned link, and sites are archived and configured through the Frappe Cloud API. (from spec 0010, amends features 7 and 8)
+**Done when:** a registered staging site goes from Pending to Active with no secret typed by hand, is taken through day 30 in dry run with its export uploaded and no archive, and a throwaway site is archived in live through the Frappe Cloud API after every gate passes; nothing in this repo or `rarebooks_control` still reads the runner secrets file or host cron.
+spec [0010](../specs/0010-frappe-cloud-hosting/index.md) · amended by spec [0011](../specs/0011-archive-call-mark.md) · code in `frappe_books/subscription/remote.py`, `removal.py`, `lock.py`, and the `rarebooks_control` repo (`removal.py`, `registry.py`, `providers/frappe_cloud.py`)
+- [x] Design it (spec): `/architect hosting on Frappe Cloud`
+- [ ] Build it: `/develop hosting on Frappe Cloud`
+  - [x] The thread, one export driven by the control site: signed site endpoints, the export job past the lock, Books Removal Settings, the round with presigned upload and the stuck export rule (AC-1 to AC-5, AC-9, AC-17)
+  - [x] The drop through Frappe Cloud: API client, guards, commit then archive, the archived poll, backup wording (AC-6, AC-7, AC-8, AC-13)
+  - [x] Registration and rotation through the API: register, retry config, the 5 minute ping, the secret swap (AC-10, AC-11, AC-12, AC-16)
+  - [ ] Archive mark and config rules (spec 0011): `archive_requested_on` replacing `archive_job`, `config_job` removed, the locked drop poll for every config status, the digest reconciliation, the Retry config and registration fixes (spec 0011 AC-1 to AC-11; 0010 task 14)
+  - [ ] Cleanup and alerts: remove the runner and bench commands, dormant days check, digest lines (AC-14, AC-15, AC-16, AC-17)
+  - [ ] Rollout on Frappe Cloud: control bench group, API key, R2, dry run on a staging site, then one live archive (AC-6, AC-7, AC-10, AC-11, AC-13, AC-14)
+- [ ] Verify it: `/check verify hosting on Frappe Cloud`
+- [ ] Test it: `/test hosting on Frappe Cloud`
+- [ ] Review it (fresh model): `/check review hosting on Frappe Cloud`
+- [ ] Document it: `/document hosting on Frappe Cloud`
 
 ## Slice 6: Support chat
 
@@ -195,9 +213,11 @@ spec [0009](../specs/0009-support-chat/index.md) · code in `frappe_books/suppor
 
 - Support chat: load tawk.to at app start for proactive chat if the team wants to reach out first; a widget per language keyed by the user's Frappe language (from spec 0009)
 
-- Self serve signup: a public form that provisions a hosted site and calls `register_site`; fiscal (TRA VFD/EFD) receipts for Tanzanian payments; rotation of the runner secrets in `books_runner_secrets` (from spec 0008)
+- Self serve signup: a public form that provisions a hosted site and registers it through the control site; fiscal (TRA VFD/EFD) receipts for Tanzanian payments (from spec 0008)
 
-- Delete a dropped site's own TLS certificate in the runner, or move the hosting bench to a wildcard certificate; and a "Removed" page so a removed site's URL explains what happened (from spec 0007)
+- A "Removed" page so a removed site's URL explains what happened (from spec 0007)
+
+- An outside heartbeat (an uptime check on a control site URL that reports `last_run_on`), so a stopped control site scheduler alerts you (from spec 0010)
 
 - Small polish from the feature 6 review: clamp a future `issued_at` to now when storing `last_synced_on`, return `plans_error` as a typed object, and send `days_left` in the status so the client stops copying `LOCK_DAY` and `TRIAL_LAST_DAY` (from review 2026-11-18-v16-dashboard-features-trial-lock)
 

@@ -118,6 +118,36 @@ def call_control(method: str, payload: dict) -> dict:
 	return message
 
 
+def post_signed(method: str, payload: dict) -> tuple[int, dict]:
+	"""POST a signed body to the control site and return its status and verified answer (spec 0010 AC-4).
+
+	For calls whose answer status matters (a 503 to retry, a 409 to stop). The answer must be signed with
+	this site's secret and echo this request's `issued_at`; anything else, or a connection error, raises
+	`ControlSiteUnreachable`.
+	"""
+	url, secret = control_url(), site_secret()
+	if not url or not secret:
+		raise ControlSiteUnreachable(unreachable_message())
+
+	issued_at = issued_now()
+	body = json.dumps({**payload, "site": frappe.local.site, "issued_at": issued_at}).encode()
+	try:
+		response = requests.post(
+			f"{url}/api/method/{method}",
+			data=body,
+			headers={"Content-Type": "application/json", SIGNATURE_HEADER: sign(body, secret)},
+			timeout=TIMEOUT_SECONDS,
+		)
+	except requests.RequestException:
+		raise ControlSiteUnreachable(unreachable_message()) from None
+	if not is_valid_signature(response.content, response.headers.get(SIGNATURE_HEADER), secret):
+		raise ControlSiteUnreachable(unreachable_message())
+	message = _answer(response.content)
+	if message is None or message.get("issued_at") != issued_at:
+		raise ControlSiteUnreachable(unreachable_message())
+	return response.status_code, message
+
+
 def site_facts() -> dict:
 	"""The four facts the control site keeps for its dates and emails (spec 0008 AC-21), in every pull and checkout."""
 	return {

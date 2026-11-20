@@ -3,6 +3,8 @@
 **Date**: 2026-11-18
 **Status**: In Progress
 
+> **Amended by [spec 0010](../0010-frappe-cloud-hosting/index.md) (2026-11-20, hosting on Frappe Cloud).** Registration (AC-1, `bench books-register-site`, `register_site`) and secret rotation (AC-15, `secret_rotated`) now go through the Frappe Cloud API from the control site, `hosting_bench` and `books_runner_secrets` are gone, and the host isolation parts of AC-22 and task 19 become a separate Frappe Cloud bench group (0010 AC-14). AC-1's "a repeat returns the same secret" no longer applies. Rate limits are per site only (0010 AC-17); the per bench limits go with the bench, and the Follow-up item on rotating `books_runner_secrets` is void. The signature failure alert of AC-22, and every billing rule, still hold.
+
 ## Summary
 
 The billing control site is a small Frappe app of yours (`rarebooks_control`, in its own repo) that keeps the list of hosted sites with a secret for each one. It takes payment through ClickPesa (one yearly payment, for Tanzania) and PayPal Subscriptions (monthly or yearly, for everyone else), and sends each change to the customer site as a signed message, the contract fixed in spec 0005. It never trusts a webhook on its own: it checks the signature, then asks the provider for the real state before it changes anything. It runs as a separate bench, under its own Linux user, on the same server as the hosting bench, and it also hosts the removal records of spec 0007.

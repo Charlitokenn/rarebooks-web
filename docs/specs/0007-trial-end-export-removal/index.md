@@ -3,6 +3,8 @@
 **Date**: 2026-11-18 (cross checked the same day: secrets file, dry run isolation, signed answers, payment race, drop safety gates)
 **Status**: In Progress
 
+> **Amended by [spec 0010](../0010-frappe-cloud-hosting/index.md) (2026-11-20, hosting on Frappe Cloud).** The runner (`bench books-removal-run`, host cron, `books-runner.json`, the root login), Books Hosting Bench and every `bench` field are replaced: the control site now drives the round over signed HTTPS, sites build their export in a background job and upload through a presigned URL, and the drop is a Frappe Cloud API archive. Read 0010 instead of this spec for AC-3, AC-10, AC-15, AC-18, the mode and gate settings of AC-14 and AC-20, the "bench silent" alert of AC-21, the runner flow, the runner API rows and Milestone 5. Every other rule here still holds.
+
 Decision history: [rationale.md](rationale.md).
 
 ## Summary

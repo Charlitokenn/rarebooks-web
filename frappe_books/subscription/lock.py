@@ -25,8 +25,13 @@ ALLOWED_METHODS = frozenset(
 		"frappe_books.subscription.get_subscription",
 		"frappe_books.subscription.start_checkout",
 		"frappe_books.subscription.receive_state",
+		# The control site's two writers (spec 0010 AC-5). Its read only calls work in a read only transaction.
+		"frappe_books.subscription.mark_export_sent",
+		"frappe_books.subscription.clear_removal",
 	}
 )
+# The export job opens its own REPEATABLE READ snapshot and writes only files (spec 0010 AC-5).
+EXPORT_JOB = "frappe_books.subscription.removal.export_job"
 ALLOWED_METHOD_PREFIXES = ("frappe.integrations.oauth2_logins.",)
 # Logs and housekeeping keep working so error handling can't loop; they still meet the read only transaction.
 UNGUARDED_DOCTYPES = frozenset(
@@ -56,8 +61,8 @@ def lock_request():
 
 
 def lock_job(method: str, kwargs: dict | None = None, transaction_type: str | None = None, **_kwargs):
-	"""`before_job` hook. Scheduled jobs keep running; any other job can't write."""
-	if method == RUN_SCHEDULED_JOB or not is_locked():
+	"""`before_job` hook. Scheduled jobs and the export job keep running; any other job can't write."""
+	if method in (RUN_SCHEDULED_JOB, EXPORT_JOB) or not is_locked():
 		return
 	_begin_read_only()
 

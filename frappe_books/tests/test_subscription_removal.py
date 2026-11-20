@@ -220,6 +220,9 @@ class IntegrationTestRemovalExport(SubscriptionTestMixin, IntegrationTestCase):
 			readme = handle.read()
 		self.assertIn("Frappe version 16", readme)
 		self.assertIn("Enter them again after you restore.", readme)
+		# Spec 0010 AC-8: Frappe Cloud keeps backups of an archived site, so no "no other copy" promise.
+		self.assertIn("the hosting provider may keep backups of the site", readme)
+		self.assertNotIn("no other copy", readme.lower())
 
 		every_name = [name for _root, _dirs, names in os.walk(self.out) for name in names]
 		self.assertNotIn("site_config.json", every_name)
