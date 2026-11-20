@@ -174,9 +174,11 @@ def pull_state():
 	sent = issued_now()
 	try:
 		response = call_control(GET_STATE, {"issued_at": sent, **site_facts()})
-	except ControlRefusal:
-		# get_state has no refusals (spec 0008 AC-2), so one is a broken answer.
-		frappe.log_error("Books billing: get_state answered with a refusal", defer_insert=True)
+	except ControlRefusal as refusal:
+		# `config_pending` means the control site hasn't confirmed this site's config yet (spec 0011 AC-5): no
+		# state change, as if unreachable. Any other refusal is a broken answer (spec 0008 AC-2).
+		if refusal.code != "config_pending":
+			frappe.log_error("Books billing: get_state answered with a refusal", defer_insert=True)
 		raise ControlSiteUnreachable(unreachable_message()) from None
 	state, plans = response.get("state"), response.get("plans")
 	# The answer must echo this request's own `issued_at` (spec 0008 AC-21), so a replayed or older signed

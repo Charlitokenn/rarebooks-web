@@ -142,7 +142,7 @@ class SubscriptionClock:
 			"trial_ends_on": _iso(self._trial_day(TRIAL_LAST_DAY)) if has_day_one else None,
 			"lock_starts_on": _iso(self._trial_day(LOCK_DAY)) if has_day_one else None,
 			"removal_on": _iso(self.removal_on),
-			# Set by the removal runner once the export email is sent (spec 0007 AC-8), as site dates.
+			# Set through `mark_export_sent` once the export email is sent (spec 0007 AC-8, spec 0010), as site dates.
 			"export_sent_on": self._local_iso(self.facts.get("export_sent_on")),
 			"removal_hold_until": self._local_iso(self.facts.get("removal_hold_until")),
 			"paid_until": _iso(self.paid_until),

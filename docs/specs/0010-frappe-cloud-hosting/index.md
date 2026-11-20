@@ -207,18 +207,18 @@ Tracer Bullet: Milestone 1 runs one export end to end from the control site's ro
 4. [x] Control site: `run_round` and `run_site` replacing `report_sites` (call order, dry run rules, fresh secrets, the cancel for skipped sites), the presigned URL and `expires_at`, the atomic run cap, the 6 hour stuck export rule, `export_ready` with the HEAD check and 503, `step_failed`, both signed with site secrets and rate limited per site. Satisfies **AC-1**, **AC-3**, **AC-4**, **AC-17**.
 
 **Milestone 2: The drop through Frappe Cloud**
-5. Control site: `providers/frappe_cloud.py` (get, update config, archive) with a fake for tests. Satisfies **AC-13**.
-6. Control site: the drop in `run_site` with the fresh report, the guards (Active status read right before), the cap under the settings row lock, commit then archive, the `Dropping` poll with the call again for a missing archive mark (`archive_requested_on` after task 14), repeat safe `Archived`. Satisfies **AC-6**, **AC-7**.
-7. Both repos: the backup wording in the export email and `README.txt`. Satisfies **AC-8**.
+5. [x] Control site: `providers/frappe_cloud.py` (get, update config, archive) with a fake for tests. Satisfies **AC-13**.
+6. [x] Control site: the drop in `run_site` with the fresh report, the guards (Active status read right before), the cap under the settings row lock, commit then archive, the `Dropping` poll with the call again for a missing archive mark (`archive_requested_on` after task 14), repeat safe `Archived`. Satisfies **AC-6**, **AC-7**.
+7. [x] Both repos: the backup wording in the export email and `README.txt`. Satisfies **AC-8**.
 
 **Milestone 3: Registration and rotation through the API**
 8. [x] Control site: `register_site` with `books_control_public_url`, `retry_config`, the deduplicated 5 minute ping job, `config_status` gating pushes and rounds, the 1 hour alerts and the stale run alert. Satisfies **AC-10**, **AC-11**, **AC-16**.
 9. [x] Control site: rotation through `update_config`, `rotation_started_on`, the 401 retry with `pending_secret`, and the locked ping swap. Satisfies **AC-12**.
 
 **Milestone 4: Cleanup and alerts**
-10. This repo: remove `commands.py`, `runner.py`, `registration.py`, `rollout.py` and their tests; update `frappe_books/subscription/AGENTS.md` notes through `/sync`. Control site: remove the runner endpoints. Satisfies **AC-15**.
-11. Control site: `dormant_days` in `after_install` and its daily alert, the digest's `last_run_on` and config status lines; this repo: the 60 a minute limits on the site endpoints. Satisfies **AC-14**, **AC-16**, **AC-17**.
-14. Control site: spec 0011's build plan (`archive_requested_on` replacing `archive_job`, `config_job` removed, the drop and poll under the case row lock, the `Dropping` poll for every config status, the digest reconciliation, and the Milestone 3 fixes and tests against its AC-4 to AC-8). Numbered 14 to keep earlier task numbers stable; build it before Milestone 5. Satisfies **AC-1**, **AC-6**, **AC-7**, **AC-10**, **AC-11**, **AC-12**, **AC-16**.
+10. [x] This repo: remove `commands.py`, `runner.py`, `registration.py`, `rollout.py` and their tests; update `frappe_books/subscription/AGENTS.md` notes through `/sync`. Control site: remove the runner endpoints. Satisfies **AC-15**.
+11. [x] Control site: `dormant_days` in `after_install` and its daily alert, the digest's `last_run_on` and config status lines; this repo: the 60 a minute limits on the site endpoints. Satisfies **AC-14**, **AC-16**, **AC-17**.
+14. [x] Control site: spec 0011's build plan (`archive_requested_on` replacing `archive_job`, `config_job` removed, the drop and poll under the case row lock, the `Dropping` poll for every config status, the digest reconciliation, and the Milestone 3 fixes and tests against its AC-4 to AC-8). Numbered 14 to keep earlier task numbers stable; build it before Milestone 5. Satisfies **AC-1**, **AC-6**, **AC-7**, **AC-10**, **AC-11**, **AC-12**, **AC-16**.
 
 **Milestone 5: Rollout on Frappe Cloud**
 12. Frappe Cloud: the control bench group on your server with `rarebooks_control`, its site, config keys, scheduler, offsite backups, the offline `encryption_key`; the API key; R2 bucket, token and lifecycle rules; Books Removal Settings. Satisfies **AC-13**, **AC-14**.

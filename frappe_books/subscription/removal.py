@@ -83,7 +83,7 @@ class ExportStepError(Exception):
 
 
 def removal_status() -> dict:
-	"""What the runner reports to the control site for this site. Reads the single fresh, never the cache."""
+	"""What `removal_report` answers the control site for this site. Reads the single fresh, never the cache."""
 	# Through the module, so the tests' `managed_site()` patch reaches it.
 	clock = SubscriptionClock(frappe.get_doc(DOCTYPE), subscription_clock.is_managed(), utc_now())
 	status = clock.status()

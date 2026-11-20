@@ -60,7 +60,7 @@ def mark_checkout_started():
 
 
 def set_removal_hold(export_sent_on, removal_hold_until):
-	"""Write, or with both None clear, the removal runner's two fields (spec 0007 AC-8, AC-11). Safe to repeat."""
+	"""Write, or with both None clear, the two removal hold fields (spec 0007 AC-8, AC-11). Safe to repeat."""
 	facts = _locked_facts()
 	stored = (_datetime_or_none(facts.export_sent_on), _datetime_or_none(facts.removal_hold_until))
 	if stored == (_datetime_or_none(export_sent_on), _datetime_or_none(removal_hold_until)):

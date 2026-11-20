@@ -180,14 +180,14 @@ spec [0008](../specs/0008-billing-control-site/index.md) · code in the `rareboo
 ### 11. Hosting on Frappe Cloud · in-progress
 Run removal, registration and secret rotation on your Frappe Cloud dedicated server, where there is no root login, host cron or database root password. The control site drives the hourly removal round over signed HTTPS, each site builds its export in a background job and uploads it through a presigned link, and sites are archived and configured through the Frappe Cloud API. (from spec 0010, amends features 7 and 8)
 **Done when:** a registered staging site goes from Pending to Active with no secret typed by hand, is taken through day 30 in dry run with its export uploaded and no archive, and a throwaway site is archived in live through the Frappe Cloud API after every gate passes; nothing in this repo or `rarebooks_control` still reads the runner secrets file or host cron.
-spec [0010](../specs/0010-frappe-cloud-hosting/index.md) · amended by spec [0011](../specs/0011-archive-call-mark.md) · code in `frappe_books/subscription/remote.py`, `removal.py`, `lock.py`, and the `rarebooks_control` repo (`removal.py`, `registry.py`, `providers/frappe_cloud.py`)
+spec [0010](../specs/0010-frappe-cloud-hosting/index.md) · amended by spec [0011](../specs/0011-archive-call-mark.md) · code in `frappe_books/subscription/remote.py`, `removal.py`, `lock.py`, and the `rarebooks_control` repo (`removal.py`, `registry.py`, `site_calls.py`, `providers/frappe_cloud.py`)
 - [x] Design it (spec): `/architect hosting on Frappe Cloud`
 - [ ] Build it: `/develop hosting on Frappe Cloud`
   - [x] The thread, one export driven by the control site: signed site endpoints, the export job past the lock, Books Removal Settings, the round with presigned upload and the stuck export rule (AC-1 to AC-5, AC-9, AC-17)
   - [x] The drop through Frappe Cloud: API client, guards, commit then archive, the archived poll, backup wording (AC-6, AC-7, AC-8, AC-13)
   - [x] Registration and rotation through the API: register, retry config, the 5 minute ping, the secret swap (AC-10, AC-11, AC-12, AC-16)
-  - [ ] Archive mark and config rules (spec 0011): `archive_requested_on` replacing `archive_job`, `config_job` removed, the locked drop poll for every config status, the digest reconciliation, the Retry config and registration fixes (spec 0011 AC-1 to AC-11; 0010 task 14)
-  - [ ] Cleanup and alerts: remove the runner and bench commands, dormant days check, digest lines (AC-14, AC-15, AC-16, AC-17)
+  - [x] Archive mark and config rules (spec 0011): `archive_requested_on` replacing `archive_job`, `config_job` removed, the locked drop poll for every config status, the digest reconciliation, the Retry config and registration fixes (spec 0011 AC-1 to AC-11; 0010 task 14)
+  - [x] Cleanup and alerts: remove the runner and bench commands, dormant days check, digest lines (AC-14, AC-15, AC-16, AC-17)
   - [ ] Rollout on Frappe Cloud: control bench group, API key, R2, dry run on a staging site, then one live archive (AC-6, AC-7, AC-10, AC-11, AC-13, AC-14)
 - [ ] Verify it: `/check verify hosting on Frappe Cloud`
 - [ ] Test it: `/test hosting on Frappe Cloud`
