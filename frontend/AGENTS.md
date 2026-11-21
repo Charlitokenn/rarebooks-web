@@ -52,6 +52,7 @@ yarn lint        # eslint .
 - Node tests load TypeScript through esbuild (`tests/helpers/fyo.mjs`), so run `yarn install` first.
 - Prettier and ESLint pre-commit hooks run from `frontend/node_modules`, so they fail until it is installed.
 - Run the guard tests (`settings-readers`, `settings-models`, `link-create`) after a merge from another branch.
+- Every tawk.to `setAttributes` call must carry the signed visitor identity (`hash` included): with Secure Mode on, tawk.to answers `UNAUTHORIZED_API_CALL` to one without it (spec 0009 AC-5).
 
 ## Agent skills
 
