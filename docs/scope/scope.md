@@ -198,13 +198,13 @@ spec [0010](../specs/0010-frappe-cloud-hosting/index.md) · amended by spec [001
 ### 12. Custom domains on registration · in-progress
 When the control site registers a hosted site, it gives the site its own `rarebooks.cc` subdomain (for example `site1.rarebooks.cc`) as its main address, with no manual DNS or Frappe Cloud steps. Extends feature 11 (spec 0010 registration) and the return link host rule in spec 0008 AC-5.
 **Done when:** registering a new site creates its DNS record, adds the domain on Frappe Cloud and makes it primary, and switches the control site's `site_url` only once the new address answers with the site's signature; until then the site keeps working on its `.frappe.cloud` address, a failure is shown with a Retry like Retry config, and archiving a site removes its record and domain.
-spec [0012](../specs/0012-custom-domains-registration/index.md) · amends specs 0008 (AC-5) and 0010 · code in the `rarebooks_control` repo (`registry.py`, `providers/cloudflare.py`, `providers/frappe_cloud.py`, `api.py`, `removal.py`)
+spec [0012](../specs/0012-custom-domains-registration/index.md) · amends specs 0008 (AC-5) and 0010 · code in the `rarebooks_control` repo (`registry.py`, `providers/cloudflare.py`, `providers/frappe_cloud.py`, `site_calls.py`, `api.py`, `removal.py`, `removal_mail.py`, the Books Hosted Site form and list, `tests/test_domains.py`)
 - [x] Design it (spec): `/architect custom domains on registration` (settle where the subdomain comes from and what happens on a clash, the DNS provider and its token's reach, proxied or DNS only, the background steps and their status, retries and alerts, the `site_url` switch, cleanup at archive, and whether demo-site and demo-us move too)
 - [ ] Build it: `/develop custom domains on registration`
   - [ ] The thread, one existing site to its new address against stubs: confirm the Frappe Cloud domain methods live, the Domain fields, the Cloudflare client, Add domain, the five steps under one lock rule, the return host rule (AC-1, AC-2, AC-4 to AC-9, AC-12, AC-13)
-  - [ ] Registration with a required, prefilled subdomain (AC-1, AC-2, AC-3)
-  - [ ] Failures, Retry domain and visibility: the 2 hour rule, fail fast cases, one alert, the form headline and digest (AC-6, AC-7, AC-10, AC-12, AC-14)
-  - [ ] Cleanup at archive: start at the archive request, the sweep before the mode check, the done rules, the 24 hour alert (AC-11)
+  - [x] Registration with a required, prefilled subdomain (AC-1, AC-2, AC-3)
+  - [x] Failures, Retry domain and visibility: the 2 hour rule, fail fast cases, one alert, the form headline and digest (AC-6, AC-7, AC-10, AC-12, AC-14)
+  - [x] Cleanup at archive: start at the archive request, the sweep before the mode check, the done rules, the 24 hour alert (AC-11)
   - [ ] Rollout: the zone on Cloudflare, the scoped token and config keys, Add domain on demo-site and demo-us, one new registration and one archive (AC-3, AC-4, AC-8, AC-9, AC-11, AC-13)
 - [ ] Verify it: `/check verify custom domains on registration`
 - [ ] Test it: `/test custom domains on registration`

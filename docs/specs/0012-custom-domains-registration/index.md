@@ -1,7 +1,7 @@
 # 0012. Custom domains on registration
 
 **Date**: 2026-11-21
-**Status**: Proposed
+**Status**: In Progress
 
 Amends: spec [0010](../0010-frappe-cloud-hosting/index.md) (AC-10 registration gains a subdomain, AC-11 the 5 minute job gains the domain steps, AC-13 the Frappe Cloud client gains the domain methods, AC-16 the digest) and spec [0008](../0008-billing-control-site/index.md) (AC-5, the `return_url` host rule). Every other rule in those specs still holds.
 
@@ -165,21 +165,21 @@ Tracer Bullet: Milestone 1 takes one existing site (the Add domain path) from no
 
 **Milestone 1: The thread, one existing site to its new address**
 1. [ ] Confirm the Frappe Cloud domain methods (`domain_exists`, `domains`, `check_dns`, `add_domain`, `retry_add_domain`, `set_host_name`, `remove_domain`) against the live API on a throwaway site: their answer shapes, the domain status strings, how the primary domain is shown, whether `set_host_name` is asynchronous, what `host_name` changes on the site (`get_url()` in and outside a request), and what `domains` and `remove_domain` answer for an archived site. Note any difference in this spec before coding; if `host_name` matters to nothing, drop the Primary step's `set_host_name` call. Satisfies **AC-13**.
-2. [ ] Books Hosted Site: the six fields in a Domain section (read only, `subdomain` unique), exported from desk; tests' `make_site` and the field lists updated. Satisfies **AC-12**.
-3. [ ] `providers/cloudflare.py` (three functions, config keys, no redirects, nothing logged) and the new Frappe Cloud client functions, with tests that patch them. Satisfies **AC-13**.
-4. [ ] `registry.add_domain` with the AC-1 and AC-2 checks, and the Add domain button on the form. Satisfies **AC-1**, **AC-2**, **AC-4**.
-5. [ ] The step machine in the 5 minute job (`run_domain_steps` called from `run_pings`): DNS, Frappe Cloud, Certificate, Ping (`call_site` gains a `url` override), Primary with the locked `site_url` switch, all under AC-5's lock rule. Satisfies **AC-5**, **AC-6**, **AC-7**, **AC-8**.
-6. [ ] `api._is_return_url` accepts the `site` host and the subdomain host too. Satisfies **AC-9**.
+2. [x] Books Hosted Site: the six fields in a Domain section (read only, `subdomain` unique), exported from desk; tests' `make_site` and the field lists updated. Satisfies **AC-12**.
+3. [x] `providers/cloudflare.py` (three functions, config keys, no redirects, nothing logged) and the new Frappe Cloud client functions, with tests that patch them. Satisfies **AC-13**.
+4. [x] `registry.add_domain` with the AC-1 and AC-2 checks, and the Add domain button on the form. Satisfies **AC-1**, **AC-2**, **AC-4**.
+5. [x] The step machine in the 5 minute job (`run_domain_steps` called from `run_pings`): DNS, Frappe Cloud, Certificate, Ping (`call_site` gains a `url` override), Primary with the locked `site_url` switch, all under AC-5's lock rule. Satisfies **AC-5**, **AC-6**, **AC-7**, **AC-8**.
+6. [x] `api._is_return_url` accepts the `site` host and the subdomain host too. Satisfies **AC-9**.
 
 **Milestone 2: Registration with a subdomain**
-7. [ ] `register_site` takes the required `subdomain` and runs AC-1 and AC-2 before any write; the Register site dialog gets the prefilled field. Satisfies **AC-3**, **AC-1**, **AC-2**.
+7. [x] `register_site` takes the required `subdomain` and runs AC-1 and AC-2 before any write; the Register site dialog gets the prefilled field. Satisfies **AC-3**, **AC-1**, **AC-2**.
 
 **Milestone 3: Failures, retry and visibility**
-8. [ ] The 2 hour rule, the foreign record rule, one ops email per step start, `retry_domain` and the Retry domain button, the 30 minute certificate retry key. Satisfies **AC-6**, **AC-7**, **AC-10**, **AC-12**.
-9. [ ] The form headline and the digest lines. Satisfies **AC-14**.
+8. [x] The 2 hour rule, the foreign record rule, one ops email per step start, `retry_domain` and the Retry domain button, the 30 minute certificate retry key. Satisfies **AC-6**, **AC-7**, **AC-10**, **AC-12**.
+9. [x] The form headline and the digest lines. Satisfies **AC-14**.
 
 **Milestone 4: Cleanup at archive**
-10. [ ] Cleanup start where `archive_requested_on` is set and in `mark_removed`; the cleanup sweep at the start of `run_round` before the mode check; the done rules; the 24 hour alert. Satisfies **AC-11**.
+10. [x] Cleanup start where `archive_requested_on` is set and in `mark_removed`; the cleanup sweep at the start of `run_round` before the mode check; the done rules; the 24 hour alert. Satisfies **AC-11**.
 
 **Milestone 5: Rollout**
 11. [ ] Put `rarebooks.cc` on Cloudflare DNS if it isn't there, check for a CAA record that would block Let's Encrypt, create the zone scoped token, and set the three config keys on the control site. Satisfies **AC-13**.
