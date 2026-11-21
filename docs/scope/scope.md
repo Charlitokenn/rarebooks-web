@@ -188,7 +188,7 @@ spec [0010](../specs/0010-frappe-cloud-hosting/index.md) · amended by specs [00
   - [x] The drop through Frappe Cloud: API client, guards, commit then archive, the archived poll, backup wording (AC-6, AC-7, AC-8, AC-13)
   - [x] Registration and rotation through the API: register, retry config, the 5 minute ping, the secret swap (AC-10, AC-11, AC-12, AC-16)
   - [x] Archive mark and config rules (spec 0011): `archive_requested_on` replacing `archive_job`, `config_job` removed, the locked drop poll for every config status, the digest reconciliation, the Retry config and registration fixes (spec 0011 AC-1 to AC-11; 0010 task 14)
-  - [ ] Archive proof (spec 0013): `site_archived` with the 403 plus released name rule in the poll, the drop start read and the reconcile; domain cleanup started only in `mark_removed` with the `domain_exists` done rule (spec 0013 AC-1 to AC-8)
+  - [x] Archive proof (spec 0013): `site_archived` with the 403 plus released name rule in the poll, the drop start read and the reconcile; domain cleanup started only in `mark_removed` with the `domain_exists` done rule (spec 0013 AC-1 to AC-8)
   - [x] Cleanup and alerts: remove the runner and bench commands, dormant days check, digest lines (AC-14, AC-15, AC-16, AC-17)
   - [ ] Rollout on Frappe Cloud: control bench group, API key, R2, dry run on a staging site, the wrong key check, then one live archive of a throwaway site with a subdomain that reaches Removed by the spec 0013 proof and finishes its domain cleanup (AC-6, AC-7, AC-10, AC-11, AC-13, AC-14; spec 0013 AC-9)
 - [ ] Verify it: `/check verify hosting on Frappe Cloud`

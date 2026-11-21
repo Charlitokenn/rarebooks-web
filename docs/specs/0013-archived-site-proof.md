@@ -1,7 +1,7 @@
 # 0013. Hosting on Frappe Cloud: proving a site is archived
 
 **Date**: 2026-11-21
-**Status**: Proposed
+**Status**: In Progress
 
 Amends: spec [0011](0011-archive-call-mark.md) (AC-2, the `Dropping` poll, and AC-11, the failed drop reconcile), spec [0010](0010-frappe-cloud-hosting/index.md) (AC-6 and AC-7, the same reads) and spec [0012](0012-custom-domains-registration/index.md) (AC-11: when the domain cleanup starts, and when its Frappe Cloud part is done). Every other rule in those specs still holds.
 
