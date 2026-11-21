@@ -27,6 +27,16 @@ def start_trial():
 	save_facts(facts)
 
 
+def move_trial_start(started_on):
+	"""Staging only (spec 0010 build task 13): put the trial start earlier, so a test site reaches a later day
+	without waiting. Never later, so it can only end a trial sooner."""
+	facts = _locked_facts()
+	if facts.trial_started_on and started_on >= get_datetime(facts.trial_started_on):
+		frappe.throw(_("The trial start can only move earlier."))
+	facts.trial_started_on = started_on
+	save_facts(facts)
+
+
 def apply_state(state: dict):
 	"""Apply the push fields by hand: `bench --site <site> execute frappe_books.subscription.apply_state --kwargs ...`.
 

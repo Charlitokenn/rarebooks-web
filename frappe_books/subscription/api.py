@@ -2,6 +2,7 @@
 
 import json
 import pickle
+from datetime import timedelta
 from typing import Literal
 
 import frappe
@@ -10,7 +11,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import formatdate, get_url
 
 from frappe_books.subscription import clock
-from frappe_books.subscription.clock import DOCTYPE, SUBSCRIBER_ROLES, current_clock, offered_plan
+from frappe_books.subscription.clock import DOCTYPE, SUBSCRIBER_ROLES, current_clock, offered_plan, utc_now
 from frappe_books.subscription.control import (
 	CREATE_CHECKOUT,
 	GET_STATE,
@@ -27,7 +28,12 @@ from frappe_books.subscription.control import (
 	site_secret,
 	unreachable_message,
 )
-from frappe_books.subscription.state import InvalidPushError, apply_synced_state, mark_checkout_started
+from frappe_books.subscription.state import (
+	InvalidPushError,
+	apply_synced_state,
+	mark_checkout_started,
+	move_trial_start,
+)
 
 PLANS_CACHE_KEY = "books_subscription_plans"
 PLANS_CACHE_SECONDS = 60 * 60
@@ -37,6 +43,11 @@ LAST_PULL_KEY = "books_subscription_last_pull"
 PULL_INTERVAL_SECONDS = 10
 PULL_PENDING = "pending"
 RETURN_PATH = "/books/subscription?checkout=returned"
+# Spec 0010 build task 13: the site config key that turns on `set_trial_day`, set by the host on a staging
+# site only. Any day past the removal day is enough to reach every phase.
+STAGING_CLOCK_KEY = "books_staging_clock"
+MIN_TRIAL_DAY = 1
+MAX_TRIAL_DAY = 60
 UNSUBSCRIBABLE_PHASES = ("unmanaged", "exempt")
 
 
@@ -131,6 +142,21 @@ def _request_checkout(provider: str, billing_period: str) -> str:
 		# A plain raise sends no message, so /books would show a generic server error.
 		frappe.throw(unreachable_message(), ControlSiteUnreachable)
 	return checkout_url
+
+
+@frappe.whitelist(methods=["POST"])
+def set_trial_day(day: int) -> dict:
+	"""Staging only (spec 0010 build task 13): make today `day` of the trial, so a test site reaches the lock
+	and removal days without waiting. Administrator only, and refused unless the site's own config has
+	`books_staging_clock`, which only the host sets. It moves the start earlier only (`move_trial_start`)."""
+	if frappe.session.user != "Administrator":
+		frappe.throw(_("Only Administrator can change the trial day."), frappe.PermissionError)
+	if not frappe.conf.get(STAGING_CLOCK_KEY):
+		frappe.throw(_("This site doesn't allow changing the trial day."), frappe.PermissionError)
+	if not MIN_TRIAL_DAY <= day <= MAX_TRIAL_DAY:
+		frappe.throw(_("The day must be from {0} to {1}.").format(MIN_TRIAL_DAY, MAX_TRIAL_DAY))
+	move_trial_start(utc_now() - timedelta(days=day - 1))
+	return current_clock().status()
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])

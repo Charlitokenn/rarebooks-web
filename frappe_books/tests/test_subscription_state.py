@@ -7,11 +7,13 @@ from frappe.utils import get_datetime, getdate
 
 from frappe_books.patches import start_subscription_trial
 from frappe_books.subscription import SiteLockedError, apply_state, refuse_when_locked, start_trial
-from frappe_books.subscription.clock import DOCTYPE, is_managed, utc_now
+from frappe_books.subscription.api import STAGING_CLOCK_KEY, set_trial_day
+from frappe_books.subscription.clock import DOCTYPE, current_clock, is_managed, utc_now
 from frappe_books.subscription.lock import UNGUARDED_DOCTYPES
-from frappe_books.tests.subscription import SubscriptionTestMixin, store_facts
+from frappe_books.tests.subscription import SubscriptionTestMixin, make_user, store_facts
 
 BOOKS_ROLES = ("System Manager", "Books Manager", "Books User", "Books Cashier")
+STAGING_MANAGER = "books-staging-clock-manager@example.com"
 
 
 class IntegrationTestSubscriptionState(SubscriptionTestMixin, IntegrationTestCase):
@@ -99,3 +101,33 @@ class IntegrationTestSubscriptionState(SubscriptionTestMixin, IntegrationTestCas
 				refuse_when_locked(frappe._dict(doctype=doctype))
 		finally:
 			frappe.flags.books_site_locked = False
+
+	# covers: spec 0010 build task 13 (the staging clock)
+	def test_set_trial_day_makes_today_that_day_and_only_moves_the_start_earlier(self):
+		store_facts(trial_started_on=utc_now(), paid_until=None, exempt=0)
+		with patch.dict(
+			frappe.conf, {STAGING_CLOCK_KEY: 1, "books_control_url": "https://control.example.com"}
+		):
+			status = set_trial_day(30)
+			started = get_datetime(frappe.get_single(DOCTYPE).trial_started_on)
+			self.assertEqual(current_clock().day_number, 30)
+			self.assertEqual(status["removal_on"], current_clock().status()["removal_on"])
+			self.assertRaises(frappe.ValidationError, set_trial_day, 5)
+			self.assertRaises(frappe.ValidationError, set_trial_day, 30)
+			self.assertEqual(get_datetime(frappe.get_single(DOCTYPE).trial_started_on), started)
+			for day in (0, 61):
+				self.assertRaises(frappe.ValidationError, set_trial_day, day)
+
+	def test_set_trial_day_is_refused_without_the_site_flag_or_for_anyone_but_administrator(self):
+		store_facts(trial_started_on=utc_now())
+		started = get_datetime(frappe.get_single(DOCTYPE).trial_started_on)
+		with patch.dict(frappe.conf, {STAGING_CLOCK_KEY: 0}):
+			self.assertRaises(frappe.PermissionError, set_trial_day, 30)
+		make_user(STAGING_MANAGER, "System Manager")
+		with patch.dict(frappe.conf, {STAGING_CLOCK_KEY: 1}):
+			frappe.set_user(STAGING_MANAGER)
+			try:
+				self.assertRaises(frappe.PermissionError, set_trial_day, 30)
+			finally:
+				frappe.set_user("Administrator")
+		self.assertEqual(get_datetime(frappe.get_single(DOCTYPE).trial_started_on), started)
