@@ -6,6 +6,8 @@
 
 Amends: spec [0010](0010-frappe-cloud-hosting/index.md) (AC-1, AC-6, AC-7, AC-10, AC-11, AC-12, AC-16, the data model, the desk actions, the Frappe Cloud client). Every other rule in spec 0010 still holds.
 
+Amended by: spec [0013](0013-archived-site-proof.md) (AC-2 and AC-11: the archive proof, since Frappe Cloud answers HTTP 403 instead of `Archived` once a site is archived). The text below does not reflect it yet; read 0013 for that rule.
+
 ## Summary
 
 Frappe Cloud's archive call gives back no job name, so the removal case can't store one. Instead, the case records the time the archive was requested, in a proper date and time field called `archive_requested_on`. A case with that time set only waits for Frappe Cloud to finish; a case without it (a crash before the save, or a clear error) may call the archive again after every check passes again. This spec also confirms four rules /develop chose for registration and secret rotation, and removes the `config_job` field, which could never be filled either.

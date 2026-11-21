@@ -7,6 +7,8 @@ Replaces in part: spec [0007](../0007-trial-end-export-removal/index.md) (AC-3, 
 
 Amended by: spec [0011](../0011-archive-call-mark.md) (the archive mark, the removed `config_job`, and the Retry config, `get_state`, Rotate secret and registration failure rules). The text below already reflects it.
 
+Amended by: spec [0013](../0013-archived-site-proof.md) (AC-6 and AC-7: a site counts as archived on `Archived`, or, for a drop the control site started, on HTTP 403 plus its own name released by `domain_exists`). The text below does not reflect it yet; read 0013 for that rule.
+
 Amended by: spec [0012](../0012-custom-domains-registration/index.md) (custom domains: AC-10 registration takes a required `subdomain`, AC-11's 5 minute job also runs the domain steps, AC-13's Frappe Cloud client gains seven domain methods and a Cloudflare client is added, AC-16's digest lists stuck domain steps). The text below does not reflect it yet; read 0012 for those rules.
 
 ## Summary
