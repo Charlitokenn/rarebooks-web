@@ -7,6 +7,8 @@ Replaces in part: spec [0007](../0007-trial-end-export-removal/index.md) (AC-3, 
 
 Amended by: spec [0011](../0011-archive-call-mark.md) (the archive mark, the removed `config_job`, and the Retry config, `get_state`, Rotate secret and registration failure rules). The text below already reflects it.
 
+Amended by: spec [0012](../0012-custom-domains-registration/index.md) (custom domains: AC-10 registration takes a required `subdomain`, AC-11's 5 minute job also runs the domain steps, AC-13's Frappe Cloud client gains seven domain methods and a Cloudflare client is added, AC-16's digest lists stuck domain steps). The text below does not reflect it yet; read 0012 for those rules.
+
 ## Summary
 
 Your customer sites and the control site run on a Frappe Cloud dedicated server, where you have no root login, no host cron and no database root password. So the bench command runner of spec 0007 can't run there. Instead, the control site does the hourly removal round itself: it calls each customer site over signed HTTPS, asks the site to build its own export in a background job and upload it to R2 through a short lived upload link, and finally archives the site through the Frappe Cloud API. Registration and secret rotation also go through that API, so no one types a secret or edits a config file by hand.
