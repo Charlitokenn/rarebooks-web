@@ -293,7 +293,7 @@ export function getSubscriptionStartsNote(
   }
 
   const startsOn = formatDate(status.subscription_starts_on);
-  return t`Your PayPal subscription starts on ${startsOn}.`;
+  return t`Your subscription starts on ${startsOn}.`;
 }
 
 /** Days left in the free trial, today included, as the banner counts its days (AC-3). */

@@ -82,7 +82,7 @@ def start_checkout(billing_period: Literal["Monthly", "Yearly"]) -> dict:
 	starts_on = subscription_clock.subscription_starts_on
 	if starts_on:
 		# A second checkout would make a second subscription (spec 0008 AC-21).
-		frappe.throw(_("Your PayPal subscription starts on {0}.").format(formatdate(starts_on)))
+		frappe.throw(_("Your subscription starts on {0}.").format(formatdate(starts_on)))
 	if subscription_clock.first_payment_overdue:
 		frappe.throw(
 			_("Your first PayPal payment hasn't arrived. Check the payment method in your PayPal account.")

@@ -101,7 +101,7 @@ test('the starts on note names the day after the trial, only while waiting', () 
     getSubscriptionStartsNote(
       trialStatus(22, { subscription_starts_on: '2026-11-22' })
     ),
-    'Your PayPal subscription starts on 22/11/2026.'
+    'Your subscription starts on 22/11/2026.'
   );
   assert.equal(getSubscriptionStartsNote(trialStatus(23)), null);
   assert.equal(getSubscriptionStartsNote(null), null);

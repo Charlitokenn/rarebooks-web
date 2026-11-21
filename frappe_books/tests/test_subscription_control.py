@@ -442,7 +442,7 @@ class IntegrationTestPullAndCheckout(SubscriptionTestMixin, IntegrationTestCase)
 	def test_a_paypal_subscription_waiting_to_start_refuses_checkout(self):
 		# covers: spec 0008 AC-21. Day 22 is the first charge day, day 23 is after it with no payment.
 		for days_ago, message in (
-			(21, "Your PayPal subscription starts on"),
+			(21, "Your subscription starts on"),
 			(22, "Your first PayPal payment hasn't arrived"),
 		):
 			with self.subTest(days_ago=days_ago):

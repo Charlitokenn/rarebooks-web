@@ -146,7 +146,7 @@ for (const layout of LAYOUTS) {
 
       await open(page, '/books/subscription');
       await expect(page.getByTestId('subscription-starts-on')).toHaveText(
-        /^Your PayPal subscription starts on \S+\.$/
+        /^Your subscription starts on \S+\.$/
       );
       await expect(page.getByTestId('subscription-starts-on')).not.toHaveText(
         ISO_DATE
