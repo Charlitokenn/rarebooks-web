@@ -22,6 +22,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 7 | Trial end export and site removal | Slice 5 | in-progress |
 | 8 | Billing control site | Slice 5 | in-progress |
 | 11 | Hosting on Frappe Cloud | Slice 5 | in-progress |
+| 12 | Custom domains on registration | Slice 5 | planned |
 | 10 | Support chat | Slice 6 | in-progress |
 
 ## Already built
@@ -193,6 +194,11 @@ spec [0010](../specs/0010-frappe-cloud-hosting/index.md) · amended by spec [001
 - [ ] Test it: `/test hosting on Frappe Cloud`
 - [ ] Review it (fresh model): `/check review hosting on Frappe Cloud`
 - [ ] Document it: `/document hosting on Frappe Cloud`
+
+### 12. Custom domains on registration · needs a decision
+When the control site registers a hosted site, it gives the site its own `rarebooks.cc` subdomain (for example `site1.rarebooks.cc`) as its main address, with no manual DNS or Frappe Cloud steps. Extends feature 11 (spec 0010 registration) and the return link host rule in spec 0008 AC-5.
+**Done when:** registering a new site creates its DNS record, adds the domain on Frappe Cloud and makes it primary, and switches the control site's `site_url` only once the new address answers with the site's signature; until then the site keeps working on its `.frappe.cloud` address, a failure is shown with a Retry like Retry config, and archiving a site removes its record and domain.
+- [ ] Design it (spec): `/architect custom domains on registration` (settle where the subdomain comes from and what happens on a clash, the DNS provider and its token's reach, proxied or DNS only, the background steps and their status, retries and alerts, the `site_url` switch, cleanup at archive, and whether demo-site and demo-us move too)
 
 ## Slice 6: Support chat
 
