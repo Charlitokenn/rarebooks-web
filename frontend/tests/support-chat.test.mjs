@@ -139,7 +139,12 @@ test('the first pick loads the script once with the signed visitor (AC-3, AC-4, 
     ['hideWidget'],
     [
       'setAttributes',
-      { ...CHAT.attributes, phase: 'trial', screen: '/books/pos' },
+      {
+        ...CHAT.attributes,
+        phase: 'trial',
+        screen: '/books/pos',
+        ...CHAT.visitor,
+      },
     ],
     ['showWidget'],
     ['maximize'],
@@ -160,7 +165,14 @@ test('a later pick sends the live phase and screen without a second script (AC-3
 
   assert.equal(scripts.length, 1);
   assert.deepEqual(calls, [
-    ['setAttributes', { phase: 'locked', screen: '/books/list/SalesInvoice' }],
+    [
+      'setAttributes',
+      {
+        phase: 'locked',
+        screen: '/books/list/SalesInvoice',
+        ...CHAT.visitor,
+      },
+    ],
     ['showWidget'],
     ['maximize'],
   ]);

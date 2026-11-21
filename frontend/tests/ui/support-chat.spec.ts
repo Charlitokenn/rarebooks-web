@@ -177,6 +177,11 @@ test('the first pick loads tawk.to once with the signed visitor (AC-2 to AC-5)',
   expect(attributes).toHaveProperty('phase');
   expect(attributes).toHaveProperty('site');
   expect(attributes).toHaveProperty('app-version');
+  // Secure Mode refuses custom attributes sent without the signed identity.
+  expect(attributes).toMatchObject({
+    email: visitor?.email,
+    hash: visitor?.hash,
+  });
   await expect(bubble(page)).toBeVisible();
 
   await page.evaluate(() => (window as ChatWindow).Tawk_API?.minimize?.());

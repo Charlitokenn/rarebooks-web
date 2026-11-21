@@ -72,7 +72,7 @@ export async function openSupportChat(): Promise<void> {
   const pickAttributes = getPickAttributes();
   if (state === 'ready') {
     const api = getApi();
-    api.setAttributes?.(pickAttributes, logTawkError);
+    api.setAttributes?.(signed(chat, pickAttributes), logTawkError);
     showChat(api);
     return;
   }
@@ -168,10 +168,21 @@ async function startChat(
   }
   storeEmail(current.visitor.email);
   api.setAttributes?.(
-    { ...current.attributes, ...pickAttributes },
+    signed(current, { ...current.attributes, ...pickAttributes }),
     logTawkError
   );
   showChat(api);
+}
+
+/**
+ * Custom attributes with the signed identity: with Secure Mode on, tawk.to answers
+ * `UNAUTHORIZED_API_CALL` to a `setAttributes` call that has no `hash` (spec 0009 AC-4, AC-5).
+ */
+function signed(
+  current: SupportChat,
+  attributes: Record<string, string>
+): Record<string, string> {
+  return { ...attributes, ...current.visitor };
 }
 
 function showChat(api: TawkApi) {
