@@ -14,10 +14,8 @@ The 30 day trial clock, the subscription state, and the read only lock for hoste
 | `state.py` | The only writers of the Books Subscription single: `start_trial`, `apply_state`, and the synced push or pull |
 | `control.py` | The signed contract with the control site: HMAC signing, the `issued_at` window, outgoing calls |
 | `api.py` | Whitelisted `get_subscription`, `start_checkout` and `receive_state` (guest, rate limited, signed) |
-| `removal.py` | The site's side of trial end removal (spec [0007 trial end export removal](../../docs/specs/0007-trial-end-export-removal/index.md)): `removal_status`, `build_export`, and the two hold fields. Not whitelisted, not in `ALLOWED_METHODS` |
-| `runner.py` | The removal runner behind `bench books-removal-run`: reads every hosted site of the bench, reports them to the control site in signed calls, carries out `rotate_secret` (spec 0008 AC-15, always first), `clear`, `mark_sent`, `export` and `drop`, and uploads exports to R2 with `boto3` |
-| `registration.py` | `bench books-register-site` (spec [0008](../../docs/specs/0008-billing-control-site/index.md) AC-1): registers one site of the bench with the control site, signed with the runner secret, and writes `books_control_url` and the site secret into its `site_config.json` |
-| `rollout.py` | Run by hand on the hosting server (spec 0007): `preflight` behind `bench books-removal-check`, and `setup_bucket` behind `bench books-removal-setup-bucket` (the R2 lifecycle rules). Neither changes a site or prints a secret |
+| `removal.py` | The site's side of trial end removal (spec [0007 trial end export removal](../../docs/specs/0007-trial-end-export-removal/index.md)): `removal_status`, `build_export`, `export_job` (builds the zip and PUTs it to the presigned R2 link the control site sends), and the two hold fields. Not whitelisted; the control site reaches them through `remote.py` |
+| `remote.py` | The control site's signed calls into this site (spec [0010](../../docs/specs/0010-frappe-cloud-hosting/index.md) AC-2, AC-5): guest POST `removal_report`, `start_export`, `mark_export_sent`, `clear_removal` and `control_ping`. Every answer, a 401 included, is signed and echoes the request's `issued_at` |
 | `../tests/subscription.py` | Test helpers: `store_facts`, `lock_site`, `set_hosted_phase`, `ControlStub`, `SubscriptionTestMixin` |
 
 ## Commands
@@ -48,16 +46,17 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 - Subscription tests patch `clock.is_managed` (`managed_site()`) instead of writing `site_config.json`, and restore the facts with `SubscriptionTestMixin`.
 - A hosted, unpaid, non exempt site with no `trial_started_on` reads as `locked` (fail closed), with `lock_reason: no_trial_start` and no trial dates in the status. Repair it with `bench --site <site> execute frappe_books.subscription.start_trial`.
 - A pull from the control site runs at most once per `PULL_INTERVAL_SECONDS` (10) per site. The caller claims the window first with Redis SET NX on `LAST_PULL_KEY` (`_claim_pull_window`); calls inside it get the stored result, or the Retry message while the pull is still pending, and never call billing. An applied push deletes the key. Only subscribers can ask for a pull, and its `issued_at` must be within the 5 minute window, like a push. Tests clear the key through `control_site()` (`PULL_CACHE_KEYS`).
-- The removal runner runs from host cron, outside any site's requests and jobs. It does nothing unless `books_removal_mode` in `common_site_config.json` is `dry_run` or `live` (a dry run never writes to a site, except `rotate_secret`, which is billing and writes the new `books_control_secret` to the site's `site_config.json` in both modes). Its secrets live in `<bench>/config/books-runner.json`, which must be owned by the bench user with mode 600; Frappe never loads it, so no site can read it through `frappe.conf`.
+- The control site drives removal over HTTPS (spec 0010); this app holds no R2 token and no bench wide secret. `export_job` runs on the long queue and `lock_job` lets it past the lock by name (`EXPORT_JOB` in `lock.py`), so it can build an export on a locked site. It writes only files under its own folder, never the database.
+- A control site call whose answer status matters (a 503 to retry, a 409 to stop) goes through `control.post_signed`: the answer must be signed and echo the request's `issued_at`, or it raises `ControlSiteUnreachable`.
 - Don't read `@@transaction_isolation` directly: MariaDB below 11.1 has only `tx_isolation`. Ask for both names, as `_session_isolation_level()` in `removal.py` does.
 - `ALLOWED_METHODS` matches the short public path (`/api/method/frappe_books.subscription.get_subscription`). The module path `frappe_books.subscription.api.get_subscription` is not allowed, so a locked site answers it read only (503). Call these methods by the short path.
 - Frappe writes `User.last_known_versions` on a user's first boot, so `save_known_versions` saves it at login (`on_session_creation`), before the lock applies.
 
 ## Agent skills
 
-- [aws-sdk-python-usage](../../.agents/skills/aws-sdk-python-usage/): `aws/agent-toolkit-for-aws`, boto3 and botocore patterns (clients, `ClientError`, S3 transfers), for the R2 upload in `runner.py`
+- [aws-sdk-python-usage](../../.agents/skills/aws-sdk-python-usage/): `aws/agent-toolkit-for-aws`, boto3 and botocore patterns (clients, `ClientError`, S3 transfers), for the R2 side, which now lives on the control site (`rarebooks_control/export_storage.py`); this app only PUTs to a presigned link
 - [cloudflare](../../.agents/skills/cloudflare/): `cloudflare/skills`, picking Cloudflare products and finding the right docs
-- [cf-cli](../../.agents/skills/cf-cli/): `cloudflare/skills`, the `cf` CLI, including R2 bucket commands for the rollout
+- [cf-cli](../../.agents/skills/cf-cli/): `cloudflare/skills`, the `cf` CLI, including R2 bucket commands for setting up the export bucket
 - MCP servers: Cloudflare API MCP (`https://mcp.cloudflare.com/mcp`, recommended), Cloudflare docs MCP (`https://docs.mcp.cloudflare.com/mcp`, recommended)
 
 _Drafted by /sync from the introducing change, worth a quick human pass._

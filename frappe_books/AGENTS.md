@@ -11,7 +11,6 @@ The server side of Books: 68 `books_*` DocTypes with their controllers, plus pla
 | `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags, and the subscription lock hooks (`before_request`, `before_job`, `on_session_creation`, wildcard `doc_events`) |
 | `subscription/` | Trial clock, subscription state and the read only lock ([subscription/AGENTS.md](subscription/AGENTS.md)) |
 | `support_chat.py` | The tawk.to chat block in the boot (`books.support_chat`): the Secure Mode visitor hash and the support attributes; never raises, off unless all three `books_tawk_*` keys are set (spec 0009) |
-| `commands.py` | Bench commands from the module level `commands` list: `bench books-removal-run`, the hourly removal runner (spec 0007 trial end export removal); `books-removal-check` and `books-removal-setup-bucket`, its rollout checks; `books-register-site` (spec 0008) |
 | `frappe_books/doctype/books_*/` | One DocType each: `.json`, `.py` controller, optional `.js`, `test_*.py` |
 | `frappe_books/report/`, `print_format/`, `workspace/` | "Books " script reports, print formats, the workspace |
 | `accounting/`, `inventory/`, `commerce/` | Shared domain logic the controllers call (ledger, settlement, stock posting, FIFO valuation, POS, pricing, loyalty) |
