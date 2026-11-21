@@ -30,10 +30,10 @@ _Steps derived from spec 0012 acceptance criteria and its Value sourcing table. 
 - [ ] Digest lists Failed sites and Working ones over 30 minutes, not one Working for 10 → AC-14
 
 ## Commands
-- [ ] `bench --site <site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_domains` → 28 tests pass → AC-1 to AC-14
-- [ ] `bench --site <site> run-tests --app rarebooks_control` → every test passes → regressions
-- [ ] `uvx ruff@0.14.10 check rarebooks_control && uvx ruff@0.14.10 format --check rarebooks_control` → clean → AC-13 (house rules)
-- [ ] `grep -rn "cloudflare_api_token" <bench>/logs` after a run → only config reads, never the value → AC-12
+- [x] `bench --site <site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_domains` → 28 tests pass → AC-1 to AC-14
+- [x] `bench --site <site> run-tests --app rarebooks_control` → every test passes → regressions
+- [x] `uvx ruff@0.14.10 check rarebooks_control && uvx ruff@0.14.10 format --check rarebooks_control` → clean → AC-13 (house rules)
+- [x] `grep -rn "cloudflare_api_token" <bench>/logs` after a run → only config reads, never the value → AC-12
 
 ## Still owed before rollout (build task 1)
 - [ ] On a throwaway Frappe Cloud site, confirm `domains`, `domain_exists`, `check_dns`, `add_domain`, `retry_add_domain`, `set_host_name` and `remove_domain` answer as the `press` source shows (checked from source only on 2026-11-21) → AC-13
