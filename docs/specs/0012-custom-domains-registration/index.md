@@ -5,7 +5,7 @@
 
 Amends: spec [0010](../0010-frappe-cloud-hosting/index.md) (AC-10 registration gains a subdomain, AC-11 the 5 minute job gains the domain steps, AC-13 the Frappe Cloud client gains the domain methods, AC-16 the digest) and spec [0008](../0008-billing-control-site/index.md) (AC-5, the `return_url` host rule). Every other rule in those specs still holds.
 
-Amended by: spec [0013](../0013-archived-site-proof.md) (AC-11: the cleanup starts only in `mark_removed`, and its Frappe Cloud part is done once `domain_exists` no longer names the site). The text below does not reflect it yet; read 0013 for those rules.
+Amended by: spec [0013](../0013-archived-site-proof/index.md) (AC-11: the cleanup starts only in `mark_removed`, and its Frappe Cloud part is done once `domain_exists` no longer names the site). The text below does not reflect it yet; read 0013 for those rules.
 
 ## Summary
 

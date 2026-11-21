@@ -6,7 +6,7 @@
 
 Amends: spec [0010](0010-frappe-cloud-hosting/index.md) (AC-1, AC-6, AC-7, AC-10, AC-11, AC-12, AC-16, the data model, the desk actions, the Frappe Cloud client). Every other rule in spec 0010 still holds.
 
-Amended by: spec [0013](0013-archived-site-proof.md) (AC-2 and AC-11: the archive proof, since Frappe Cloud answers HTTP 403 instead of `Archived` once a site is archived). The text below does not reflect it yet; read 0013 for that rule.
+Amended by: spec [0013](0013-archived-site-proof/index.md) (AC-2 and AC-11: the archive proof, since Frappe Cloud answers HTTP 403 instead of `Archived` once a site is archived). The text below does not reflect it yet; read 0013 for that rule.
 
 ## Summary
 
