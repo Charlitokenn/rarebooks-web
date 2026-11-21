@@ -76,5 +76,7 @@ Smaller calls made while writing:
 - **Cloudflare or Frappe Cloud unreachable at registration refuses the action.** The subdomain is required and must be checked before anything is written. Runner up: register anyway and check later, which allows a clash to be stored.
 - **`Broken` certificates are retried at most every 30 minutes** through a cache key, so Let's Encrypt's failure limits aren't hit. Runner up: a new field, which isn't worth a column.
 - **An unknown `set_host_name` outcome calls it again next run**, because setting the same primary twice is harmless, unlike archive (spec 0011).
-- **Cleanup runs in the hourly removal round**, which already handles the Archived poll and `mark_removed`. Runner up: the 5 minute job, which only looks at Active sites.
+- **Cleanup starts at the archive request and runs in a sweep at the start of the hourly round, before the mode check**, so it runs with removal off and doesn't depend on `round_sites` (which skips Removed rows). Starting at the archive request, not at Archived, closes the hour or so in which the name pointed at a site being archived. Runner up: the 5 minute job, which only looks at Active sites.
+- **Every step locks, checks, commits, calls out, then locks again to write**, the pattern `retry_config` already uses, so a 30 second Frappe Cloud call never holds the row that `create_checkout` and pushes need.
+- **The domain host is accepted for `return_url` from the start**, since the new address works from the Certificate step on, before `site_url` moves.
 - **A foreign record of the same name fails at once and is never overwritten**: it was made by hand for a reason, and overwriting DNS is the one action here that could break something outside RareBooks.
