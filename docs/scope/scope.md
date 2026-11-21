@@ -24,6 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Hosting on Frappe Cloud | Slice 5 | in-progress |
 | 12 | Custom domains on registration | Slice 5 | in-progress |
 | 10 | Support chat | Slice 6 | in-progress |
+| 13 | Self serve onboarding | Slice 7 | planned |
 
 ## Already built
 
@@ -227,11 +228,18 @@ spec [0009](../specs/0009-support-chat/index.md) · code in `frappe_books/suppor
 - [ ] Verify it: `/check verify support chat`
 - [ ] Test it: `/test support chat`
 
+## Slice 7: Self serve onboarding
+
+### 13. Self serve onboarding · needs a decision
+A visitor on the marketing site (the `rarebooks-site` repo) signs up, picks a subdomain, and gets their own hosted Books site at `<subdomain>.rarebooks.cc` with a trial running, with no operator step. The marketing site hands the request to the control site, which creates the site on Frappe Cloud, registers it (feature 11), sets up its subdomain (feature 12) and starts the trial (feature 6). Spans `rarebooks-site`, `rarebooks_control` and this repo. Promoted from Deferred (spec 0008).
+**Done when:** a new visitor goes from the marketing site's sign up to signed in on their own `<subdomain>.rarebooks.cc` site with a trial running, with no manual step; the subdomain rules and clash checks of spec 0012 apply before anything is created; they see where their site is while it is being built, and get an email once it is ready; a failed or stuck build alerts you once and never leaves a half made site billed or unarchived; one person can't create sites without limit; and the current license key trial on the marketing site either keeps working or is retired on purpose.
+- [ ] Design it (spec): `/architect self serve onboarding` (settle how the marketing site talks to the control site and how that call is signed, how a new site is created on Frappe Cloud and Books installed on it, how the first Books user is made and signed in the first time, what the visitor sees while the site is built and if it fails, limits against abuse, and what happens to the license key trial)
+
 ## Deferred
 
 - Support chat: load tawk.to at app start for proactive chat if the team wants to reach out first; a widget per language keyed by the user's Frappe language (from spec 0009)
 
-- Self serve signup: a public form that provisions a hosted site and registers it through the control site; fiscal (TRA VFD/EFD) receipts for Tanzanian payments (from spec 0008)
+- Fiscal (TRA VFD/EFD) receipts for Tanzanian payments (from spec 0008; self serve signup moved to feature 13)
 
 - A "Removed" page so a removed site's URL explains what happened (from spec 0007)
 
