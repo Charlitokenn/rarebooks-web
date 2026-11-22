@@ -71,14 +71,16 @@ Signing marketing calls with spec 0005's HMAC scheme, using a secret of its own,
 
 Small calls I made with the full design in view (runner up in brackets):
 - Pool sites are rows on Books Hosted Site with `pool_status`, so registration, ping, domain and archive code run unchanged (a separate pool doctype, which would need a second registry).
-- A discard is a Books Removal Case of kind Discard that goes straight to Dropping, so it gets spec 0013's archive proof and the domain cleanup for free. It adds one guard: never discard a site whose owner has logged in (a separate archive path, which would duplicate the most dangerous code in the repo).
-- Discards follow the removal `mode`, so staging in `dry_run` only logs them.
+- A discard is a Books Removal Case of kind Discard that goes straight to Dropping, so it gets spec 0013's archive proof and the domain cleanup for free. It skips the export and fresh report checks, which assume a trial that ran its course, and adds a fail closed guard checked twice: never discard a site whose owner has logged in (a separate archive path, which would duplicate the most dangerous code in the repo).
+- `claim_site` sets the time zone before it restarts the trial, so day 1 can't move when GetStarted runs (storing a date instead, which would change the clock's rules).
+- The signed notice stays (the Worker polling the control site on a Cron Trigger), because the Ready email must reach someone who closed the page, and the retry state is small.
+- Discards have their own `discard_mode` (default `dry_run`), not the removal `mode`, so you can turn discards on in live before removal and failed builds never pile up while removal stays off (sharing the removal `mode`, which would strand failed sites while removal is off).
 - The password set link is minted on each click behind Clerk sign in, so a forwarded email hands over nothing (a 7 day link in the email).
 - The control site tells the Worker about Ready and Failed with a signed notice, retried for 24 hours (a Worker Cron Trigger polling the control site).
 - The trial restarts at claim through a new `state.py` writer, keeping the fail closed rule for a hosted site with no trial start (skipping `start_trial` at install for pool sites).
 - `claim_site`, `owner_link` and `claim_report` are in `ALLOWED_METHODS`, since a pool site older than 30 days reads as locked until it is claimed.
 - The company name is stored as a global default that GetStarted reads, since Books Subscription only takes writes from `state.py` (a field on Books Subscription).
-- The IP limit uses the Workers rate limiting binding (a KV counter, which is the fallback if the binding can't express 3 an hour).
+- The IP and check limits use KV counters keyed by the hour or minute (the Workers rate limiting binding, which only counts over 10 or 60 seconds and so can't express 3 an hour).
 
 ## Evidence: what exists today
 
