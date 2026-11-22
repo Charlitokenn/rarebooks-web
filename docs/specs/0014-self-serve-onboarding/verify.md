@@ -2,7 +2,7 @@
 _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones. This first set covers the thread (milestone 1) and the pool skip rules (build task 6)._
 
 ## UI / manual
-- [ ] Signed out, open `/dashboard/start` → you land on Clerk sign in → AC-1
+- [x] Signed out, open `/dashboard/start` → you land on Clerk sign in → AC-1
 - [ ] Sign up with an email you haven't verified yet, open `/dashboard/start` → "Verify your email address first", no form → AC-1
 - [ ] Verified, type `acme` slowly → one check about 400 ms after you stop, then "Available"; type `www` → the reserved reason → AC-2
 - [ ] Type more than 30 names inside a minute → the field shows "Slow down", and the form still submits → AC-2
