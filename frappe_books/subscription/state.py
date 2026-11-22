@@ -27,6 +27,16 @@ def start_trial():
 	save_facts(facts)
 
 
+def restart_trial_at_claim():
+	"""Start the trial again now, when a sign up claims this pool site (spec 0014 AC-22).
+
+	A pool site may sit built for weeks; its owner's day 1 is the claim day, not the install day.
+	"""
+	facts = _locked_facts()
+	facts.trial_started_on = utc_now()
+	save_facts(facts)
+
+
 def move_trial_start(started_on):
 	"""Staging only (spec 0010 build task 13): put the trial start earlier, so a test site reaches a later day
 	without waiting. Never later, so it can only end a trial sooner."""

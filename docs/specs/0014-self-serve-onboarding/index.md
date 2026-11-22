@@ -1,7 +1,7 @@
 # 0014. Self serve onboarding through a warm pool of Books sites
 
 **Date**: 2026-11-21
-**Status**: Proposed
+**Status**: In Progress
 
 Amends: spec [0010](../0010-frappe-cloud-hosting/index.md) (AC-1 and AC-13: the removal round and pushes skip pool sites, and the Frappe Cloud client gains `new_site`), spec [0012](../0012-custom-domains-registration/index.md) (AC-2: a label held by a Books Signup is taken; AC-8 and the domain eligibility rule: a Claimed site's Primary step makes its request Ready, and its steps wait for the owner; AC-11 and AC-12: a discarded site releases its label after cleanup; `_fail_domain` sends no email for a Claimed site) and spec [0013](../0013-archived-site-proof/index.md) (a Discard case uses the same archive proof). Every other rule in those specs still holds.
 

@@ -237,6 +237,8 @@ declare global {
           currency_precision?: string;
           number_format?: string;
           rounding_method?: string;
+          /** The company a hosted sign up named, set when the site is claimed (spec 0014 AC-22). */
+          books_signup_company?: string;
         };
         /** Added by `frappe_books.boot.extend_bootinfo`. */
         books?: {

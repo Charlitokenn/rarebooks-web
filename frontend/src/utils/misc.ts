@@ -10,10 +10,20 @@ import { fyo } from 'src/initFyo';
 import type { RawValue } from 'schemas/types';
 import { reactive } from 'vue';
 
-/** A new wizard, in the browser's time zone until Frappe's setup sets the system one. */
+/**
+ * A new wizard, in the browser's time zone until Frappe's setup sets the system one. A site claimed through
+ * hosted sign up starts from the sign up's company and the time zone set at the claim (spec 0014 AC-22, AC-24).
+ */
 export function getSetupWizardDoc() {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return newFrappeDoc(ModelNameEnum.SetupWizard, { time_zone: timeZone });
+  const boot = window.frappe?.boot;
+  const company = boot?.sysdefaults?.books_signup_company;
+  const timeZone =
+    (company && boot?.time_zone?.system) ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return newFrappeDoc(ModelNameEnum.SetupWizard, {
+    time_zone: timeZone,
+    ...(company ? { company_name: company } : {}),
+  });
 }
 
 export const docsPathMap: Record<string, string | undefined> = {

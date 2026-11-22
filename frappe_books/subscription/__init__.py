@@ -12,6 +12,7 @@ from frappe_books.subscription.lock import (
 	refuse_when_locked,
 	save_known_versions,
 )
+from frappe_books.subscription.onboarding import claim_report, claim_site, owner_link
 from frappe_books.subscription.remote import (
 	clear_removal,
 	control_ping,
@@ -24,6 +25,8 @@ from frappe_books.subscription.state import apply_state, start_trial
 __all__ = [
 	"SiteLockedError",
 	"apply_state",
+	"claim_report",
+	"claim_site",
 	"clear_removal",
 	"control_ping",
 	"current_clock",
@@ -32,6 +35,7 @@ __all__ = [
 	"lock_job",
 	"lock_request",
 	"mark_export_sent",
+	"owner_link",
 	"receive_state",
 	"refuse_when_locked",
 	"removal_report",

@@ -28,6 +28,9 @@ ALLOWED_METHODS = frozenset(
 		# The control site's two writers (spec 0010 AC-5). Its read only calls work in a read only transaction.
 		"frappe_books.subscription.mark_export_sent",
 		"frappe_books.subscription.clear_removal",
+		# The claim of a pool site and its owner's link (spec 0014 AC-22, AC-23).
+		"frappe_books.subscription.claim_site",
+		"frappe_books.subscription.owner_link",
 	}
 )
 # The export job opens its own REPEATABLE READ snapshot and writes only files (spec 0010 AC-5).
