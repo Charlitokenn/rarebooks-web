@@ -41,7 +41,7 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 - [ ] Address: shown only at Ready, as `https://<subdomain>.<books_site_domain>` → AC-4
 - [ ] Step label: Queued and Claiming show "Getting your site", Preparing "Setting up your address" → AC-4
 - [ ] Which site: with two Ready pool sites, the one with the older `pool_built_on` is claimed → AC-11
-- [ ] Daily cap: `max_claims_per_day` 0 leaves a new request Queued → AC-10
+- [x] Daily cap: `max_claims_per_day` 0 leaves a new request Queued → AC-10
 - [ ] Trial day 1: on a pool site built weeks ago, the trial reads day 1 on the claim date in the claim's zone (try a claim just after midnight in that zone, which is still yesterday in UTC) → AC-22, AC-24
 - [x] Company prefill: the global default `books_signup_company` holds the trimmed company name → AC-22
 - [x] Password link: each `/dashboard/site/open` makes a new key, and the older link stops working → AC-23
