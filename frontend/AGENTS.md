@@ -11,6 +11,7 @@ The Books user interface: a Vue 3 + frappe-ui 1.0.0 single page app that renders
 | `src/frappe/` | The Frappe data layer: meta, schema, `FrappeDoc`, `/api/v2` calls, field state. Mapped in [docs/framework-backed-doctypes.md](../docs/framework-backed-doctypes.md) |
 | `src/web/api.ts` | `call()` for whitelisted methods, server errors, session expiry |
 | `src/utils/supportChat.ts` | The tawk.to support chat: the only place that loads the tawk.to script or calls `Tawk_API`, from the server signed `books.support_chat` boot block, on the first pick only (spec 0009) |
+| `src/utils/docs.ts` | Every help link: the RareBooks docs address `DOCS_BASE_URL`, the screen to page map `docsPathMap`, `docsUrl`/`openDocs`, and `holdDocsPath` for overlays (spec 0015) |
 | `models/index.ts` | `frappeModels`: one model per schema name, extending `FrappeDoc` ([models/README.md](models/README.md)) |
 | `fyo/` | Shared primitives: the `fyo` singleton, translation, formatting, money, observer events ([fyo/README.md](fyo/README.md)) |
 | `src/web/main.ts`, `src/initFyo.ts`, `src/router.ts` | Startup and routes ([src/README.md](src/README.md)) |
@@ -42,6 +43,7 @@ yarn lint        # eslint .
 - Charts come from `frappe-ui/charts`; check that frappe-ui 1.0.0 has a prop before you use it, since `develop` is on a newer frappe-ui.
 - Styling is Tailwind with the frappe-ui preset; use logical (RTL safe) classes from `tailwindcss-rtl`.
 - Translate with the `t` tag at runtime, never in module level constants (they run before translations load).
+- Docs links go through `src/utils/docs.ts`, never a hand built URL. A screen sets `docsPathRef` from `docsPathMap` in `activated` and clears it in `deactivated`; an overlay over a screen (the Settings dialog) uses `holdDocsPath`, so a screen that activates under it can't take over (spec 0015 AC-2, AC-7).
 - Import with the path aliases (`fyo/`, `src/`, `models/`, `utils/`, `reports/`, `schemas/`), not long relative paths.
 - Components are PascalCase `.vue`; utils camelCase `.ts`; tests kebab case `*.test.mjs` and `*.spec.ts`.
 
@@ -52,6 +54,7 @@ yarn lint        # eslint .
 - Node tests load TypeScript through esbuild (`tests/helpers/fyo.mjs`), so run `yarn install` first.
 - Prettier and ESLint pre-commit hooks run from `frontend/node_modules`, so they fail until it is installed.
 - Run the guard tests (`settings-readers`, `settings-models`, `link-create`) after a merge from another branch.
+- `tests/docs_pages.json` lists the `rarebooks-site` docs pages that `docsPathMap` may point at. Update it when a docs page there is added, renamed or removed; the drift check against `../rarebooks-site` runs only when that checkout sits next to this repo, so CI skips it (spec 0015 AC-8).
 - Every tawk.to `setAttributes` call must carry the signed visitor identity (`hash` included): with Secure Mode on, tawk.to answers `UNAUTHORIZED_API_CALL` to one without it (spec 0009 AC-5).
 
 ## Agent skills
