@@ -23,7 +23,7 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 - [x] `cmp rarebooks-site/tests/onboarding/email_key_cases.json rarebooks_control/rarebooks_control/tests/email_key_cases.json` → no output → AC-9
 - [x] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_onboarding` → 22 OK → AC-8 to AC-14, AC-20, AC-21
 - [x] `bench --site <books site> run-tests --app frappe_books --module frappe_books.tests.test_subscription_onboarding` → 8 OK → AC-22, AC-23
-- [ ] POST to `rarebooks_control.onboarding.signup_status` with a wrong signature → signed 401, and the hour's signature failure counter rises → AC-8
+- [x] POST to `rarebooks_control.onboarding.signup_status` with a wrong signature → signed 401, and the hour's signature failure counter rises → AC-8
 - [x] POST `owner_link` with a right `request_id` and another `clerk_user_id` → signed 404 with no detail → AC-14
 - [x] Replay `claim_site` on a claimed site with another email → signed 409, no second user → AC-22
 - [ ] Make the marketing notify URL answer 503: the notice is retried every 5 minutes, stops after 24 hours, and you get one email → AC-13
