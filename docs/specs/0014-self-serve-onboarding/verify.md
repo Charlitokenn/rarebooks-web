@@ -1,4 +1,4 @@
-# Verify: self serve onboarding · spec 0014 · updated 2026-11-22
+# Verify: self serve onboarding · spec 0014 · updated 2026-11-23
 _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `/test` locks the durable ones. This first set covers the thread (milestone 1) and the pool skip rules (build task 6)._
 
 ## UI / manual
@@ -49,10 +49,20 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 - [ ] Ready email link target is `PUBLIC_SITE_URL` + `/dashboard/site/open` → AC-6
 - [ ] Notice target is Books Onboarding Settings `marketing_notify_url`; an `http://` URL is refused at save → AC-13
 
+## Discard over a trial case (build task 10)
+- [x] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_pool` → 33 OK, `TestDiscardOverTrialCase` included → AC-17 to AC-20
+- [ ] On staging after deploy, the first 5 minute sweep cancels `RC-00005` with "Replaced by a discard" and opens a Discard case for `SU-00001`'s site, which only logs "would discard" while `discard_mode` is `dry_run` → AC-17, AC-19
+- [ ] Sign up on staging and, before Ready, let an hourly removal round run → the claimed site has no Trial case; after Ready the next round opens a Scheduled one → AC-20
+- [ ] Give a claimed site a Paused Trial case and fail its sign up (age `claimed_on` past 2 hours) → the Trial case is Cancelled and a Discard case is Dropping → AC-19
+- [ ] Same, with the Trial case Dropping (or Holding with `archive_requested_on` set) → no Discard case, one Error Log line, and Retry answers that the old site isn't discarded yet, naming that case → AC-18, AC-19
+- [ ] Unset `books_ops_email` and blank the site's `owner_email`, then fail a sign up → no Discard case, and the sweep logs the refusal once that day however often it runs; set the email back → the next sweep opens the Discard → AC-17
+- [ ] Cancel a sign up's Discard case by hand with `discard_mode` changed → the next sweep opens a new one under the new mode; set the new one Failed → the sweep opens none, and Retry answers "Discard case {name} is Failed" → AC-17, AC-18
+- [ ] Mark the under way Trial case Removed and clear the site's `subdomain` → Retry is allowed with no Discard case ever opened → AC-18
+
 ## Acceptance criteria coverage
 - AC-1 to AC-6: UI steps, the value sourcing steps and `npm test`
 - AC-7: not built yet (build task 9)
 - AC-8 to AC-14, AC-21: `test_onboarding` and the command steps
-- AC-15 to AC-19: not built yet (build tasks 7 and 8; only the one email per failed sign up of AC-17 is in)
-- AC-20: `TestPoolSkip` and the command step
+- AC-15 to AC-19: `test_pool` (build tasks 7, 8 and 10) and the task 10 steps above
+- AC-20: `TestPoolSkip`, `TestDiscardOverTrialCase` and the command step
 - AC-22 to AC-24: `test_subscription_onboarding`, and the setup wizard UI step
