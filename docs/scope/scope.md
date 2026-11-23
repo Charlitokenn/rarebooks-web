@@ -261,7 +261,7 @@ code in `frontend/src/utils/docs.ts`, tests in `frontend/tests/docs-links.test.m
   - [x] Guard tests: `docs_pages.json`, the 404 guard, the sibling drift check and the `docs.frappe.io` scan (AC-1, AC-8)
   - [x] Fallbacks, the search bar link and the Get started links (AC-3 to AC-6)
   - [x] Settings tab following (page and dialog), POS and Lead (AC-7)
-- [ ] Verify it: `/check verify documentation links`
+- [x] Verify it: `/check verify documentation links`
 - [ ] Test it: `/test documentation links`
 
 ## Deferred
