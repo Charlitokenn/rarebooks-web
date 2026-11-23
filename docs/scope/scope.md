@@ -25,6 +25,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 12 | Custom domains on registration | Slice 5 | in-progress |
 | 10 | Support chat | Slice 6 | in-progress |
 | 13 | Self serve onboarding | Slice 7 | in-progress |
+| 14 | Documentation links to the RareBooks docs | Slice 8 | planned |
 
 ## Already built
 
@@ -246,6 +247,13 @@ spec [0014](../specs/0014-self-serve-onboarding/index.md) · amends specs 0010, 
 - [ ] Test it: `/test self serve onboarding`
 - [ ] Review it (fresh model): `/check review self serve onboarding`
 - [ ] Document it: `/document self serve onboarding`
+
+## Slice 8: Documentation links
+
+### 14. Documentation links to the RareBooks docs · needs a decision · Beta
+The sidebar's Documentation item, the search bar's docs link and the Get started cards open the matching page on the RareBooks docs site (`rarebooks.cc`, the `rarebooks-site` repo) instead of `docs.frappe.io`. Each screen still opens its own section, as `docsPathMap` does today.
+**Done when:** no link in the /books app points to `docs.frappe.io`; opening Documentation from a form, list, report or settings screen lands on that screen's page on the RareBooks docs site; a screen with no matching page (for example Sales Quote, GST reports or Expenses) opens a sensible fallback page, never a 404; and the docs base address lives in one place.
+- [ ] Design it (spec): `/architect documentation links` (settle where the docs base address lives, the map from each screen to its RareBooks docs page, and the fallback for screens with no page yet)
 
 ## Deferred
 
