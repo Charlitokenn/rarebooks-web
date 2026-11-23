@@ -1,4 +1,5 @@
 import { ModelNameEnum } from 'models/types';
+import { watch } from 'vue';
 import { docsPathRef } from './refs';
 
 /**
@@ -82,29 +83,36 @@ export function settingsDocsPath(tab: string): string {
 }
 
 /**
- * Points Documentation at `path` for an overlay, such as the Settings dialog, that opens over a
- * screen which already set its own. `release()` puts back the screen's value, unless another
- * screen has set its own since (a route change closed the dialog), so it never clobbers that
- * (spec 0015 AC-7).
+ * Points Documentation at `path` for an overlay, such as the Settings dialog, while it is open.
+ * A screen that sets its own path meanwhile does not take over: on a cold load the dialog opens
+ * before the Dashboard under it activates. Its path is kept as the one `release()` puts back,
+ * so closing returns to whichever screen is underneath by then (spec 0015 AC-7).
  */
 export function holdDocsPath(path: string): {
   update(path: string): void;
   release(): void;
 } {
-  const previous = docsPathRef.value;
+  let underneath = docsPathRef.value;
   let held = path;
   docsPathRef.value = held;
+  const stop = watch(
+    docsPathRef,
+    (value) => {
+      if (value !== held) {
+        underneath = value;
+        docsPathRef.value = held;
+      }
+    },
+    { flush: 'sync' }
+  );
   return {
     update(next: string) {
-      if (docsPathRef.value === held) {
-        docsPathRef.value = next;
-      }
       held = next;
+      docsPathRef.value = next;
     },
     release() {
-      if (docsPathRef.value === held) {
-        docsPathRef.value = previous;
-      }
+      stop();
+      docsPathRef.value = underneath;
     },
   };
 }

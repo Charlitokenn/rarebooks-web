@@ -167,6 +167,17 @@ test('the Settings dialog puts back the page of the screen underneath', () => {
   docsPathRef.value = '';
 });
 
+// covers: AC-7
+test('on a cold load the dialog keeps its page over the Dashboard that activates under it', () => {
+  docsPathRef.value = '';
+  const hold = docs.holdDocsPath('/inventory/inventory-settings/');
+  docsPathRef.value = docsPathMap.Dashboard;
+  assert.equal(docsPathRef.value, '/inventory/inventory-settings/');
+  hold.release();
+  assert.equal(docsPathRef.value, '/basics/dashboard/');
+  docsPathRef.value = '';
+});
+
 // covers: AC-8
 test('every docs link is a real RareBooks docs page and heading', () => {
   const links = [
