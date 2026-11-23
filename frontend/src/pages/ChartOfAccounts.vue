@@ -133,7 +133,7 @@ import { getLinkLabel } from 'src/frappe/link';
 import { getModel } from 'src/frappe/registry';
 import { getFrappeDoc, newFrappeDoc } from 'src/frappe/documents';
 import { fyo } from 'src/initFyo';
-import { docsPathMap } from 'src/utils/misc';
+import { DOCS_HOME, docsPathMap } from 'src/utils/docs';
 import { docsPathRef } from 'src/utils/refs';
 import { commonDocDelete, openQuickEdit } from 'src/utils/ui';
 import { call } from 'src/web/api';
@@ -240,7 +240,7 @@ export default defineComponent({
       await this.setBalances();
     }
 
-    docsPathRef.value = docsPathMap.ChartOfAccounts!;
+    docsPathRef.value = docsPathMap.ChartOfAccounts ?? DOCS_HOME;
   },
   deactivated() {
     docsPathRef.value = '';

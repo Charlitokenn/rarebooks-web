@@ -156,7 +156,7 @@
 
 <script lang="ts">
 import { shortcutsKey } from 'src/utils/injectionKeys';
-import { docsPathMap } from 'src/utils/misc';
+import { docsPathMap, openDocs as openDocsPage } from 'src/utils/docs';
 import {
   SearchGroup,
   SearchItems,
@@ -262,11 +262,7 @@ export default defineComponent({
   },
   methods: {
     openDocs() {
-      window.open(
-        'https://docs.frappe.io/' + docsPathMap.Search,
-        '_blank',
-        'noopener,noreferrer'
-      );
+      openDocsPage(docsPathMap.Search ?? '');
     },
     getShortcuts() {
       const shortcuts: { shortcut: string; callback: () => void }[] = [];

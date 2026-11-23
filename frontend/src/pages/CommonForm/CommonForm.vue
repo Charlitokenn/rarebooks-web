@@ -169,7 +169,7 @@ import { useBooksDoc } from 'src/frappe/useBooksDoc';
 import { getErrorMessage } from 'src/utils';
 import { loadDocPermissions } from 'src/utils/doc';
 import { shortcutsKey } from 'src/utils/injectionKeys';
-import { docsPathMap } from 'src/utils/misc';
+import { docsPathMap } from 'src/utils/docs';
 import { docsPathRef } from 'src/utils/refs';
 import { ActionGroup, UIGroupedFields } from 'src/utils/types';
 import {
@@ -430,7 +430,7 @@ export default defineComponent({
       void this.refreshDoc();
     }
     this.useFullWidth = !!this.fyo.singles.Misc?.use_full_width;
-    docsPathRef.value = docsPathMap[this.schemaName] ?? '';
+    docsPathRef.value = docsPathMap[this.schemaName] ?? docsPathMap.Entries ?? '';
     this.shortcuts?.pmod.set(this.context, ['KeyP'], () => {
       if (!this.canPrint) {
         return;

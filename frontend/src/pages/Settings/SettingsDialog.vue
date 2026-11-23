@@ -112,6 +112,7 @@ import { DocValue } from 'fyo/core/types';
 import type { FrappeDoc } from 'src/frappe/document';
 import { Field } from 'schemas/types';
 import QuickEditForm from 'src/pages/QuickEditForm.vue';
+import { holdDocsPath, settingsDocsPath } from 'src/utils/docs';
 import { settingsDialog } from 'src/utils/refs';
 import { computed, defineComponent } from 'vue';
 import SettingsField from './SettingsField.vue';
@@ -137,6 +138,29 @@ export default defineComponent({
   },
   setup() {
     return { ...useSettings(), settingsDialog };
+  },
+  created() {
+    // Documentation follows the open tab, then goes back to the screen underneath on close,
+    // unless a route change has already set that screen's own page (spec 0015 AC-7).
+    let hold: ReturnType<typeof holdDocsPath> | null = null;
+    this.$watch(
+      () => [settingsDialog.open, this.activeTab] as const,
+      ([open, tab]) => {
+        if (!open) {
+          hold?.release();
+          hold = null;
+          return;
+        }
+
+        const path = settingsDocsPath(tab);
+        if (hold) {
+          hold.update(path);
+        } else {
+          hold = holdDocsPath(path);
+        }
+      },
+      { immediate: true }
+    );
   },
   computed: {
     /** A tab that is not shown, e.g. Inventory with inventory off, opens the first. */

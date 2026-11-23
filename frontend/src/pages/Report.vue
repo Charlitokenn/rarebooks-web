@@ -79,7 +79,8 @@ import MobileReportFilters from 'src/components/Report/Mobile/MobileReportFilter
 import MobileReportSkeleton from 'src/components/Report/Mobile/MobileReportSkeleton.vue';
 import MobileReportSwitcher from 'src/components/Report/Mobile/MobileReportSwitcher.vue';
 import { shortcutsKey } from 'src/utils/injectionKeys';
-import { docsPathMap, showReport } from 'src/utils/misc';
+import { DOCS_HOME, docsPathMap } from 'src/utils/docs';
+import { showReport } from 'src/utils/misc';
 import { docsPathRef } from 'src/utils/refs';
 import { ActionGroup } from 'src/utils/types';
 import { routeTo } from 'src/utils/ui';
@@ -151,7 +152,7 @@ export default defineComponent({
   },
   async activated() {
     docsPathRef.value =
-      docsPathMap[this.reportClassName] ?? docsPathMap.Reports!;
+      docsPathMap[this.reportClassName] ?? docsPathMap.Reports ?? DOCS_HOME;
     await this.setReportData();
 
     this.shortcuts?.pmod.set(this.reportClassName, ['KeyP'], async () => {

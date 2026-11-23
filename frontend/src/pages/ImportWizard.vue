@@ -368,7 +368,7 @@ import { handleErrorWithDialog } from 'src/errorHandling';
 import { fyo } from 'src/initFyo';
 import { downloadFile } from 'src/utils/browser';
 import { showDialog } from 'src/utils/interactive';
-import { docsPathMap } from 'src/utils/misc';
+import { docsPathMap } from 'src/utils/docs';
 import { docsPathRef } from 'src/utils/refs';
 import { selectTextFile } from 'src/utils/ui';
 import { defineComponent } from 'vue';

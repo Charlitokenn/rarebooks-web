@@ -226,6 +226,8 @@ import { showDialog, showToast } from 'src/utils/interactive';
 import { isMobile } from 'src/utils/viewport';
 import { getPrintRoute, routeTo, toggleSidebar } from 'src/utils/ui';
 import { shortcutsKey } from 'src/utils/injectionKeys';
+import { docsPathMap } from 'src/utils/docs';
+import { docsPathRef } from 'src/utils/refs';
 import PageHeader from 'src/components/PageHeader.vue';
 import { computed, defineComponent, inject, nextTick, shallowRef } from 'vue';
 import {
@@ -454,6 +456,8 @@ export default defineComponent({
     await this.setItems();
   },
   async activated() {
+    // Before any await, so F1 during the load already opens the POS page (spec 0015 AC-7).
+    docsPathRef.value = docsPathMap.POS ?? '';
     toggleSidebar(false);
     await this.shift.refresh();
     await this.loadPOSProfile();
@@ -470,6 +474,7 @@ export default defineComponent({
     await nextTick();
   },
   deactivated() {
+    docsPathRef.value = '';
     this.isMenuOpen = false;
     this.shortcuts?.delete(COMPONENT_NAME);
     toggleSidebar(true);

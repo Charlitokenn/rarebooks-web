@@ -88,6 +88,7 @@ import MobileCreateMenu from './MobileCreateMenu.vue';
 import PeriodSelector from './PeriodSelector.vue';
 import ProfitAndLoss from './ProfitAndLoss.vue';
 import { fyo } from 'src/initFyo';
+import { docsPathMap } from 'src/utils/docs';
 import { docsPathRef } from 'src/utils/refs';
 import { isMobile } from 'src/utils/viewport';
 
@@ -120,7 +121,7 @@ export default {
     return { period: 'This Year' };
   },
   activated() {
-    docsPathRef.value = 'books/dashboard';
+    docsPathRef.value = docsPathMap.Dashboard ?? '';
   },
   deactivated() {
     docsPathRef.value = '';

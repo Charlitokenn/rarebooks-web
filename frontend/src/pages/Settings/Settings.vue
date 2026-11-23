@@ -67,7 +67,7 @@ import { Field } from 'schemas/types';
 import PageHeader from 'src/components/PageHeader.vue';
 import MobileFooter from 'src/mobile/MobileFooter.vue';
 import { revealActiveTab } from 'src/mobile/revealActiveTab';
-import { docsPathMap } from 'src/utils/misc';
+import { settingsDocsPath } from 'src/utils/docs';
 import { docsPathRef } from 'src/utils/refs';
 import { canInstall, isInstallSheetOpen } from 'src/web/pwa';
 import { computed, defineComponent, nextTick } from 'vue';
@@ -121,7 +121,9 @@ export default defineComponent({
     },
   },
   watch: {
-    async activeTab() {
+    async activeTab(tab: string) {
+      // The tab's own page, as the desktop dialog does (spec 0015 AC-7).
+      docsPathRef.value = settingsDocsPath(tab);
       shellScrollContainer.value?.scrollTo({ top: 0 });
       await nextTick();
       revealActiveTab(this.$refs.mobileTabs as HTMLElement | undefined);
@@ -136,7 +138,7 @@ export default defineComponent({
       this.activeTab = tab;
     }
 
-    docsPathRef.value = docsPathMap.Settings ?? '';
+    docsPathRef.value = settingsDocsPath(this.activeTab);
     this.setSaveShortcut();
   },
   async deactivated(): Promise<void> {

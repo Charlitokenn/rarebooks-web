@@ -221,7 +221,7 @@ import ShortcutKeys from 'src/components/ShortcutKeys.vue';
 import { handleErrorWithDialog } from 'src/errorHandling';
 import { shortcutsKey } from 'src/utils/injectionKeys';
 import { showDialog, showToast } from 'src/utils/interactive';
-import { docsPathMap } from 'src/utils/misc';
+import { docsPathMap } from 'src/utils/docs';
 import { getPrintHints } from 'src/utils/printFormatApi';
 import {
   PageSize,

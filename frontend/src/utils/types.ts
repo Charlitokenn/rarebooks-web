@@ -114,7 +114,7 @@ export type GetStartedConfigItem = {
     icon: string;
     description: string;
     fieldname: string;
-    documentation?: string;
+    documentation?: { path: string; anchor?: string };
     action?: () => void;
   }[];
 };

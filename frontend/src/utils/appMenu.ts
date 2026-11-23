@@ -1,6 +1,7 @@
 import { t } from 'fyo';
 import type { DropdownOptions } from 'frappe-ui';
 import { call } from 'src/web/api';
+import { openDocs } from './docs';
 import { docsPathRef } from './refs';
 import { endSupportChat, hasSupportChat, openSupportChat } from './supportChat';
 import { deskTheme, setDeskTheme, type DeskTheme } from './theme';
@@ -74,11 +75,7 @@ function getThemeItems(): DropdownOptions {
 }
 
 export function openDocumentation() {
-  window.open(
-    'https://docs.frappe.io/' + (docsPathRef.value || 'books'),
-    '_blank',
-    'noopener,noreferrer'
-  );
+  openDocs(docsPathRef.value);
 }
 
 async function logOut() {

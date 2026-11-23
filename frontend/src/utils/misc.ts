@@ -26,53 +26,6 @@ export function getSetupWizardDoc() {
   });
 }
 
-export const docsPathMap: Record<string, string | undefined> = {
-  // Analytics
-  Dashboard: 'books/dashboard',
-  Reports: 'books/reports',
-  GeneralLedger: 'books/general-ledger',
-  ProfitAndLoss: 'books/profit-and-loss-statement',
-  BalanceSheet: 'books/balance-sheet',
-  TrialBalance: 'books/trial-balance',
-  GSTR1: 'books/gst-reports',
-  GSTR2: 'books/gst-reports',
-
-  // Transactions
-  [ModelNameEnum.SalesQuote]: 'books/sales-quotes',
-  [ModelNameEnum.SalesInvoice]: 'books/sales-invoices',
-  [ModelNameEnum.PurchaseInvoice]: 'books/purchase-invoices',
-  [ModelNameEnum.Payment]: 'books/payments',
-  [ModelNameEnum.JournalEntry]: 'books/journal-entries',
-  [ModelNameEnum.LoyaltyProgram]: 'books/loyalty-program',
-  [ModelNameEnum.PricingRule]: 'books/pricing-rule',
-  [ModelNameEnum.CouponCode]: 'books/coupon-code',
-
-  // Inventory
-  [ModelNameEnum.StockMovement]: 'books/stock-movement',
-  [ModelNameEnum.Shipment]: 'books/shipment',
-  [ModelNameEnum.PurchaseReceipt]: 'books/purchase-receipt',
-  StockLedger: 'books/stock-ledger',
-  StockBalance: 'books/stock-balance',
-  [ModelNameEnum.Batch]: 'books/batches',
-  [ModelNameEnum.SerialNumber]: 'books/serial-number',
-
-  // Entries
-  Entries: 'books',
-  [ModelNameEnum.Party]: 'books/party',
-  [ModelNameEnum.Item]: 'books/items',
-  [ModelNameEnum.Tax]: 'books/taxes',
-  [ModelNameEnum.PriceList]: 'books/price-list',
-  [ModelNameEnum.PrintFormat]: 'books/print-templates',
-
-  // Miscellaneous
-  Search: 'books/quick-search',
-  NumberSeries: 'books/number-series',
-  ImportWizard: 'books/import-wizard',
-  Settings: 'books/settings',
-  ChartOfAccounts: 'books/chart-of-accounts',
-  [ModelNameEnum.CustomForm]: 'books/customize-form',
-};
-
 /**
  * Values a new document takes from the filters of its list or link, as
  * Frappe's list does: each `=` filter, or an `in` filter's first value but

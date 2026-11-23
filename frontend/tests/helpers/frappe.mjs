@@ -41,6 +41,8 @@ await build({
       export { getFilterFields } from './src/utils/filterFields';
       export { getSidebarConfig } from './src/utils/sidebarConfig';
       export { getAppMenuItems } from './src/utils/appMenu';
+      export * as docs from './src/utils/docs';
+      export { getGetStartedConfig } from './src/utils/getStartedConfig';
       export { docsPathRef, subscriptionStatus } from './src/utils/refs';
       export * as supportChat from './src/utils/supportChat';
       export { deskTheme, getColorScheme } from './src/utils/theme';
@@ -216,6 +218,8 @@ export const {
   getJsonExportData,
   getSidebarConfig,
   getAppMenuItems,
+  docs,
+  getGetStartedConfig,
   docsPathRef,
   subscriptionStatus,
   supportChat,

@@ -48,7 +48,7 @@ test('the desk theme paints the app; Automatic follows the system', () => {
   );
 });
 
-test('Documentation opens the Books docs on a page that has none of its own', () => {
+test('Documentation opens the RareBooks docs, home when the screen has no page', () => {
   const opened = [];
   globalThis.window.open = (url) => opened.push(url);
   const documentation = getAppMenuItems()
@@ -57,11 +57,11 @@ test('Documentation opens the Books docs on a page that has none of its own', ()
 
   docsPathRef.value = '';
   documentation.onClick();
-  docsPathRef.value = 'books/sales-invoices';
+  docsPathRef.value = '/transactions/sales-invoice/';
   documentation.onClick();
 
   assert.deepEqual(opened, [
-    'https://docs.frappe.io/books',
-    'https://docs.frappe.io/books/sales-invoices',
+    'https://rarebooks.cc/getting-started/getting-started-with-rarebooks/',
+    'https://rarebooks.cc/transactions/sales-invoice/',
   ]);
 });

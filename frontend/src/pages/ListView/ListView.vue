@@ -114,7 +114,8 @@ import { getField, getModel, getSchema, getSearchFields } from 'src/frappe/regis
 import { newFrappeDoc } from 'src/frappe/documents';
 import { fyo } from 'src/initFyo';
 import { shortcutsKey } from 'src/utils/injectionKeys';
-import { docsPathMap, getNewDocValues } from 'src/utils/misc';
+import { docsPathMap } from 'src/utils/docs';
+import { getNewDocValues } from 'src/utils/misc';
 import { docsPathRef } from 'src/utils/refs';
 import { getFormRoute, openNewDoc, routeTo } from 'src/utils/ui';
 import { isMobile } from 'src/utils/viewport';

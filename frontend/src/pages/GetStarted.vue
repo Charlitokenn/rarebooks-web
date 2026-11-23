@@ -52,6 +52,7 @@ import { DocValue } from 'fyo/core/types';
 import PageHeader from 'src/components/PageHeader.vue';
 import { getFrappeDoc } from 'src/frappe/documents';
 import { fyo } from 'src/initFyo';
+import { openDocs } from 'src/utils/docs';
 import { getGetStartedConfig } from 'src/utils/getStartedConfig';
 import { GetStartedConfigItem } from 'src/utils/types';
 import { defineComponent } from 'vue';
@@ -78,7 +79,7 @@ export default defineComponent({
   methods: {
     async handleDocumentation({ key, documentation }: ListItem) {
       if (documentation) {
-        window.open(documentation, '_blank', 'noopener,noreferrer');
+        openDocs(documentation.path, documentation.anchor);
       }
 
       switch (key) {
