@@ -25,7 +25,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 12 | Custom domains on registration | Slice 5 | in-progress |
 | 10 | Support chat | Slice 6 | in-progress |
 | 13 | Self serve onboarding | Slice 7 | in-progress |
-| 14 | Documentation links to the RareBooks docs | Slice 8 | planned |
+| 14 | Documentation links to the RareBooks docs | Slice 8 | in-progress |
 
 ## Already built
 
@@ -250,12 +250,24 @@ spec [0014](../specs/0014-self-serve-onboarding/index.md) · amends specs 0010, 
 
 ## Slice 8: Documentation links
 
-### 14. Documentation links to the RareBooks docs · needs a decision · Beta
+### 14. Documentation links to the RareBooks docs · in-progress · Beta
 The sidebar's Documentation item, the search bar's docs link and the Get started cards open the matching page on the RareBooks docs site (`rarebooks.cc`, the `rarebooks-site` repo) instead of `docs.frappe.io`. Each screen still opens its own section, as `docsPathMap` does today.
 **Done when:** no link in the /books app points to `docs.frappe.io`; opening Documentation from a form, list, report or settings screen lands on that screen's page on the RareBooks docs site; a screen with no matching page (for example Sales Quote, GST reports or Expenses) opens a sensible fallback page, never a 404; and the docs base address lives in one place.
-- [ ] Design it (spec): `/architect documentation links` (settle where the docs base address lives, the map from each screen to its RareBooks docs page, and the fallback for screens with no page yet)
+spec: [0015](../specs/0015-documentation-links.md)
+- [x] Design it (spec): `/architect documentation links` (settle where the docs base address lives, the map from each screen to its RareBooks docs page, and the fallback for screens with no page yet)
+- [ ] Build it: `/develop documentation links`
+  - [ ] Thin thread: `docs.ts` (base address, map, `docsUrl`, `openDocs`) and the sidebar Documentation item and F1 on it (AC-2, AC-3)
+  - [ ] Guard tests: `docs_pages.json`, the 404 guard, the sibling drift check and the `docs.frappe.io` scan (AC-1, AC-8)
+  - [ ] Fallbacks, the search bar link and the Get started links (AC-3 to AC-6)
+  - [ ] Settings tab following (page and dialog), POS and Lead (AC-7)
+- [ ] Verify it: `/check verify documentation links`
+- [ ] Test it: `/test documentation links`
 
 ## Deferred
+
+- Docs pages for Sales Quote, the GST reports and Expenses in `rarebooks-site`, then repoint their map entries (from spec 0015)
+
+- Repoint the `docs.frappe.io` link in `rarebooks-site`'s `point-of-sale.mdx` (from spec 0015)
 
 - Support chat: load tawk.to at app start for proactive chat if the team wants to reach out first; a widget per language keyed by the user's Frappe language (from spec 0009)
 
