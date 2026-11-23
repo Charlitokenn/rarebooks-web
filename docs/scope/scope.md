@@ -239,7 +239,7 @@ spec [0014](../specs/0014-self-serve-onboarding/index.md) · amends specs 0010, 
   - [ ] The thread, one sign up claiming one hand made pool site: confirm `press.api.site.new` live, the schema, `claim_site` and `owner_link` on Books, the signed marketing calls, the claim and owner steps, Ready in the Primary step, the Worker form, status page, open link and Ready email (AC-1 to AC-6, AC-8 to AC-14, AC-21 to AC-24)
   - [x] The pool builds itself: skip rules, the committed Building row, `new_site`, the top up under the settings lock, the poll into config and ping (AC-11, AC-15, AC-20)
   - [x] Failures and limits: daily cap and Queued alert, owner tries, the 2 hour rule, Discard cases with the twice checked login guard and label release, build failure pause, stale pool sites, Retry (AC-10, AC-13, AC-16 to AC-19)
-  - [ ] Retire the desktop trial: export and drop `trials`, remove the license routes, pages and Keymint (AC-7)
+  - [x] Retire the desktop trial: export and drop `trials`, remove the license routes, pages and Keymint (AC-7)
   - [ ] Rollout: settings and Worker secrets, staging with `discard_mode` dry_run, one sign up end to end, one forced failure, then live with pool size 2 (AC-1 to AC-24)
 - [ ] Verify it: `/check verify self serve onboarding`
 - [ ] Test it: `/test self serve onboarding`
