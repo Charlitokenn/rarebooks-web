@@ -80,6 +80,7 @@ Small calls I made with the full design in view (runner up in brackets):
 - The trial restarts at claim through a new `state.py` writer, keeping the fail closed rule for a hosted site with no trial start (skipping `start_trial` at install for pool sites).
 - `claim_site`, `owner_link` and `claim_report` are in `ALLOWED_METHODS`, since a pool site older than 30 days reads as locked until it is claimed.
 - The company name is stored as a global default that GetStarted reads, since Books Subscription only takes writes from `state.py` (a field on Books Subscription).
+- A Discard cancels the claimed site's open Trial or Lapsed case unless it is Dropping, even one paused by hand (leaving a paused case alone, which would strand the site until someone acts). The 5 minute sweep repairs a Failed request with no Discard case (a one off patch, which would not catch a later refusal). A Claimed site gets no Trial or Lapsed case until its request is Ready, which removes the cause; the cancel stays as the repair for cases that exist already and for a race. Added 2026-11-23 after the first staging sign up failed and its site was never discarded, with fixes from a cross check on another model.
 - The IP and check limits use KV counters keyed by the hour or minute (the Workers rate limiting binding, which only counts over 10 or 60 seconds and so can't express 3 an hour).
 
 ## Evidence: what exists today
