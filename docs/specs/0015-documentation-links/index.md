@@ -1,7 +1,7 @@
 # 0015. Point documentation links at the RareBooks docs
 
 **Date**: 2026-11-23
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
