@@ -28,6 +28,7 @@ _Steps derived from spec 0014 acceptance criteria. `/check verify` runs these; `
 - [x] Replay `claim_site` on a claimed site with another email → signed 409, no second user → AC-22
 - [ ] Make the marketing notify URL answer 503: the notice is retried every 5 minutes, stops after 24 hours, and you get one email → AC-13
 - [ ] Notify the Worker twice with the same Ready notice → one email; make Resend fail → signed 503 and no `ready_emailed_at` → AC-6
+- [ ] With `frappe_cloud_server` set, the hourly top up builds `rb-<8 hex>.frappe.cloud` on the Books bench group (Production Bench), Active within the hour, and never a new bench group in the Frappe Cloud dashboard (checked once by hand on 2026-11-23 with `rb-bb90da04`) → AC-15
 - [ ] A Ready pool site 40 days after its build: no removal case, no push, `get_state` refuses with `config_pending` → AC-20
 
 ## Value sourcing
