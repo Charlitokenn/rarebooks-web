@@ -240,7 +240,7 @@ spec [0014](../specs/0014-self-serve-onboarding/index.md) · amends specs 0010, 
   - [x] The pool builds itself: skip rules, the committed Building row, `new_site`, the top up under the settings lock, the poll into config and ping (AC-11, AC-15, AC-20)
   - [x] Failures and limits: daily cap and Queued alert, owner tries, the 2 hour rule, Discard cases with the twice checked login guard and label release, build failure pause, stale pool sites, Retry (AC-10, AC-13, AC-16 to AC-19)
   - [x] Retire the desktop trial: export and drop `trials`, remove the license routes, pages and Keymint (AC-7)
-  - [ ] Discard over a trial case: no trial case for a Claimed site before Ready, a Discard cancels one that isn't under way, Retry on any Removed case, the sweep repairs a missing Discard (AC-17 to AC-20)
+  - [x] Discard over a trial case: no trial case for a Claimed site before Ready, a Discard cancels one that isn't under way, Retry on any Removed case, the sweep repairs a missing Discard (AC-17 to AC-20)
   - [ ] Rollout: settings and Worker secrets, staging with `discard_mode` dry_run, one sign up end to end, one forced failure, then live with pool size 2 (AC-1 to AC-24)
 - [ ] Verify it: `/check verify self serve onboarding`
 - [ ] Test it: `/test self serve onboarding`
