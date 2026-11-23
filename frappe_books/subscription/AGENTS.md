@@ -51,6 +51,7 @@ bench --site <site> execute frappe_books.subscription.apply_state --kwargs "{'st
 - A control site call whose answer status matters (a 503 to retry, a 409 to stop) goes through `control.post_signed`: the answer must be signed and echo the request's `issued_at`, or it raises `ControlSiteUnreachable`.
 - Don't read `@@transaction_isolation` directly: MariaDB below 11.1 has only `tx_isolation`. Ask for both names, as `_session_isolation_level()` in `removal.py` does.
 - `ALLOWED_METHODS` matches the short public path (`/api/method/frappe_books.subscription.get_subscription`). The module path `frappe_books.subscription.api.get_subscription` is not allowed, so a locked site answers it read only (503). Call these methods by the short path.
+- A new pool site has empty System Settings `language` and `time_zone` until its setup wizard, so `System Settings.save()` refuses with a 417. Code that runs before the wizard (`claim_site`) writes one field with `frappe.db.set_single_value` and then calls `clear_system_settings_cache()` (spec 0014 AC-22).
 - Frappe writes `User.last_known_versions` on a user's first boot, so `save_known_versions` saves it at login (`on_session_creation`), before the lock applies.
 
 ## Agent skills
