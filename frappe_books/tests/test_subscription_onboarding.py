@@ -85,6 +85,22 @@ class IntegrationTestClaimSite(SubscriptionTestMixin, IntegrationTestCase):
 		started = get_datetime(frappe.get_doc(DOCTYPE).trial_started_on)
 		self.assertGreaterEqual(started, before.replace(microsecond=0))
 
+	def test_a_claim_works_before_the_setup_wizard_with_language_and_zone_empty(self):
+		# covers: AC-22 (a new Frappe Cloud pool site has no language or time zone until the setup wizard)
+		language = frappe.db.get_single_value("System Settings", "language")
+		self.addCleanup(
+			lambda: frappe.db.set_single_value("System Settings", "language", language) or frappe.db.commit()
+		)
+		frappe.db.set_single_value("System Settings", {"language": None, "time_zone": None})
+		frappe.db.commit()
+
+		response = self.claim()
+
+		self.assertEqual(response.status_code, 200, response.get_data()[:300])
+		self.assertEqual(signed_json(response)["status"], "claimed")
+		self.assertTrue(frappe.db.exists("User", OWNER))
+		self.assertEqual(frappe.db.get_single_value("System Settings", "time_zone"), "Africa/Dar_es_Salaam")
+
 	def test_a_repeat_with_the_same_email_answers_claimed_and_changes_nothing(self):
 		# covers: AC-22
 		self.assertEqual(self.claim().status_code, 200)

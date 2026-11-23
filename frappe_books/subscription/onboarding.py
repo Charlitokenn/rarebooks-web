@@ -124,10 +124,14 @@ def _system_users() -> list[str]:
 
 
 def _set_time_zone(zone: str):
-	settings = frappe.get_single("System Settings")
-	settings.time_zone = zone
-	settings.flags.ignore_permissions = True
-	settings.save()
+	"""Written as one field, not through `System Settings.save()`: a pool site claims before its setup wizard,
+	while `language` and `time_zone` are still empty, and a save refuses them as mandatory (a 417 the control
+	site counted as a failed owner step, found in the spec 0014 staging sign up). The rarebooks_control install
+	does the same for two factor auth."""
+	from frappe.core.doctype.system_settings.system_settings import clear_system_settings_cache
+
+	frappe.db.set_single_value("System Settings", "time_zone", zone)
+	clear_system_settings_cache()
 	# The request keeps its own copy of System Settings; drop it so the trial reads the new zone.
 	frappe.local.system_settings = None
 
