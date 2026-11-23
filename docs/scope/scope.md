@@ -262,7 +262,7 @@ code in `frontend/src/utils/docs.ts`, tests in `frontend/tests/docs-links.test.m
   - [x] Fallbacks, the search bar link and the Get started links (AC-3 to AC-6)
   - [x] Settings tab following (page and dialog), POS and Lead (AC-7)
 - [x] Verify it: `/check verify documentation links`
-- [ ] Test it: `/test documentation links`
+- [x] Test it: `/test documentation links`
 
 ## Deferred
 

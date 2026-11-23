@@ -59,6 +59,83 @@ test("Documentation opens the screen's RareBooks page in a new tab", () => {
   docsPathRef.value = '';
 });
 
+// covers: AC-3
+test('each screen maps to the page the spec names for it', () => {
+  assert.deepEqual(docsPathMap, {
+    Dashboard: '/basics/dashboard/',
+    Reports: '/financial-reports/reports/',
+    GeneralLedger: '/financial-reports/general-ledger/',
+    ProfitAndLoss: '/financial-reports/profit-and-loss-statement/',
+    BalanceSheet: '/financial-reports/balance-sheet/',
+    TrialBalance: '/financial-reports/trial-balance/',
+    SalesQuote: '/transactions/sales-invoice/',
+    SalesInvoice: '/transactions/sales-invoice/',
+    PurchaseInvoice: '/transactions/purchase-invoice/',
+    Payment: '/transactions/payments/',
+    Expense: '/transactions/payments/',
+    JournalEntry: '/transactions/journal-entries/',
+    LoyaltyProgram: '/transactions/loyalty-program/',
+    Lead: '/transactions/lead/',
+    POS: '/transactions/point-of-sale/',
+    POSSettings: '/transactions/point-of-sale/',
+    PricingRule: '/masters/pricing-rule/',
+    CouponCode: '/masters/coupon-code/',
+    StockMovement: '/inventory/stock-movement/',
+    Shipment: '/inventory/shipment/',
+    PurchaseReceipt: '/inventory/purchase-receipt/',
+    StockLedger: '/inventory/stock-ledger/',
+    StockBalance: '/inventory/stock-balance/',
+    Batch: '/inventory/batches/',
+    SerialNumber: '/inventory/serial-number/',
+    InventorySettings: '/inventory/inventory-settings/',
+    Entries: '/masters/master-data/',
+    Party: '/masters/party/',
+    Item: '/masters/items/',
+    Tax: '/masters/taxes/',
+    PriceList: '/masters/price-list/',
+    PrintFormat: '/settings/print-templates/',
+    Search: '/getting-started/quick-search/',
+    NumberSeries: '/settings/number-series/',
+    ImportWizard: '/getting-started/import-wizard/',
+    Settings: '/settings/settings/',
+    ChartOfAccounts: '/getting-started/chart-of-accounts/',
+    CustomForm: '/settings/customize-form/',
+  });
+});
+
+// covers: AC-2
+test('docsUrl joins the base, the path in canonical form and an optional heading', () => {
+  assert.equal(
+    docsUrl('/masters/items/'),
+    'https://rarebooks.cc/masters/items/'
+  );
+  assert.equal(
+    docsUrl('/masters/items/', ''),
+    'https://rarebooks.cc/masters/items/'
+  );
+  assert.equal(
+    docsUrl('/masters/items/', 'add-items'),
+    'https://rarebooks.cc/masters/items/#add-items'
+  );
+  for (const path of [...Object.values(docsPathMap), DOCS_HOME]) {
+    assert.match(path, /^\/[a-z0-9-]+\/[a-z0-9-]+\/$/, path);
+  }
+});
+
+// covers: AC-3
+test('openDocs opens one new tab that cannot reach the app window', () => {
+  const opened = [];
+  globalThis.window.open = (...args) => opened.push(args);
+  docs.openDocs('/masters/items/', 'add-items');
+  assert.deepEqual(opened, [
+    [
+      'https://rarebooks.cc/masters/items/#add-items',
+      '_blank',
+      'noopener,noreferrer',
+    ],
+  ]);
+});
+
 // covers: AC-4
 test('a screen with no page of its own opens the nearest overview', () => {
   docsPathRef.value = '';
@@ -176,6 +253,36 @@ test('on a cold load the dialog keeps its page over the Dashboard that activates
   hold.release();
   assert.equal(docsPathRef.value, '/basics/dashboard/');
   docsPathRef.value = '';
+});
+
+// covers: AC-7
+test('a tab switch after the screen underneath changed still closes back to that screen', () => {
+  docsPathRef.value = '';
+  const hold = docs.holdDocsPath('/settings/settings/');
+  docsPathRef.value = docsPathMap.Dashboard;
+  hold.update('/transactions/point-of-sale/');
+  assert.equal(docsPathRef.value, '/transactions/point-of-sale/');
+  docsPathRef.value = '';
+  docsPathRef.value = docsPathMap.Item;
+  assert.equal(docsPathRef.value, '/transactions/point-of-sale/');
+  hold.release();
+  assert.equal(docsPathRef.value, '/masters/items/');
+});
+
+// covers: AC-7
+test('once released, a screen sets its own page freely again', () => {
+  docsPathRef.value = docsPathMap.Item;
+  docs.holdDocsPath('/settings/settings/').release();
+  docsPathRef.value = docsPathMap.Lead;
+  assert.equal(docsPathRef.value, '/transactions/lead/');
+  docsPathRef.value = '';
+});
+
+// covers: AC-7
+test('a Settings tab with no page of its own opens the Settings page', () => {
+  for (const tab of ['PrintSettings', 'SystemSettings', 'Defaults', '']) {
+    assert.equal(docs.settingsDocsPath(tab), '/settings/settings/', tab);
+  }
 });
 
 // covers: AC-8
