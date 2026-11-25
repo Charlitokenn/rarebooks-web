@@ -22,9 +22,9 @@ Each product checked against AC-1: (a) on sale to new customers, (b) maintained 
 | `tallyprime` | 2026-11-25 | Yes ([page](https://tallysolutions.com/tally-prime/)) | Yes, TallyPrime 7.0 ([what's new](https://tallysolutions.com/events/whats-new-in-tallyprime-7-0/), 2025-12-24) | No, Cloud Access lets you "connect to virtual computers via web browsers" ([page](https://tallysolutions.com/tallyprime-cloud-access/)), a remote desktop service | Retired, to `null` |
 | `turbocash` | 2026-11-25 | Yes, free download ([turbocash.net](https://www.turbocash.net/)) | Yes, SourceForge "Last Update" 2026-09-29 ([page](https://sourceforge.net/projects/turbocash/)) | No, its cloud option runs the desktop program "on Amazon Web Services, Microsoft Azure or any Windows Cloud Delivery" | Retired, to `null` |
 | `zipbooks` | 2026-11-25 | Yes, [pricing page](https://zipbooks.com/pricing) | No, the newest [blog](https://zipbooks.com/blog) post is "6 years ago" and there is no changelog | Yes | Left out |
-| `sage` | Not checked | | | | **Owed**: sage.com refuses automated access (403, even in a headless browser) |
-| `sage-50` | Not checked | | | | **Owed**: as for `sage`. Sage 50 is a desktop program, so expect Retired, to `sage` if `sage` is kept |
-| `netsuite` | Not checked | | | | **Owed**: netsuite.com refuses automated access (403) |
+| `sage` | 2026-11-25 | Yes, Start, Standard and Plus on [the UK pricing page](https://www.sage.com/en-gb/pricing/), 30 day trial | Yes, Sage Copilot for all users, April 2026, on [product updates](https://www.sage.com/en-gb/sage-business-cloud/sage-accounting/product-updates/) | Yes, Sage Accounting is the online product | Kept (new). Read through search excerpts of the exact sage.com pages, since sage.com refuses every request from this environment |
+| `sage-50` | 2026-11-25 | Yes | Yes, 2026.2 update from 2026-06-23 ([announcement](https://communityhub.sage.com/ca/sage_50/f/announcement/269260/coming-soon-product-update-2026-2-for-sage-50-accounting-software-la-mise-a-jour-du-produit-2026-2-du-logiciel-sage-50-comptabilite-arrive-bientot)) | No. It installs on a computer, and "Sage 50 Cloud" is the same program on an Azure virtual machine opened in a browser tab ([Sage FAQ](https://communityhub.sage.com/ca/sage_50/sage-50-canada-welcome-centre/w/cloud-customers/4346/tips-and-faq)), the same case as TallyPrime Cloud Access | Retired, to `sage` |
+| `netsuite` | 2026-11-25 | Yes, by quote: "Price, Quote" and "Free Demo" on [netsuite.co.uk](https://www.netsuite.co.uk/portal/uk/home.shtml) | Yes, [NetSuite Version 2026.2](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/chapter_N3944673.html) is the current help version | Yes, "The #1 AI Cloud ERP" | Kept (new). netsuite.com refuses requests; the UK site answers |
 | `hnry` | 2026-11-25 | Yes, pay as you go ([hnry.co.nz](https://hnry.co.nz/)) | No dated product update found on Hnry's own site | Yes, an app | Left out (your decision, 2026-11-25) |
 | `wings-accounting` | 2026-11-25 | Unknown | Unknown | Unknown | Retired, to `null` (your decision, 2026-11-25) |
 | `reach-accountant` | 2026-11-25 | Unknown | Unknown | Unknown | Retired, to `null` (your decision, 2026-11-25) |
@@ -35,13 +35,13 @@ Each product checked against AC-1: (a) on sale to new customers, (b) maintained 
 - **Wings Accounting.** `wingserp.com` now redirects to a parking page, and `wingsnxt.com` and `wingsaccounting.com` don't answer. Directories mention a hosted "Wings Accounting Nxt", but there's no vendor page to check. My suggestion is to retire it to `null`.
 - **Reach Accountant.** `reachaccountant.com` loads, but its product and about pages return errors, the footer reads © 2020 and there's no dated update. Directories describe a cloud product from Chennai. My suggestion is to retire it to `null`.
 
-### Owed: Sage and NetSuite
+### Sage and NetSuite (settled 2026-11-25)
 
-Both sites block every automated request from this environment. To finish them, you could open the pages yourself and paste what they say, or let a session on your own computer check them: Sage Accounting's [product updates](https://www.sage.com/en-gb/sage-business-cloud/sage-accounting/product-updates/) and [NetSuite's release highlights](https://www.netsuite.com/portal/products/newrelease.shtml).
+NetSuite was checked on its UK site, which answers. sage.com still refuses every request, so Sage's facts come from search excerpts of the exact sage.com pages cited in the entry. Open [the UK pricing page](https://www.sage.com/en-gb/pricing/) once to confirm the prices (GBP 20, 43 and 59 a month, VAT excluded) and the 1, 3 and unlimited users.
 
 ### The redirect map this gives
 
-`gnucash` → `null`, `busy-accounting` → `null`, `quickbooks-desktop` → `quickbooks`, `tallyprime` → `null`, `turbocash` → `null`; `wings-accounting` → `null`, `reach-accountant` → `null`; plus `sage-50` → `sage` once Sage is checked. It goes into `retiredCompetitors` only once each successor's entry exists, since the test refuses a successor that isn't in `competitors` (step 5).
+`gnucash` → `null`, `busy-accounting` → `null`, `quickbooks-desktop` → `quickbooks`, `tallyprime` → `null`, `turbocash` → `null`; `wings-accounting` → `null`, `reach-accountant` → `null`, `sage-50` → `sage`. The map is final. It goes into `retiredCompetitors` only once each successor's entry exists, since the test refuses a successor that isn't in `competitors` (step 5).
 
 ### Notes for your review (Xero)
 
@@ -57,7 +57,7 @@ Both sites block every automated request from this environment. To finish them, 
 - **Wave's two help articles** (stock and foreign currency) block every request from this environment. Their wording was read through a search excerpt of those exact pages, not opened directly. Open them once to confirm: [stock](https://support.waveapps.com/hc/en-us/articles/208623546-Track-inventory-in-Wave), [currency](https://support.waveapps.com/hc/en-us/articles/360035158192-Foreign-currency-invoices-and-bills).
 - **Reckon's point of sale.** Reckon's POS page describes syncing with Reckon Accounts (its desktop product) and doesn't mention Reckon One, so the row says exactly that.
 - **Manager** has a legacy page that keeps serving until step 5. Its new page was checked in `astro dev` with the legacy files moved aside.
-- **Left out for now:** Sage, Sage 50 and NetSuite (owed, see above). Hnry is left out; Wings and Reach are retired.
+- **Sage and NetSuite** were added after step 4 (see above). Hnry is left out; Wings, Reach and Sage 50 are retired.
 
 ## RareBooks claims to check on the demo shop (AC-5)
 
@@ -69,4 +69,4 @@ Claims not in `hostedPlan.included` or `hostedPlan.features`, still to confirm o
 ## Copy review
 
 - [ ] Read the Xero entry in `rarebooks-site/src/data/competitors.ts` (or on `/compare/xero` and `/alternatives/xero`) and approve the wording (AC-15)
-- [ ] Read and approve the QuickBooks, FreshBooks, Wave, Zoho Books, FreeAgent, Reckon One, MYOB and Manager entries the same way (AC-15)
+- [ ] Read and approve the QuickBooks, FreshBooks, Wave, Zoho Books, FreeAgent, Reckon One, MYOB, Manager, Sage and NetSuite entries the same way (AC-15)
