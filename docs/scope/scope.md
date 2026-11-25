@@ -329,9 +329,9 @@ spec [0019](../specs/0019-marketing-homepage/index.md) · code in `rarebooks-sit
 - [x] Design it (spec): `/architect marketing homepage` (settle the section order, the copy each section needs, and which screenshots to take)
 - [ ] Build it: `/develop marketing homepage`
   - [ ] The thread: the TZS demo shop seed, the capture script with the dashboard shot, the new trial numbers and the new hero, deployed (AC-3, AC-4, AC-5, AC-15, AC-16)
-  - [ ] Every shot in both currencies, the social image and the new title and description (AC-8, AC-13, AC-15, AC-16)
-  - [ ] The trust row, feature rows, trial promise, pricing teaser and FAQ, with the signed in swap (AC-1, AC-7 to AC-12)
-  - [ ] The demo dialog, the closing call to action and removing the old components (AC-1, AC-2, AC-6, AC-11)
+  - [x] Every shot in both currencies, the social image and the new title and description (AC-8, AC-13, AC-15, AC-16)
+  - [x] The trust row, feature rows, trial promise, pricing teaser and FAQ, with the signed in swap (AC-1, AC-7 to AC-12)
+  - [x] The demo dialog, the closing call to action and removing the old components (AC-1, AC-2, AC-6, AC-11)
   - [ ] Checks: every claim shown on the demo shop, then Lighthouse, axe and the image budget (AC-14, AC-17)
 - [ ] Verify it: `/check verify marketing homepage`
 - [ ] Test it: `/test marketing homepage`

@@ -46,3 +46,51 @@ Still owed from step 1: the spec 0018 mobile Lighthouse baseline and the deploye
 
 ## Acceptance-criteria coverage
 - AC-3: hero copy steps, home.test.ts, value sourcing (country) · AC-4: grep and view source steps · AC-5: hero, phone and Network steps · AC-12: hero button step (hero only so far) · AC-13: og image size step · AC-15: guard tests, seed, rerun, wrong currency and /books steps · AC-16: capture and failure steps · AC-17: image budget step, deployed Lighthouse owed · AC-1, AC-2, AC-6 to AC-11, AC-14: later steps
+
+---
+
+# Verify: Marketing homepage, build plan steps 2 to 5 · spec 0019 · updated 2026-11-25
+
+## Built in this run
+Every shot in both currencies, `Layout`'s `ogImage`, the new title and description, the trust row, features, trial promise, pricing teaser, FAQ, demo dialog and closing call to action, and the old components removed. Not yet: the deploy, the AC-14 claim walk, deployed Lighthouse.
+
+**Deviation to settle in the spec (`/architect`)**: the Books Profit and Loss report has no from and to date filters. `home-profit` opens it with Based On `Until Date`, To Date today, Monthly, Number of Months 1; the report counts that month back from To Date, so its one column covers the 30 seeded days.
+
+**Note**: AC-5 says the hero is the only eager image. The spec 0018 `MkLogo` (32 pixels, in the nav and the footer) is also eager. Decide whether the footer one should be lazy.
+
+## Commands
+- [x] `npm test` in `rarebooks-site` → `home.test.ts` passes: every placeholder in both versions has a value, no "30 day" wording, FAQ shows 21, 22, 26, 30, TZS and USD prices, shot set by country, quote gate → AC-3, AC-4, AC-7, AC-9, AC-10
+- [x] `BOOKS_SHOTS_PASSWORD=<admin password> npm run screenshots:home` → logs ten shots (five per site), writes `public/og/home.jpg`, then `npm run screenshots` lists all ten → AC-8, AC-16
+- [x] `ls -l public/screenshots/home-*-960.avif` → each at most 80 KB (largest 21 KB) → AC-17
+- [x] `grep -rln "Comparison\|Guarantee\|components/Pricing\|CallToAction" src --include=*.astro` → only comments, no imports → AC-2
+- [x] `npm run check` → no errors in `src/components/marketing/home/`, `src/pages/index.astro`, `src/constants/home.ts` (19 older errors elsewhere remain, down from 41) → AC-2
+
+## UI / manual
+- [x] `/` with `cf-ipcountry: TZ` at 1280 → seven bands in order: hero, trust (tint), features (four rows, 2 and 4 reversed, `-tzs` shots), trial (pink), pricing, FAQ (tint), call to action (ink); one h1 → AC-1, AC-8
+- [x] Same with `US` and with no header → abroad copy, `-usd` shots, no Talk to us → AC-3, AC-10
+- [x] Trust row → overline and the two client names, no quote card while `AppConfig.testimonial` is empty → AC-7
+- [ ] Fill all three `AppConfig.testimonial` fields locally → one quote card shows; empty one → it goes → AC-7
+- [x] Every body Start free trial links to `/auth/sign-up` with `data-cta-location` `hero`, `trial`, `pricing`, `final_cta_section` → AC-12
+- [ ] Signed in (Clerk session) → all four read "Go to your dashboard" and link to `/dashboard`; Watch the demo, Talk to us and Contact us unchanged → AC-12
+- [x] Network panel: no request to `demo.arcade.software` before Watch the demo; after the click the iframe loads → AC-6
+- [x] Escape closes the dialog, removes the iframe, and focus returns to Watch the demo; Close demo closes it; a backdrop tap closes it at 1280 → AC-6
+- [x] Dialog fills the screen at 390 wide and is 64rem (1024 pixels) wide at 1280 → AC-6
+- [x] JavaScript off → the button stays hidden and the noscript "Watch the demo" link shows → AC-6
+- [x] Talk to us (TZ) and the last FAQ answer's Contact us both open `contact-us-modal` → AC-10, AC-11
+- [x] Head: title "RareBooks: accounting, stock and point of sale for small businesses", the new description, canonical `https://rarebooks.cc/`, `og:image` `https://rarebooks.cc/og/home.jpg` with width 1200, height 630 and alt, `twitter:image` → AC-13
+- [x] axe (axe-core 4.10) at 1280 and 390, TZ and US, and with the dialog open → no violations → AC-17
+- [x] 390 wide → no sideways scroll; trial, pricing and call to action buttons full width → Phone layout
+- [ ] Walk every claim in *Page copy* on the seeded sites (balances, best sellers, point of sale with barcode scanner, stock levels, expenses, profit and loss, daily backups, CSV export) and confirm the abroad free import offer is real → AC-14
+- [ ] Deployed Lighthouse mobile: LCP ≤ 2.5 s, CLS ≤ 0.1, Accessibility and SEO 100, image transfer before scroll ≤ 150 KB, none worse than the spec 0018 baseline → AC-17
+
+## Value sourcing
+- [x] Quick start price: the Tanzania pricing line reads "TZS 75,000" from `localServices[1].price`
+- [x] Included points: the check list is the first four `hostedPlan.features`
+- [x] Support email and docs link in the last FAQ answer come from `AppConfig.emails.supportEmail` and `urls.docsHomePath`
+- [ ] Change `hostedPlan.priceUSD.yearlySaving` locally → the abroad note changes; change it back
+- [x] og image URL: `new URL("/og/home.jpg", rootUrl)` gives `https://rarebooks.cc/og/home.jpg`
+- [x] Demo iframe src equals `AppConfig.urls.demoUrl`
+- [ ] Contact clicks push `cta_location` `pricing_setup` and `faq` into `dataLayer`
+
+## Acceptance-criteria coverage (this run)
+- AC-1 band order · AC-2 removal and check · AC-3 copy tests and both countries · AC-4 trial test · AC-6 dialog steps · AC-7 trust and quote gate · AC-8 shots · AC-9 trial step · AC-10 pricing and Talk to us · AC-11 FAQ Contact us · AC-12 trial links, signed in step open · AC-13 head step · AC-14 claim walk open · AC-16 capture · AC-17 axe and image sizes done, Lighthouse open
