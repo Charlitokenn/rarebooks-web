@@ -50,6 +50,15 @@ Both sites block every automated request from this environment. To finish them, 
 - **Mobile money.** No Xero page mentions mobile money, so the row says "Not listed", sourced to the bank feeds page, rather than claiming Xero can't hold a wallet.
 - **Stock.** Xero's inventory page names up to 4,000 tracked items and the optional Inventory Plus add on. It says nothing about batches, so the row makes no batch claim either way.
 
+### Notes for your review (the eight entries from step 4, checked 2026-11-25)
+
+- **Which market's prices.** Each entry uses one market and says so: US prices for QuickBooks, FreshBooks, Wave and Zoho Books; Australian prices (GST included) for Reckon One and MYOB; FreeAgent's international USD price, with the UK limited company price beside it; Manager's USD Cloud Edition price. Temporary discounts (Black Friday and new customer offers) are left out.
+- **"Not listed".** Where a vendor's own pages don't mention a capability (mobile money for all eight, point of sale for most, stock for FreshBooks and FreeAgent, currencies for FreshBooks and Reckon One, users for FreeAgent), the row says "Not listed" or "Not stated" rather than claiming the product can't do it. FreshBooks may well support other currencies; its pricing page just doesn't say.
+- **Wave's two help articles** (stock and foreign currency) block every request from this environment. Their wording was read through a search excerpt of those exact pages, not opened directly. Open them once to confirm: [stock](https://support.waveapps.com/hc/en-us/articles/208623546-Track-inventory-in-Wave), [currency](https://support.waveapps.com/hc/en-us/articles/360035158192-Foreign-currency-invoices-and-bills).
+- **Reckon's point of sale.** Reckon's POS page describes syncing with Reckon Accounts (its desktop product) and doesn't mention Reckon One, so the row says exactly that.
+- **Manager** has a legacy page that keeps serving until step 5. Its new page was checked in `astro dev` with the legacy files moved aside.
+- **Left out for now:** Sage, Sage 50 and NetSuite (owed, see above), and Hnry, Wings and Reach (your borderline decisions).
+
 ## RareBooks claims to check on the demo shop (AC-5)
 
 Claims not in `hostedPlan.included` or `hostedPlan.features`, still to confirm on the demo shop before the switch:
@@ -60,3 +69,4 @@ Claims not in `hostedPlan.included` or `hostedPlan.features`, still to confirm o
 ## Copy review
 
 - [ ] Read the Xero entry in `rarebooks-site/src/data/competitors.ts` (or on `/compare/xero` and `/alternatives/xero`) and approve the wording (AC-15)
+- [ ] Read and approve the QuickBooks, FreshBooks, Wave, Zoho Books, FreeAgent, Reckon One, MYOB and Manager entries the same way (AC-15)
