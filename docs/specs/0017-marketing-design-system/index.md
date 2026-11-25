@@ -1,7 +1,7 @@
 # 0017. Marketing design system
 
 **Date**: 2026-11-25
-**Status**: Proposed
+**Status**: In Progress
 
 Scope: feature 16 (Slice 10, Marketing site redesign) · Beta. Code lives in the `rarebooks-site` repo. Features 17 to 20 (nav and footer, homepage, pricing, compare and alternatives) build on it.
 

@@ -301,9 +301,9 @@ The shared look every redesigned page builds on: color tokens, type scale, spaci
 spec [0017](../specs/0017-marketing-design-system/index.md) · code in `rarebooks-site` (`src/styles/marketing.css`, `src/components/marketing/`, `src/pages/design-system.astro`, `src/layouts/Layout.astro`, `tests/marketing/`)
 - [x] Design it (spec): `/architect marketing design system` (study Wave's look on a machine that can reach it, then settle the palette, type, components and where the tokens live)
 - [ ] Build it: `/develop marketing design system`
-  - [ ] The thread: before screenshots, Fraunces, `marketing.css` on `global.css` with the color tokens and band rules, the Layout switch, `MkSection`, `MkHeading`, `MkButton`, the preview page and the contrast test (AC-1, AC-3, AC-5, AC-8)
-  - [ ] Full tokens, focus rings, reduced motion, fallback faces and preload, with a local Lighthouse pass (AC-1, AC-6, AC-7, AC-11)
-  - [ ] Content and screenshot components: highlight, card, badge, check list, FAQ, the resize script with its manifest, screenshot frame and feature row (AC-4, AC-6, AC-7, AC-8)
+  - [x] The thread: before screenshots, Fraunces, `marketing.css` on `global.css` with the color tokens and band rules, the Layout switch, `MkSection`, `MkHeading`, `MkButton`, the preview page and the contrast test (AC-1, AC-3, AC-5, AC-8)
+  - [x] Full tokens, focus rings, reduced motion, fallback faces and preload, with a local Lighthouse pass (AC-1, AC-6, AC-7, AC-11)
+  - [x] Content and screenshot components: highlight, card, badge, check list, FAQ, the resize script with its manifest, screenshot frame and feature row (AC-4, AC-6, AC-7, AC-8)
   - [ ] README, then the before and after checks and the deployed Lighthouse, axe and keyboard pass (AC-2, AC-3, AC-9, AC-10)
 - [ ] Verify it: `/check verify marketing design system`
 - [ ] Test it: `/test marketing design system`
