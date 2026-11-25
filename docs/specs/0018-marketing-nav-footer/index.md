@@ -1,7 +1,7 @@
 # 0018. Marketing nav and footer
 
 **Date**: 2026-11-25
-**Status**: Proposed
+**Status**: In Progress
 
 Scope: feature 17 (Slice 10, Marketing site redesign) · Beta. Code lives in the `rarebooks-site` repo. Builds on spec 0017 (the `mk` design system).
 

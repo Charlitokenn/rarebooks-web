@@ -311,12 +311,12 @@ spec [0017](../specs/0017-marketing-design-system/index.md) · code in `rarebook
 ### 17. Marketing nav and footer · in-progress · Beta
 A new header and footer for every marketing page: product and resources links, Sign in, and a clear Start free trial button, working well on a phone.
 **Done when:** the nav is sticky and works with keyboard and screen reader (menus open, close and trap focus correctly); on a phone it becomes a menu that opens and closes cleanly; Sign in and Start free trial reach the right Clerk and `/dashboard/start` routes; the footer lists the product, compare, docs and legal links.
-spec [0018](../specs/0018-marketing-nav-footer/index.md) · code in `rarebooks-site` (`src/components/marketing/MkNav.astro`, `MkFooter.astro`, `MkLogo.astro`, `MkSocialIcon.astro`, `src/constants/navigation.ts`, `src/pages/privacy.astro`, `src/pages/terms.astro`)
+spec [0018](../specs/0018-marketing-nav-footer/index.md) · code in `rarebooks-site` (`src/components/marketing/MkNav.astro`, `MkFooter.astro`, `MkLogo.astro`, `MkSocialIcon.astro`, `src/constants/navigation.ts`, `src/lib/marketing/navigation.ts`, `src/layouts/LegalLayout.astro`, `src/pages/privacy.astro`, `src/pages/terms.astro`, `tests/marketing/navigation.test.ts`)
 - [x] Design it (spec): `/architect marketing nav and footer` (settle a simple nav or a dropdown menu, and the link set)
 - [ ] Build it: `/develop marketing nav and footer`
-  - [ ] The thread: baseline numbers, the link list, logo, sticky header with the server side signed in buttons and the skip link, on the homepage (AC-2, AC-3, AC-4, AC-6, AC-8, AC-12)
-  - [ ] Phone menu and footer: the dialog with its close rules and scroll lock, then the four column footer with social icons (AC-5, AC-8, AC-9, AC-12)
-  - [ ] Spread: every marketing page and the 404, the Compare marker, old padding and the old Navbar and Footer removed (AC-1, AC-2, AC-6, AC-7)
+  - [x] The thread: baseline numbers, the link list, logo, sticky header with the server side signed in buttons and the skip link, on the homepage (AC-2, AC-3, AC-4, AC-6, AC-8, AC-12)
+  - [x] Phone menu and footer: the dialog with its close rules and scroll lock, then the four column footer with social icons (AC-5, AC-8, AC-9, AC-12)
+  - [x] Spread: every marketing page and the 404, the Compare marker, old padding and the old Navbar and Footer removed (AC-1, AC-2, AC-6, AC-7)
   - [ ] Legal pages: drafted `/privacy` and `/terms` behind the approval flag, then the README, axe, keyboard and Lighthouse checks (AC-10, AC-11, AC-13)
   - [ ] Your approval: the legal name and address, the wording review, then `approved: true` (AC-10)
 - [ ] Verify it: `/check verify marketing nav and footer`
