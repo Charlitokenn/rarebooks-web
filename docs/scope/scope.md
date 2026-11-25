@@ -356,9 +356,9 @@ spec [0021](../specs/0021-compare-alternatives-pages/index.md) · code in `rareb
 - [x] Design it (spec): `/architect compare and alternatives pages` (phone table, structured data, bands and highlights, copy, and the competitor list refresh)
 - [ ] Build it: `/develop compare and alternatives pages`
   - [ ] The thread: Xero checked and written with sources, the new data shape and its tests, both `[slug]` routes and the rebuilt layouts with the phone table, signed in swap, cache header, head and breadcrumb, deployed beside the legacy pages (AC-1 to AC-13, AC-17)
-  - [ ] The list: all 21 products checked against the keep rule, the retired map and successors settled, borderline cases decided by you (AC-1, AC-10)
+  - [x] The list: all 21 products checked against the keep rule, the retired map and successors settled, borderline cases decided by you (AC-1, AC-10)
   - [ ] The content: every kept and added entry researched and written with sources, RareBooks claims checked on the demo shop, your copy review (AC-3 to AC-7, AC-15)
-  - [ ] The switch, one commit: route 301s, the `/blog/*` redirects, the old files removed and the alphabetical index pages (AC-2, AC-7, AC-10, AC-14, AC-17)
+  - [x] The switch, one commit: route 301s, the `/blog/*` redirects, the old files removed and the alphabetical index pages (AC-2, AC-7, AC-10, AC-14, AC-17)
   - [ ] Checks: phone pass, axe, Lighthouse, keyboard and the Schema.org validator on the deployed pages (AC-8, AC-9, AC-16)
 - [ ] Verify it: `/check verify compare and alternatives pages`
 - [ ] Test it: `/test compare and alternatives pages`
