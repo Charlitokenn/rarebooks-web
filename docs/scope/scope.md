@@ -31,7 +31,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 16 | Marketing design system | Slice 10 | in-progress |
 | 17 | Marketing nav and footer | Slice 10 | in-progress |
 | 18 | Marketing homepage | Slice 10 | in-progress |
-| 19 | Pricing page | Slice 10 | planned |
+| 19 | Pricing page | Slice 10 | in-progress |
 | 20 | Compare and alternatives pages | Slice 10 | planned |
 | 21 | Sign up conversion tracking | Slice 10 | planned |
 
@@ -336,10 +336,18 @@ spec [0019](../specs/0019-marketing-homepage/index.md) · code in `rarebooks-sit
 - [ ] Verify it: `/check verify marketing homepage`
 - [ ] Test it: `/test marketing homepage`
 
-### 19. Pricing page · needs a decision · Beta
+### 19. Pricing page · in-progress · Beta
 Pricing in the new style, with the local (TZS) and international (USD) prices still picked from the visitor's country and the setup offers kept.
 **Done when:** plans show the real prices from `src/constants/pricing.ts` in the right currency for the visitor; each plan's button starts the sign up; the comparison of what each plan includes reads well on a phone; and the existing `/#pricing` link still lands on pricing.
-- [ ] Design it (spec): `/architect pricing page` (settle whether pricing stays a homepage section or gets its own `/pricing` page, and the plan table shape)
+spec [0020](../specs/0020-pricing-page/index.md) · code in `rarebooks-site` (`src/pages/pricing.astro`, `src/components/marketing/pricing/`, `src/constants/pricingPage.ts`, `src/constants/pricing.ts`, `src/lib/marketing/pricing.ts`, `src/layouts/Layout.astro`, `src/constants/navigation.ts`, `tests/marketing/pricing.test.ts`)
+- [x] Design it (spec): `/architect pricing page` (settle whether pricing stays a homepage section or gets its own `/pricing` page, and the plan table shape)
+- [ ] Build it: `/develop pricing page`
+  - [ ] The thread: `/pricing` with the plan cards in both currencies, the signed in swap, the cache header, the nav and footer links and the teaser's See full pricing link, deployed (AC-1, AC-3 to AC-7, AC-14)
+  - [ ] The setup offers, the everything included list, the FAQ and the closing call to action (AC-1, AC-2, AC-8 to AC-10)
+  - [ ] Search and tests: title, description, canonical, social card, the `jsonLd` Layout prop, and the node tests (AC-12, AC-13, AC-14, AC-17)
+  - [ ] Checks: every claim on the demo shop or the control site, the phone pass, the Schema.org validator, then Lighthouse, axe and the keyboard (AC-11, AC-13, AC-15, AC-16)
+- [ ] Verify it: `/check verify pricing page`
+- [ ] Test it: `/test pricing page`
 
 ### 20. Compare and alternatives pages · Beta
 Restyle `CompareLayout` and `AlternativesLayout` and their index pages with the new design system, so all eighteen comparison pages match without editing each one.
@@ -353,6 +361,7 @@ Track clicks on every Start free trial and sign up button so you can compare con
 
 ## Deferred
 
+- Add a sitemap with `/pricing`, `/compare/*` and `/alternatives/*` (from spec 0020)
 - Restyle the Starlight docs, the blog and `/dashboard` to match the new marketing look (from the slice 10 scope)
 - Reword the "30 day trial" lines in `site-ready-email.tsx`, `StartForm.tsx` and the `create-your-site` doc to the spec 0005 numbers (21 days free, pay by day 30) (from spec 0019)
 - When the dashboard is restyled: fix `global.css`'s `--color-muted` (today the marketing gray, which `bg-muted` in the dashboard relies on) and drop `@fontsource-variable/inter` if nothing uses it (from spec 0017)
