@@ -29,7 +29,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 14 | Documentation links to the RareBooks docs | Slice 8 | done |
 | 15 | Release a sign up | Slice 9 | in-progress |
 | 16 | Marketing design system | Slice 10 | in-progress |
-| 17 | Marketing nav and footer | Slice 10 | planned |
+| 17 | Marketing nav and footer | Slice 10 | in-progress |
 | 18 | Marketing homepage | Slice 10 | planned |
 | 19 | Pricing page | Slice 10 | planned |
 | 20 | Compare and alternatives pages | Slice 10 | planned |
@@ -308,10 +308,19 @@ spec [0017](../specs/0017-marketing-design-system/index.md) · code in `rarebook
 - [ ] Verify it: `/check verify marketing design system`
 - [ ] Test it: `/test marketing design system`
 
-### 17. Marketing nav and footer · needs a decision · Beta
+### 17. Marketing nav and footer · in-progress · Beta
 A new header and footer for every marketing page: product and resources links, Sign in, and a clear Start free trial button, working well on a phone.
 **Done when:** the nav is sticky and works with keyboard and screen reader (menus open, close and trap focus correctly); on a phone it becomes a menu that opens and closes cleanly; Sign in and Start free trial reach the right Clerk and `/dashboard/start` routes; the footer lists the product, compare, docs and legal links.
-- [ ] Design it (spec): `/architect marketing nav and footer` (settle a simple nav or a dropdown menu, and the link set)
+spec [0018](../specs/0018-marketing-nav-footer/index.md) · code in `rarebooks-site` (`src/components/marketing/MkNav.astro`, `MkFooter.astro`, `MkLogo.astro`, `MkSocialIcon.astro`, `src/constants/navigation.ts`, `src/pages/privacy.astro`, `src/pages/terms.astro`)
+- [x] Design it (spec): `/architect marketing nav and footer` (settle a simple nav or a dropdown menu, and the link set)
+- [ ] Build it: `/develop marketing nav and footer`
+  - [ ] The thread: baseline numbers, the link list, logo, sticky header with the server side signed in buttons and the skip link, on the homepage (AC-2, AC-3, AC-4, AC-6, AC-8, AC-12)
+  - [ ] Phone menu and footer: the dialog with its close rules and scroll lock, then the four column footer with social icons (AC-5, AC-8, AC-9, AC-12)
+  - [ ] Spread: every marketing page and the 404, the Compare marker, old padding and the old Navbar and Footer removed (AC-1, AC-2, AC-6, AC-7)
+  - [ ] Legal pages: drafted `/privacy` and `/terms` behind the approval flag, then the README, axe, keyboard and Lighthouse checks (AC-10, AC-11, AC-13)
+  - [ ] Your approval: the legal name and address, the wording review, then `approved: true` (AC-10)
+- [ ] Verify it: `/check verify marketing nav and footer`
+- [ ] Test it: `/test marketing nav and footer`
 
 ### 18. Marketing homepage · needs a decision · Beta
 A homepage in the new style: a hero with a real /books screenshot and one strong call to action, a trust row, alternating feature rows with screenshots, the free trial promise, a pricing teaser and a closing call to action.
