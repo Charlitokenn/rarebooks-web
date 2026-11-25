@@ -25,11 +25,11 @@ Each product checked against AC-1: (a) on sale to new customers, (b) maintained 
 | `sage` | Not checked | | | | **Owed**: sage.com refuses automated access (403, even in a headless browser) |
 | `sage-50` | Not checked | | | | **Owed**: as for `sage`. Sage 50 is a desktop program, so expect Retired, to `sage` if `sage` is kept |
 | `netsuite` | Not checked | | | | **Owed**: netsuite.com refuses automated access (403) |
-| `hnry` | 2026-11-25 | Yes, pay as you go ([hnry.co.nz](https://hnry.co.nz/)) | No dated product update found on Hnry's own site | Yes, an app | **Borderline** |
-| `wings-accounting` | 2026-11-25 | Unknown | Unknown | Unknown | **Borderline** |
-| `reach-accountant` | 2026-11-25 | Unknown | Unknown | Unknown | **Borderline** |
+| `hnry` | 2026-11-25 | Yes, pay as you go ([hnry.co.nz](https://hnry.co.nz/)) | No dated product update found on Hnry's own site | Yes, an app | Left out (your decision, 2026-11-25) |
+| `wings-accounting` | 2026-11-25 | Unknown | Unknown | Unknown | Retired, to `null` (your decision, 2026-11-25) |
+| `reach-accountant` | 2026-11-25 | Unknown | Unknown | Unknown | Retired, to `null` (your decision, 2026-11-25) |
 
-### Borderline cases for you to decide
+### Borderline cases (decided 2026-11-25: Hnry left out, Wings and Reach retired to the index)
 
 - **Hnry.** It's on sale and is an app, but Hnry's own site shows no dated product update, only tips posts (news sites report a QR payment feature in January 2026). It's also a tax and invoicing service for sole traders, not accounting with stock. My suggestion is to leave it out.
 - **Wings Accounting.** `wingserp.com` now redirects to a parking page, and `wingsnxt.com` and `wingsaccounting.com` don't answer. Directories mention a hosted "Wings Accounting Nxt", but there's no vendor page to check. My suggestion is to retire it to `null`.
@@ -41,7 +41,7 @@ Both sites block every automated request from this environment. To finish them, 
 
 ### The redirect map this gives
 
-`gnucash` → `null`, `busy-accounting` → `null`, `quickbooks-desktop` → `quickbooks`, `tallyprime` → `null`, `turbocash` → `null`; plus `sage-50` → `sage` once Sage is checked, and `wings-accounting` and `reach-accountant` → `null` if you agree. It goes into `retiredCompetitors` only once each successor's entry exists, since the test refuses a successor that isn't in `competitors` (step 5).
+`gnucash` → `null`, `busy-accounting` → `null`, `quickbooks-desktop` → `quickbooks`, `tallyprime` → `null`, `turbocash` → `null`; `wings-accounting` → `null`, `reach-accountant` → `null`; plus `sage-50` → `sage` once Sage is checked. It goes into `retiredCompetitors` only once each successor's entry exists, since the test refuses a successor that isn't in `competitors` (step 5).
 
 ### Notes for your review (Xero)
 
@@ -57,7 +57,7 @@ Both sites block every automated request from this environment. To finish them, 
 - **Wave's two help articles** (stock and foreign currency) block every request from this environment. Their wording was read through a search excerpt of those exact pages, not opened directly. Open them once to confirm: [stock](https://support.waveapps.com/hc/en-us/articles/208623546-Track-inventory-in-Wave), [currency](https://support.waveapps.com/hc/en-us/articles/360035158192-Foreign-currency-invoices-and-bills).
 - **Reckon's point of sale.** Reckon's POS page describes syncing with Reckon Accounts (its desktop product) and doesn't mention Reckon One, so the row says exactly that.
 - **Manager** has a legacy page that keeps serving until step 5. Its new page was checked in `astro dev` with the legacy files moved aside.
-- **Left out for now:** Sage, Sage 50 and NetSuite (owed, see above), and Hnry, Wings and Reach (your borderline decisions).
+- **Left out for now:** Sage, Sage 50 and NetSuite (owed, see above). Hnry is left out; Wings and Reach are retired.
 
 ## RareBooks claims to check on the demo shop (AC-5)
 
