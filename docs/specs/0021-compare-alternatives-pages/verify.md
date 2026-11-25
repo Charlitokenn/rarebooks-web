@@ -63,7 +63,7 @@ NetSuite was checked on its UK site, which answers. sage.com still refuses every
 
 Claims not in `hostedPlan.included` or `hostedPlan.features`, still to confirm on the demo shop before the switch:
 
-- [ ] Mobile money: each wallet can be set up as its own account (row template "Yes, each wallet as its own account")
+- [x] Mobile money: each wallet can be set up as its own account (row template "Yes, each wallet as its own account"). Passed on demo-us.rarebooks.cc, checked by you on 2026-11-25.
 - [ ] A point of sale sale updates stock and the books at once (Xero deep dive 1, RareBooks card)
 
 ## Copy review
