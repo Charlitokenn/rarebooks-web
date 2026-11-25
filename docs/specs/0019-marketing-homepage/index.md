@@ -1,7 +1,7 @@
 # 0019. Marketing homepage
 
 **Date**: 2026-11-25
-**Status**: Proposed
+**Status**: In Progress
 
 Scope: feature 18 (Slice 10, Marketing site redesign) · Beta. Code lives in the `rarebooks-site` repo, plus one dev only seed command in this repo. Builds on spec 0017 (the `mk` design system) and spec 0018 (MkNav and MkFooter).
 
