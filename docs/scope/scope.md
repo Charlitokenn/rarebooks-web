@@ -12,6 +12,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
 | A | Dashboard (period picker, invoice cards, cashflow, profit and loss, top expenses) | Existing | existing |
+| B | Marketing site, current look (homepage, compare, alternatives) | Existing | existing |
 | 1 | Project context for version-16 | Foundation | done |
 | 2 | Account balances card | Slice 1 | done |
 | 3 | Best sellers chart | Slice 2 | done |
@@ -27,11 +28,20 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 13 | Self serve onboarding | Slice 7 | in-progress |
 | 14 | Documentation links to the RareBooks docs | Slice 8 | done |
 | 15 | Release a sign up | Slice 9 | in-progress |
+| 16 | Marketing design system | Slice 10 | planned |
+| 17 | Marketing nav and footer | Slice 10 | planned |
+| 18 | Marketing homepage | Slice 10 | planned |
+| 19 | Pricing page | Slice 10 | planned |
+| 20 | Compare and alternatives pages | Slice 10 | planned |
+| 21 | Sign up conversion tracking | Slice 10 | planned |
 
 ## Already built
 
 ### A. Dashboard · existing
 The version-16 dashboard: a period picker, paid and unpaid invoice cards, the cashflow chart, profit and loss, and top expenses. The new cards join it as one more row. code in `frontend/src/pages/Dashboard/` and `frappe_books/reports/dashboard.py`
+
+### B. Marketing site, current look · existing
+The `rarebooks-site` marketing pages as they are before the redesign: the homepage (Hero, Comparison, Guarantee, Pricing, Call to action), the Navbar and Footer, and the compare and alternatives pages, on the purple brand tokens in `global.css`. code in `rarebooks-site` (`src/pages/index.astro`, `src/components/`, `src/layouts/CompareLayout.astro`, `src/layouts/AlternativesLayout.astro`, `src/styles/global.css`)
 
 ## Foundations
 
@@ -281,7 +291,43 @@ spec [0016](../specs/0016-release-sign-up/index.md) · amends spec 0014 · code 
 - [ ] Review it (fresh model): `/check review release sign up`
 - [ ] Document it: `/document release sign up`
 
+## Slice 10: Marketing site redesign
+
+A fresh look for the public pages of `rarebooks-site`, with the feel of Wave (waveapps.com): bright, friendly and roomy, rounded buttons, real product screenshots and alternating feature rows. It keeps the RareBooks brand, logo and copy and does not copy Wave's colors, art or words. Docs, the blog and `/dashboard` keep their current look this pass. Every page keeps its URL, title, meta and canonical link, stays fast on mobile, and meets WCAG 2.2 AA.
+
+### 16. Marketing design system · needs a decision · Beta
+The shared look every redesigned page builds on: color tokens, type scale, spacing, buttons, section and card patterns, and a screenshot frame, in the style direction above. Settle how it lives beside the shadcn tokens `/dashboard` uses, so the dashboard look doesn't change.
+**Done when:** the tokens and base components are in one place and documented; text and buttons pass WCAG 2.2 AA contrast with visible focus; fonts stay light enough to keep mobile Core Web Vitals good; and `/dashboard` and the docs look the same as before.
+- [ ] Design it (spec): `/architect marketing design system` (study Wave's look on a machine that can reach it, then settle the palette, type, components and where the tokens live)
+
+### 17. Marketing nav and footer · needs a decision · Beta
+A new header and footer for every marketing page: product and resources links, Sign in, and a clear Start free trial button, working well on a phone.
+**Done when:** the nav is sticky and works with keyboard and screen reader (menus open, close and trap focus correctly); on a phone it becomes a menu that opens and closes cleanly; Sign in and Start free trial reach the right Clerk and `/dashboard/start` routes; the footer lists the product, compare, docs and legal links.
+- [ ] Design it (spec): `/architect marketing nav and footer` (settle a simple nav or a dropdown menu, and the link set)
+
+### 18. Marketing homepage · needs a decision · Beta
+A homepage in the new style: a hero with a real /books screenshot and one strong call to action, a trust row, alternating feature rows with screenshots, the free trial promise, a pricing teaser and a closing call to action.
+**Done when:** the homepage renders in the new style on desktop and phone; every feature row uses a real product screenshot sized for speed; title, meta, canonical and social card are unchanged or better; mobile Largest Contentful Paint stays good; and the contact modal and sign up buttons still work.
+- [ ] Design it (spec): `/architect marketing homepage` (settle the section order, the copy each section needs, and which screenshots to take)
+
+### 19. Pricing page · needs a decision · Beta
+Pricing in the new style, with the local (TZS) and international (USD) prices still picked from the visitor's country and the setup offers kept.
+**Done when:** plans show the real prices from `src/constants/pricing.ts` in the right currency for the visitor; each plan's button starts the sign up; the comparison of what each plan includes reads well on a phone; and the existing `/#pricing` link still lands on pricing.
+- [ ] Design it (spec): `/architect pricing page` (settle whether pricing stays a homepage section or gets its own `/pricing` page, and the plan table shape)
+
+### 20. Compare and alternatives pages · Beta
+Restyle `CompareLayout` and `AlternativesLayout` and their index pages with the new design system, so all eighteen comparison pages match without editing each one.
+**Done when:** every `/compare/*` and `/alternatives/*` page renders in the new style; each keeps its URL, title, meta, canonical and any structured data; and the comparison tables read well on a phone.
+- [ ] Build it: `/develop compare and alternatives pages`
+
+### 21. Sign up conversion tracking · needs a decision · Beta
+Track clicks on every Start free trial and sign up button so you can compare conversion before and after the redesign.
+**Done when:** each sign up call to action sends one named event with the page and button location; the events show in your analytics; tracking is in place on the current site before the new pages ship, so there is a baseline; and no tracking runs before any consent the privacy policy needs.
+- [ ] Design it (spec): `/architect sign up conversion tracking` (settle the event names and how they reach the existing Google Tag Manager, and whether consent is needed)
+
 ## Deferred
+
+- Restyle the Starlight docs, the blog and `/dashboard` to match the new marketing look (from the slice 10 scope)
 
 - Docs pages for Sales Quote, the GST reports and Expenses in `rarebooks-site`, then repoint their map entries (from spec 0015)
 
