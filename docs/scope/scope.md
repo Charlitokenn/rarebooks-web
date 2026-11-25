@@ -26,6 +26,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | Support chat | Slice 6 | in-progress |
 | 13 | Self serve onboarding | Slice 7 | in-progress |
 | 14 | Documentation links to the RareBooks docs | Slice 8 | done |
+| 15 | Release a sign up | Slice 9 | in-progress |
 
 ## Already built
 
@@ -263,6 +264,22 @@ code in `frontend/src/utils/docs.ts`, tests in `frontend/tests/docs-links.test.m
   - [x] Settings tab following (page and dialog), POS and Lead (AC-7)
 - [x] Verify it: `/check verify documentation links`
 - [x] Test it: `/test documentation links`
+
+## Slice 9: Release a sign up
+
+### 15. Release a sign up · in-progress
+A Billing Manager can release a person's Ready or Failed sign up, with a reason, so the same email and Clerk account can sign up for another site. The old site keeps running untouched, and the marketing site drops its stale copy of the request. Amends spec 0014's one sign up per email, ever. Spans the `rarebooks_control` and `rarebooks-site` repos. from spec 0014
+**Done when:** a released person signs up again from `/dashboard/start` with no hand made database edit; every release keeps who, when and why; the old site still gets its trial and removal cases; and a sign up still being set up can't be released.
+spec [0016](../specs/0016-release-sign-up/index.md) · amends spec 0014 · code in `rarebooks-site` (`src/pages/api/onboarding/`, `src/lib/onboarding/signups.ts`) and the `rarebooks_control` repo (`onboarding.py`, `removal.py`, Books Signup)
+- [x] Design it (spec): `/architect release sign up`
+- [ ] Build it: `/develop release sign up`
+  - [ ] Worker heal: drop a D1 row only on a signed 404 for its request, and check it before reuse on the start form (AC-8 to AC-10)
+  - [ ] Control site: the Released status and fields, `release_signup` with its refusals, `fail_signup` and `awaits_signup` reading Released (AC-2 to AC-7)
+  - [ ] Desk button and dialog, then a release and sign up again on staging (AC-1 to AC-10)
+- [ ] Verify it: `/check verify release sign up`
+- [ ] Test it: `/test release sign up`
+- [ ] Review it (fresh model): `/check review release sign up`
+- [ ] Document it: `/document release sign up`
 
 ## Deferred
 
