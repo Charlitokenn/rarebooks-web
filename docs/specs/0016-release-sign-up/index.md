@@ -1,7 +1,7 @@
 # 0016. Release a sign up so its email can be used again
 
 **Date**: 2026-11-25
-**Status**: Proposed
+**Status**: In Progress
 
 Amends: spec [0014](../0014-self-serve-onboarding/index.md) (AC-4 and AC-9: the Worker checks a D1 row against the control site and drops it when the control site no longer knows it; AC-20: a Released request counts as Ready, so its old site still gets its Trial and Lapsed cases; the key invariant "one Books Signup per `email_key`, per `clerk_user_id` and per subdomain, ever" becomes "among requests that are not Released"). Every other rule in spec 0014 still holds.
 

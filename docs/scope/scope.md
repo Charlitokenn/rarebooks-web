@@ -273,9 +273,9 @@ A Billing Manager can release a person's Ready or Failed sign up, with a reason,
 spec [0016](../specs/0016-release-sign-up/index.md) · amends spec 0014 · code in `rarebooks-site` (`src/pages/api/onboarding/`, `src/lib/onboarding/signups.ts`) and the `rarebooks_control` repo (`onboarding.py`, `removal.py`, Books Signup)
 - [x] Design it (spec): `/architect release sign up`
 - [ ] Build it: `/develop release sign up`
-  - [ ] Worker heal: drop a D1 row only on a signed 404 for its request, and check it before reuse on the start form (AC-8 to AC-10)
-  - [ ] Control site: the Released status and fields, `release_signup` with its refusals, `fail_signup` and `awaits_signup` reading Released (AC-2 to AC-7)
-  - [ ] Desk button and dialog, then a release and sign up again on staging (AC-1 to AC-10)
+  - [x] Worker heal: drop a D1 row only on a signed 404 for its request, and check it before reuse on the start form (AC-8 to AC-10)
+  - [x] Control site: the Released status and fields, `release_signup` with its refusals, `fail_signup` and `awaits_signup` reading Released (AC-2 to AC-7)
+  - [ ] Desk button and dialog, then a release and sign up again on staging (AC-1 to AC-10) · desk built and checked locally; the staging run is still to do
 - [ ] Verify it: `/check verify release sign up`
 - [ ] Test it: `/test release sign up`
 - [ ] Review it (fresh model): `/check review release sign up`
