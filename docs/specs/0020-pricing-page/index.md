@@ -78,14 +78,14 @@ No API route, no form and no client fetch. The only scripts are the Layout's exi
 
 **Page copy** (word for word; braces are filled from constants and inserted exactly as stored: `{freeDays}`, `{payFromDay}`, `{readOnlyFromDay}`, `{removedOnDay}` from `AppConfig.trial`; `{graceDays}`, `{removedAfterDays}` from `AppConfig.renewal`; `{tzsYear}`, `{usdYear}`, `{usdMonth}`, `{usdSaving}` from `hostedPlan`; `{supportEmail}` from `AppConfig.emails.supportEmail`. A `*word*` is the one `MkHighlight` word.)
 
-*Meta description* (both versions): "One plan with every feature: TZS {tzsYear} a year in Tanzania, or ${usdMonth} a month or ${usdYear} a year elsewhere. Start with a {freeDays} day free trial, no card needed."
+*Meta description* (both versions): "One plan with every feature: TZS {tzsYear} a year in Tanzania, or USD {usdMonth} a month or USD {usdYear} a year elsewhere. Start with a {freeDays} day free trial, no card needed."
 
 *Plans band*, h1 (both): "One plan for your whole *shop*"
 - Lead, Tanzania: "Try every feature free for {freeDays} days, with no card needed. Then pay once a year by mobile money."
-- Lead, abroad: "Try every feature free for {freeDays} days, with no card needed. Then pay monthly, or yearly and save ${usdSaving}."
+- Lead, abroad: "Try every feature free for {freeDays} days, with no card needed. Then pay monthly, or yearly and save USD {usdSaving}."
 - Tanzania card: badge "The plan" · name "RareBooks" · price "TZS {tzsYear}" · period "a year" · note "Pay by mobile money. Nothing renews on its own." · button "Start free trial"
-- Abroad Yearly card: badge "Best value" · name "Yearly" · price "${usdYear}" · period "a year" · note "Save ${usdSaving} on paying monthly. Renews each year until you cancel." · extra "Free data import when you take the yearly plan during your trial" · button "Start free trial"
-- Abroad Monthly card: name "Monthly" · price "${usdMonth}" · period "a month" · note "Billed monthly after your free trial. Renews each month until you cancel." · button "Start free trial"
+- Abroad Yearly card: badge "Best value" · name "Yearly" · price "USD {usdYear}" · period "a year" · note "Save USD {usdSaving} on paying monthly. Renews each year until you cancel." · extra "Free data import when you take the yearly plan during your trial" · button "Start free trial"
+- Abroad Monthly card: name "Monthly" · price "USD {usdMonth}" · period "a month" · note "Billed monthly after your free trial. Renews each month until you cancel." · button "Start free trial"
 - Line under the cards (both): "Every plan includes unlimited users and devices." There's no line naming the other version's price (AC-6).
 
 *Setup band*
@@ -153,6 +153,7 @@ The FAQ contact button reads "Contact us". `{supportEmail}` is not used in the F
 - Title, description, canonical, social card and JSON-LD are the same for every visitor. Only the visible body varies by country and sign in state.
 - `/pricing` is never cached by any shared layer. It varies by country and session, so a cached copy would show the wrong currency or the wrong buttons. It always answers `Cache-Control: private, no-cache` (AC-1).
 - The page body shows only the visitor's own currency (AC-6). The JSON-LD and the meta description name all three prices, so each one describes prices that some visitors' version of the body doesn't show. The JSON-LD is on purpose a superset of any one version of the body: every price in it is real, someone can pay it on the Subscription page, and it shows in the body of the version whose visitors can pay it.
+- Every abroad price is written with its currency code, "USD 399", never a bare "$", because CAD, AUD and other currencies use "$" too. The homepage (spec 0019) follows the same rule.
 - Abroad prices always say they renew until cancelled, and the Tanzania price always says nothing renews on its own.
 - Every Start free trial is `href="/auth/sign-up"`, and no plan or currency is passed to it. You choose the plan when you pay, on the /books Subscription page (spec 0005 AC-10).
 - The homepage keeps `id="pricing"` on its teaser for as long as old `/#pricing` links may exist.

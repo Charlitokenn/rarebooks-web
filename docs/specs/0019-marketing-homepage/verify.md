@@ -24,7 +24,7 @@ Still owed from step 1: the spec 0018 mobile Lighthouse baseline and the deploye
 - [ ] Open `/books/` on `shots-tzs.localhost` as Administrator → Account balances lists Kilima Bank Account, Mobile Money and Cash, all positive; Best sellers shows a Top 5; no trial banner → AC-15
 - [ ] Open the Point of Sale → a shift is open, Walk in customer is the customer, items search by name → AC-15
 - [ ] `/` with `cf-ipcountry: TZ` at 1280 wide → overline "For shops and small businesses", h1 "Your stock and sales, always current" with "current" highlighted, the Tanzania lead, "Free for 21 days, then TZS 300,000 a year. We can set up your shop for you.", and the TZS dashboard shot → AC-3, AC-5
-- [ ] `/` with `cf-ipcountry: US`, and with no country header → h1 "Clear books, confident stock", "Free for 21 days, then $399 a year or $39 a month.", the USD shot → AC-3
+- [ ] `/` with `cf-ipcountry: US`, and with no country header → h1 "Clear books, confident stock", "Free for 21 days, then USD 399 a year or USD 39 a month.", the USD shot → AC-3
 - [ ] Phone, 390 by 844 → the h1 and both buttons show without scrolling; buttons are full width → AC-5
 - [ ] DevTools Network → the hero image loads eagerly with `fetchpriority="high"`; the page has one h1 → AC-5
 - [ ] Start free trial in the hero links to `/auth/sign-up` with `data-cta-location="hero"`; signed in, it reads "Go to your dashboard" and links to `/dashboard` → AC-12

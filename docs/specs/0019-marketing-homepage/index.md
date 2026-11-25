@@ -73,7 +73,7 @@ Reasoning and options: see [rationale.md](rationale.md).
 - Lead, abroad: "RareBooks keeps your accounting, invoicing, point of sale and stock in one place, hosted for you. Know your numbers and stay ready for tax."
 - Buttons: "Start free trial", "Watch the demo"
 - Price line, Tanzania: "Free for {freeDays} days, then TZS {tzsYear} a year. We can set up your shop for you."
-- Price line, abroad: "Free for {freeDays} days, then ${usdYear} a year or ${usdMonth} a month."
+- Price line, abroad: "Free for {freeDays} days, then USD {usdYear} a year or USD {usdMonth} a month."
 - Screenshot alt: "The RareBooks dashboard showing cash and bank balances and the best selling items"
 
 *Trust row*
@@ -88,11 +88,11 @@ Reasoning and options: see [rationale.md](rationale.md).
 *Trial promise* (h2 "Try it free for {freeDays} days", lead "Run your real business on it before you pay anything.")
 1. "Start free": "Sign up and your own site at yourname.rarebooks.cc is ready in minutes. Every feature, nothing to pay up front."
 2. "Get set up", Tanzania: "Do it yourself, or let us set up your shop: your items, opening stock and the customers who owe you." Abroad: "Do it yourself, or take the yearly plan during your trial and we import your data from QuickBooks, Sage, Tally or your spreadsheets."
-3. "Decide by day {removedOnDay}", Tanzania: "Pay TZS {tzsYear} for the year by mobile money and keep going. If not, we send you all your records as CSV files." Abroad: "Keep going for ${usdYear} a year or ${usdMonth} a month. If not, we send you all your records as CSV files."
+3. "Decide by day {removedOnDay}", Tanzania: "Pay TZS {tzsYear} for the year by mobile money and keep going. If not, we send you all your records as CSV files." Abroad: "Keep going for USD {usdYear} a year or USD {usdMonth} a month. If not, we send you all your records as CSV files."
 - Button: "Start free trial"
 
 *Pricing teaser* (h2 "One plan. Everything included.")
-- Tanzania price: "TZS {tzsYear}" with "a year"; abroad: "${usdYear}" with "a year", then "or ${usdMonth} a month. Save ${usdSaving} with yearly."
+- Tanzania price: "TZS {tzsYear}" with "a year"; abroad: "USD {usdYear}" with "a year", then "or USD {usdMonth} a month. Save USD {usdSaving} with yearly."
 - Check list: `hostedPlan.features.slice(0, 4)`
 - Button: "Start free trial"
 - Tanzania only: "Want us to set up your shop? Quick start is {quickStart}, and it comes back as 3 free months." and the "Talk to us" button.
