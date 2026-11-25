@@ -68,5 +68,5 @@ Claims not in `hostedPlan.included` or `hostedPlan.features`, still to confirm o
 
 ## Copy review
 
-- [ ] Read the Xero entry in `rarebooks-site/src/data/competitors.ts` (or on `/compare/xero` and `/alternatives/xero`) and approve the wording (AC-15)
-- [ ] Read and approve the QuickBooks, FreshBooks, Wave, Zoho Books, FreeAgent, Reckon One, MYOB, Manager, Sage and NetSuite entries the same way (AC-15)
+- [x] Read the Xero entry in `rarebooks-site/src/data/competitors.ts` (or on `/compare/xero` and `/alternatives/xero`) and approve the wording (AC-15). Done 2026-11-25.
+- [x] Read and approve the QuickBooks, FreshBooks, Wave, Zoho Books, FreeAgent, Reckon One, MYOB, Manager, Sage and NetSuite entries the same way (AC-15). Done 2026-11-25.
