@@ -28,7 +28,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 13 | Self serve onboarding | Slice 7 | in-progress |
 | 14 | Documentation links to the RareBooks docs | Slice 8 | done |
 | 15 | Release a sign up | Slice 9 | in-progress |
-| 16 | Marketing design system | Slice 10 | planned |
+| 16 | Marketing design system | Slice 10 | in-progress |
 | 17 | Marketing nav and footer | Slice 10 | planned |
 | 18 | Marketing homepage | Slice 10 | planned |
 | 19 | Pricing page | Slice 10 | planned |
@@ -295,10 +295,18 @@ spec [0016](../specs/0016-release-sign-up/index.md) · amends spec 0014 · code 
 
 A fresh look for the public pages of `rarebooks-site`, with the feel of Wave (waveapps.com): bright, friendly and roomy, rounded buttons, real product screenshots and alternating feature rows. It keeps the RareBooks brand, logo and copy and does not copy Wave's colors, art or words. Docs, the blog and `/dashboard` keep their current look this pass. Every page keeps its URL, title, meta and canonical link, stays fast on mobile, and meets WCAG 2.2 AA.
 
-### 16. Marketing design system · needs a decision · Beta
+### 16. Marketing design system · in-progress · Beta
 The shared look every redesigned page builds on: color tokens, type scale, spacing, buttons, section and card patterns, and a screenshot frame, in the style direction above. Settle how it lives beside the shadcn tokens `/dashboard` uses, so the dashboard look doesn't change.
 **Done when:** the tokens and base components are in one place and documented; text and buttons pass WCAG 2.2 AA contrast with visible focus; fonts stay light enough to keep mobile Core Web Vitals good; and `/dashboard` and the docs look the same as before.
-- [ ] Design it (spec): `/architect marketing design system` (study Wave's look on a machine that can reach it, then settle the palette, type, components and where the tokens live)
+spec [0017](../specs/0017-marketing-design-system/index.md) · code in `rarebooks-site` (`src/styles/marketing.css`, `src/components/marketing/`, `src/pages/design-system.astro`, `src/layouts/Layout.astro`, `tests/marketing/`)
+- [x] Design it (spec): `/architect marketing design system` (study Wave's look on a machine that can reach it, then settle the palette, type, components and where the tokens live)
+- [ ] Build it: `/develop marketing design system`
+  - [ ] The thread: before screenshots, Fraunces, `marketing.css` on `global.css` with the color tokens and band rules, the Layout switch, `MkSection`, `MkHeading`, `MkButton`, the preview page and the contrast test (AC-1, AC-3, AC-5, AC-8)
+  - [ ] Full tokens, focus rings, reduced motion, fallback faces and preload, with a local Lighthouse pass (AC-1, AC-6, AC-7, AC-11)
+  - [ ] Content and screenshot components: highlight, card, badge, check list, FAQ, the resize script with its manifest, screenshot frame and feature row (AC-4, AC-6, AC-7, AC-8)
+  - [ ] README, then the before and after checks and the deployed Lighthouse, axe and keyboard pass (AC-2, AC-3, AC-9, AC-10)
+- [ ] Verify it: `/check verify marketing design system`
+- [ ] Test it: `/test marketing design system`
 
 ### 17. Marketing nav and footer · needs a decision · Beta
 A new header and footer for every marketing page: product and resources links, Sign in, and a clear Start free trial button, working well on a phone.
@@ -328,6 +336,7 @@ Track clicks on every Start free trial and sign up button so you can compare con
 ## Deferred
 
 - Restyle the Starlight docs, the blog and `/dashboard` to match the new marketing look (from the slice 10 scope)
+- When the dashboard is restyled: fix `global.css`'s `--color-muted` (today the marketing gray, which `bg-muted` in the dashboard relies on) and drop `@fontsource-variable/inter` if nothing uses it (from spec 0017)
 
 - Docs pages for Sales Quote, the GST reports and Expenses in `rarebooks-site`, then repoint their map entries (from spec 0015)
 
