@@ -30,7 +30,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 15 | Release a sign up | Slice 9 | in-progress |
 | 16 | Marketing design system | Slice 10 | in-progress |
 | 17 | Marketing nav and footer | Slice 10 | in-progress |
-| 18 | Marketing homepage | Slice 10 | planned |
+| 18 | Marketing homepage | Slice 10 | in-progress |
 | 19 | Pricing page | Slice 10 | planned |
 | 20 | Compare and alternatives pages | Slice 10 | planned |
 | 21 | Sign up conversion tracking | Slice 10 | planned |
@@ -322,10 +322,19 @@ spec [0018](../specs/0018-marketing-nav-footer/index.md) · code in `rarebooks-s
 - [ ] Verify it: `/check verify marketing nav and footer`
 - [ ] Test it: `/test marketing nav and footer`
 
-### 18. Marketing homepage · needs a decision · Beta
+### 18. Marketing homepage · in-progress · Beta
 A homepage in the new style: a hero with a real /books screenshot and one strong call to action, a trust row, alternating feature rows with screenshots, the free trial promise, a pricing teaser and a closing call to action.
 **Done when:** the homepage renders in the new style on desktop and phone; every feature row uses a real product screenshot sized for speed; title, meta, canonical and social card are unchanged or better; mobile Largest Contentful Paint stays good; and the contact modal and sign up buttons still work.
-- [ ] Design it (spec): `/architect marketing homepage` (settle the section order, the copy each section needs, and which screenshots to take)
+spec [0019](../specs/0019-marketing-homepage/index.md) · code in `rarebooks-site` (`src/pages/index.astro`, `src/components/marketing/home/`, `src/constants/home.ts`, `scripts/home-screenshots.mjs`, `public/og/home.jpg`) and this repo (`frappe_books/demo/shop.py`)
+- [x] Design it (spec): `/architect marketing homepage` (settle the section order, the copy each section needs, and which screenshots to take)
+- [ ] Build it: `/develop marketing homepage`
+  - [ ] The thread: the TZS demo shop seed, the capture script with the dashboard shot, the new trial numbers and the new hero, deployed (AC-3, AC-4, AC-5, AC-15, AC-16)
+  - [ ] Every shot in both currencies, the social image and the new title and description (AC-8, AC-13, AC-15, AC-16)
+  - [ ] The trust row, feature rows, trial promise, pricing teaser and FAQ, with the signed in swap (AC-1, AC-7 to AC-12)
+  - [ ] The demo dialog, the closing call to action and removing the old components (AC-1, AC-2, AC-6, AC-11)
+  - [ ] Checks: every claim shown on the demo shop, then Lighthouse, axe and the image budget (AC-14, AC-17)
+- [ ] Verify it: `/check verify marketing homepage`
+- [ ] Test it: `/test marketing homepage`
 
 ### 19. Pricing page · needs a decision · Beta
 Pricing in the new style, with the local (TZS) and international (USD) prices still picked from the visitor's country and the setup offers kept.
@@ -345,6 +354,7 @@ Track clicks on every Start free trial and sign up button so you can compare con
 ## Deferred
 
 - Restyle the Starlight docs, the blog and `/dashboard` to match the new marketing look (from the slice 10 scope)
+- Reword the "30 day trial" lines in `site-ready-email.tsx`, `StartForm.tsx` and the `create-your-site` doc to the spec 0005 numbers (21 days free, pay by day 30) (from spec 0019)
 - When the dashboard is restyled: fix `global.css`'s `--color-muted` (today the marketing gray, which `bg-muted` in the dashboard relies on) and drop `@fontsource-variable/inter` if nothing uses it (from spec 0017)
 
 - Docs pages for Sales Quote, the GST reports and Expenses in `rarebooks-site`, then repoint their map entries (from spec 0015)
