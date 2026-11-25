@@ -1,7 +1,7 @@
 # 0020. Pricing page
 
 **Date**: 2026-11-25
-**Status**: Proposed
+**Status**: In Progress
 
 Scope: feature 19 (Slice 10, Marketing site redesign) · Beta. Code lives in the `rarebooks-site` repo. Builds on spec 0017 (the `mk` design system), spec 0018 (MkNav and MkFooter) and spec 0019 (the homepage, its copy helpers and its pricing teaser).
 

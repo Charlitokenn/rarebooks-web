@@ -343,8 +343,8 @@ spec [0020](../specs/0020-pricing-page/index.md) · code in `rarebooks-site` (`s
 - [x] Design it (spec): `/architect pricing page` (settle whether pricing stays a homepage section or gets its own `/pricing` page, and the plan table shape)
 - [ ] Build it: `/develop pricing page`
   - [ ] The thread: `/pricing` with the plan cards in both currencies, the signed in swap, the cache header, the nav and footer links and the teaser's See full pricing link, deployed (AC-1, AC-3 to AC-7, AC-14)
-  - [ ] The setup offers, the everything included list, the FAQ and the closing call to action (AC-1, AC-2, AC-8 to AC-10)
-  - [ ] Search and tests: title, description, canonical, social card, the `jsonLd` Layout prop, and the node tests (AC-12, AC-13, AC-14, AC-17)
+  - [x] The setup offers, the everything included list, the FAQ and the closing call to action (AC-1, AC-2, AC-8 to AC-10)
+  - [x] Search and tests: title, description, canonical, social card, the `jsonLd` Layout prop, and the node tests (AC-12, AC-13, AC-14, AC-17)
   - [ ] Checks: every claim on the demo shop or the control site, the phone pass, the Schema.org validator, then Lighthouse, axe and the keyboard (AC-11, AC-13, AC-15, AC-16)
 - [ ] Verify it: `/check verify pricing page`
 - [ ] Test it: `/test pricing page`
