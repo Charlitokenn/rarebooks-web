@@ -153,7 +153,16 @@ Tracer Bullet: the first slice puts the new header on one real page, signed in a
 ## Follow-up
 
 - [ ] `AppConfig.description` still says "Modern desktop accounting app", but every trial is now a hosted site (spec 0014). Fix the tagline in feature 18, since the footer, meta description and social cards all show it.
-- [ ] Before the legal pages go live, supply the legal name and postal address of whoever runs RareBooks (`AppConfig.legal.controller`).
+- [x] Before the legal pages go live, supply the legal name and postal address of whoever runs RareBooks (`AppConfig.legal.controller`). Done 2026-11-25: Inuweza Group Ltd, Mbweha Street, Kijitonyama, Dar es Salaam, Tanzania.
 - [ ] `/blog` is not live (`starlightBlog` is imported but not in Starlight's `plugins`, and there are no posts), so the footer leaves Blog out. Add it to `footerColumns` once the blog ships.
 - [ ] Spec 0009's rollout task wants the privacy policy to name tawk.to; AC-11 covers it, so tick that task once you approve the page.
 - [ ] `AppConfig.urls.documentationUrl` has no `https://` (used in `enquiry-email.tsx`). Out of scope here; fix it next time that email is touched.
+- [ ] Legal gaps to revisit (raised in review on 2026-11-25; the drafts' other promises are confirmed true). The drafts in `rarebooks-site` (`src/pages/privacy.astro`, `src/pages/terms.astro`) don't yet cover these. Settle each, ideally with a Tanzanian lawyer, and bump `AppConfig.legal.updated` when the wording changes:
+  - Cookies and analytics consent: Google Tag Manager sets cookies, and the privacy policy doesn't mention cookies or offer a choice.
+  - Data stored outside Tanzania: Clerk, Cloudflare, Resend, PayPal and Frappe Cloud hold data abroad. Check the cross border transfer rules and controller registration under Tanzania's Personal Data Protection Act 2022.
+  - Refunds: the terms don't say whether a payment can be refunded (a cancelled PayPal plan, a ClickPesa year paid by mistake).
+  - Limits on liability: no cap on what Inuweza Group Ltd owes if the service fails or data is lost.
+  - Governing law and disputes: which country's law applies, and where disputes are settled.
+  - Ending the agreement: how a customer closes their account, and when we may end it (beyond the suspension line).
+  - WhatsApp support: the pricing lists WhatsApp support, but neither draft names WhatsApp as a channel or as a service that receives personal data.
+  - Grace period length: the terms say "a short grace period" after a paid plan lapses; spec 0007 implies 7 days. Decide whether to state the number.
