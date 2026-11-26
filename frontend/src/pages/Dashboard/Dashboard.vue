@@ -21,6 +21,7 @@
           :value="period"
           @change="(value) => (period = value)"
         />
+        <DashboardGreeting />
         <div
           class="grid grid-cols-2 gap-3 md:gap-x-8 md:gap-y-6 xl:grid-cols-4"
         >
@@ -86,6 +87,7 @@ import PageHeader from 'src/components/PageHeader.vue';
 import AccountBalances from './AccountBalances.vue';
 import BestSellers from './BestSellers.vue';
 import Cashflow from './Cashflow.vue';
+import DashboardGreeting from './DashboardGreeting.vue';
 import Expenses from './Expenses.vue';
 import InvoiceCards from './InvoiceCards.vue';
 import MobileCreateMenu from './MobileCreateMenu.vue';
@@ -104,6 +106,7 @@ export default {
     AccountBalances,
     BestSellers,
     Cashflow,
+    DashboardGreeting,
     ProfitAndLoss,
     Expenses,
     InvoiceCards,

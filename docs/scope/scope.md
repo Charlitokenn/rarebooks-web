@@ -36,7 +36,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 21 | Sign up conversion tracking | Slice 10 | planned |
 | 22 | Marketing site load speed | Slice 10 | in-progress |
 | 23 | Welcome page after sign up | Slice 7 | in-progress |
-| 24 | Dashboard greeting | Slice 11 | planned |
+| 24 | Dashboard greeting | Slice 11 | in-progress |
 
 ## Already built
 
@@ -406,7 +406,8 @@ spec [0022](../specs/0022-marketing-site-load-speed/index.md) · code in `rarebo
 ### 24. Dashboard greeting · Beta
 Greet each signed in user by name at the top of the dashboard, above the paid and unpaid invoice cards: Good morning, Good afternoon or Good evening, by the time of day.
 **Done when:** the dashboard shows "Good morning, <first name>" before 12:00, "Good afternoon, <first name>" from 12:00 to 17:00 and "Good evening, <first name>" from 17:00, on the user's own device clock; the name comes from the signed in Frappe user (first name, else full name, else the greeting alone), so each user sees their own; the text is translated; and it fits on a phone.
-- [ ] Build it: `/develop dashboard greeting`
+code in `frontend/src/utils/greeting.ts`, `frontend/src/pages/Dashboard/DashboardGreeting.vue` and `frontend/src/pages/Dashboard/Dashboard.vue`
+- [x] Build it: `/develop dashboard greeting`
 
 ## Deferred
 

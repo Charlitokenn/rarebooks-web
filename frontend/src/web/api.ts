@@ -226,7 +226,11 @@ declare global {
         layout_direction?: 'ltr' | 'rtl';
         developer_mode?: number;
         versions?: Record<string, string | undefined>;
-        user?: BootUserPermissions & { name?: string };
+        user?: BootUserPermissions & {
+          name?: string;
+          /** The dashboard greets the user by it (scope feature 24). */
+          first_name?: string | null;
+        };
         user_info?: Record<string, { fullname?: string }>;
         time_zone?: { system: string; user?: string };
         /** The user's Frappe desk theme. */

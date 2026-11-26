@@ -42,6 +42,7 @@ await build({
       export { getSidebarConfig } from './src/utils/sidebarConfig';
       export { getAppMenuItems } from './src/utils/appMenu';
       export * as docs from './src/utils/docs';
+      export * as greeting from './src/utils/greeting';
       export { getGetStartedConfig } from './src/utils/getStartedConfig';
       export { docsPathRef, subscriptionStatus } from './src/utils/refs';
       export * as supportChat from './src/utils/supportChat';
@@ -219,6 +220,7 @@ export const {
   getSidebarConfig,
   getAppMenuItems,
   docs,
+  greeting,
   getGetStartedConfig,
   docsPathRef,
   subscriptionStatus,
