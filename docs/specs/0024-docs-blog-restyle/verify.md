@@ -8,12 +8,14 @@ _Steps derived from spec 0024 acceptance criteria. `/check verify` runs these; `
 - AC-11: Clerk's integration did add its page script to docs pages. `src/lib/docs/clerkGuard.ts` (wired in `astro.config.mjs`) now loads Clerk only off the docs; checked: `/pricing` and `/auth/sign-in` still load Clerk, docs pages make no Clerk request.
 - AC-5: Starlight 0.39 has only Ctrl+K and Cmd+K, so `DocsHeader` adds the `/` shortcut.
 - AC-12: no page in `financial-reports` has a code block. The only docs page with both a table and a code block is `/settings/print-templates/`; use it as the long reference page.
-- Open: AC-3 between 800 and about 1015 pixels wide the full header overflows (it needs about 1016 pixels). Waiting on `/architect` (see the scope).
+- AC-3 header by width (spec update of 2026-11-26), built and checked locally: at 320, 390, 799, 800, 1024, 1151, 1152, 1215, 1216 and 1920 pixels the bar and the sidebar foot block never overflow, each control is visible exactly once, at most one landmark is named "Main", and at 1024 Tab goes bar, sidebar list, sidebar foot, then the page. Search is the icon button below 1216 and the full field from 1216.
 
 ## UI / manual
 - [ ] Open `/` on the deployed site, click Docs in the marketing nav → docs home with the mk header, logo, four links (Docs underlined), search, social icons, theme switch, Sign in, Start free trial → AC-3
 - [ ] Switch the theme to Dark, then Auto with the device set to dark and light → page, sidebar, header, code blocks and asides follow; the Start free trial button stays white on brand purple → AC-3, AC-7, AC-8
-- [ ] At 1280, 1024, 800 and 790 pixels wide: no part of the header is cut off or scrolls sideways → AC-3 (open at 800 to 1015)
+- [ ] At 320, 390, 799, 800, 1024, 1151, 1152, 1215, 1216 and 1920 pixels wide: nothing in the bar or the sidebar foot block is cut off or scrolls sideways, and each control shows exactly once (bar, sidebar foot, or the open phone menu) → AC-3
+- [ ] From 800 to 1151 pixels: the bar holds the logo, search icon, Sign in and Start free trial; the sidebar foot holds the nav links (a nav named "Site"), the social icons and the theme switch, with no Sign in row; from 1152 the sidebar foot block is gone and the bar holds everything → AC-3
+- [ ] At 1024 by keyboard: Tab goes bar, sidebar list, sidebar foot, then the page; the Skip to content link jumps past the sidebar → AC-3
 - [ ] At 390 pixels, by keyboard only: Tab to the menu button, Enter opens it, Tab reaches the four links, Sign in, Start free trial, social links and theme switch (each 44 pixels tall), Escape closes it and returns focus to the button → AC-3, AC-5
 - [ ] Press `/` and then Ctrl+K on a docs page → search opens; type "invoice", Tab to a result, Enter → that page opens → AC-5
 - [ ] At 390 pixels open "On this page", pick a heading → the page jumps to it → AC-5
