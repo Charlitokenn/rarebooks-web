@@ -36,7 +36,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 21 | Sign up conversion tracking | Slice 10 | planned |
 | 22 | Marketing site load speed | Slice 10 | in-progress |
 | 23 | Welcome page after sign up | Slice 7 | in-progress |
-| 24 | Dashboard greeting | Slice 11 | in-progress |
+| 24 | Dashboard greeting | Slice 11 | done |
 
 ## Already built
 

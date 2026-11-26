@@ -55,6 +55,7 @@ yarn lint        # eslint .
 - Prettier and ESLint pre-commit hooks run from `frontend/node_modules`, so they fail until it is installed.
 - Run the guard tests (`settings-readers`, `settings-models`, `link-create`) after a merge from another branch.
 - `tests/docs_pages.json` lists the `rarebooks-site` docs pages that `docsPathMap` may point at. Update it when a docs page there is added, renamed or removed; the drift check against `../rarebooks-site` runs only when that checkout sits next to this repo, so CI skips it (spec 0015 AC-8).
+- frappe-ui's `text-<size>` classes set their own font weight (420), which beats `font-semibold`. Use the combined `text-<size>-semibold` (or `-medium`, `-bold`) class instead.
 - Every tawk.to `setAttributes` call must carry the signed visitor identity (`hash` included): with Secure Mode on, tawk.to answers `UNAUTHORIZED_API_CALL` to one without it (spec 0009 AC-5).
 
 ## Agent skills
