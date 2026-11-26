@@ -37,6 +37,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 22 | Marketing site load speed | Slice 10 | in-progress |
 | 23 | Welcome page after sign up | Slice 7 | in-progress |
 | 24 | Dashboard greeting | Slice 11 | done |
+| 25 | Docs and blog restyle | Slice 12 | in-progress |
 
 ## Already built
 
@@ -409,10 +410,26 @@ Greet each signed in user by name at the top of the dashboard, above the paid an
 code in `frontend/src/utils/greeting.ts`, `frontend/src/pages/Dashboard/DashboardGreeting.vue` and `frontend/src/pages/Dashboard/Dashboard.vue`
 - [x] Build it: `/develop dashboard greeting`
 
+## Slice 12: Docs and blog restyle
+
+### 25. Docs and blog restyle · in-progress · Beta
+Give the Starlight docs at `rarebooks.cc` and the blog the marketing look from feature 16 (colors, type, buttons), with a header and footer that feel like the marketing nav and footer (feature 17), so moving between the marketing pages and the docs feels like one site. The blog plugin (`starlight-blog`) is installed but switched off today, with no posts, so this also settles whether the blog comes back. Promoted from Deferred; `/dashboard` stays deferred.
+**Done when:** every docs page and the blog (if it returns) use the marketing tokens and fonts, in light and dark; the docs search, sidebar, table of contents and pagination still work on a phone and by keyboard; text, links and code blocks pass WCAG 2.2 AA contrast; every docs URL, title and canonical link is unchanged; docs pages stay fast on mobile; and `/dashboard` looks the same as before.
+spec: [0024](../specs/0024-docs-blog-restyle/index.md) · code in `rarebooks-site` (`src/styles/mk-tokens.css`, `src/styles/docs.css`, `src/components/docs/`, `astro.config.mjs`, `tests/docs/`)
+- [x] Design it (spec): `/architect docs and blog restyle` (settle how the marketing tokens reach Starlight beside `global.css`, whether the docs use the marketing nav and footer or a restyled Starlight header, dark mode, and whether the blog is turned back on)
+- [ ] Build it: `/develop docs and blog restyle`
+  - [ ] Snapshot and thin thread: head snapshot, `mk-tokens.css` and `mk-fonts.css`, `docs.css` as the only customCss, the header with logo and search (AC-1, AC-2, AC-10)
+  - [ ] Look: dark palette and contrast test, full header and phone menu, fonts and preload (AC-3, AC-6, AC-7)
+  - [ ] Reading parts: Starlight sidebar back, table of contents, search, pagination, footer strip, code blocks (AC-4, AC-5, AC-8, AC-14)
+  - [ ] Clean up and guards: blog removed, no scripts and head tests, README (AC-9, AC-10, AC-11, AC-15)
+- [ ] Verify it: `/check verify docs and blog restyle` (deployed Lighthouse and axe, before and after screenshots; AC-12, AC-13)
+- [ ] Test it: `/test docs and blog restyle`
+
 ## Deferred
 
 - Add a sitemap with `/pricing`, `/compare/*` and `/alternatives/*` (from spec 0020)
-- Restyle the Starlight docs, the blog and `/dashboard` to match the new marketing look (from the slice 10 scope)
+- Bring the blog back as its own feature once there are posts (posts, author, RSS, the `/blog` route) (from spec 0024)
+- Restyle `/dashboard` to match the new marketing look (from the slice 10 scope; docs and blog moved to feature 25)
 - Reword the "30 day trial" lines in `site-ready-email.tsx`, `StartForm.tsx` and the `create-your-site` doc to the spec 0005 numbers (21 days free, pay by day 30) (from spec 0019)
 - When the dashboard is restyled: fix `global.css`'s `--color-muted` (today the marketing gray, which `bg-muted` in the dashboard relies on) and drop `@fontsource-variable/inter` if nothing uses it (from spec 0017)
 
