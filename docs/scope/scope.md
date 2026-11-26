@@ -418,10 +418,10 @@ Give the Starlight docs at `rarebooks.cc` and the blog the marketing look from f
 spec: [0024](../specs/0024-docs-blog-restyle/index.md) · code in `rarebooks-site` (`src/styles/mk-tokens.css`, `src/styles/docs.css`, `src/components/docs/`, `astro.config.mjs`, `tests/docs/`)
 - [x] Design it (spec): `/architect docs and blog restyle` (settle how the marketing tokens reach Starlight beside `global.css`, whether the docs use the marketing nav and footer or a restyled Starlight header, dark mode, and whether the blog is turned back on)
 - [ ] Build it: `/develop docs and blog restyle`
-  - [ ] Snapshot and thin thread: head snapshot, `mk-tokens.css` and `mk-fonts.css`, `docs.css` as the only customCss, the header with logo and search (AC-1, AC-2, AC-10)
+  - [x] Snapshot and thin thread: head snapshot, `mk-tokens.css` and `mk-fonts.css`, `docs.css` as the only customCss, the header with logo and search (AC-1, AC-2, AC-10)
   - [ ] Look: dark palette and contrast test, full header and phone menu, fonts and preload (AC-3, AC-6, AC-7)
-  - [ ] Reading parts: Starlight sidebar back, table of contents, search, pagination, footer strip, code blocks (AC-4, AC-5, AC-8, AC-14)
-  - [ ] Clean up and guards: blog removed, no scripts and head tests, README (AC-9, AC-10, AC-11, AC-15)
+  - [x] Reading parts: Starlight sidebar back, table of contents, search, pagination, footer strip, code blocks (AC-4, AC-5, AC-8, AC-14)
+  - [x] Clean up and guards: blog removed, no scripts and head tests, README (AC-9, AC-10, AC-11, AC-15)
 - [ ] Verify it: `/check verify docs and blog restyle` (deployed Lighthouse and axe, before and after screenshots; AC-12, AC-13)
 - [ ] Test it: `/test docs and blog restyle`
 

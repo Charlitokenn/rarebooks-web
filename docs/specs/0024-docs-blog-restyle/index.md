@@ -1,7 +1,7 @@
 # 0024. Docs and blog restyle
 
 **Date**: 2026-11-26
-**Status**: Proposed
+**Status**: In Progress
 
 Scope: feature 25 (Slice 12, Docs and blog restyle) · Beta. Code lives in the `rarebooks-site` repo. Builds on spec 0017 (marketing design system) and spec 0018 (marketing nav and footer).
 
