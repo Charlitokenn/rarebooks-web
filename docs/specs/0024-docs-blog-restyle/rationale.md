@@ -68,3 +68,12 @@ The hybrid header (marketing links and buttons, Starlight's search, theme switch
 Going back to Starlight's sidebar was chosen over keeping the custom accordion because the accordion builds HTML from strings with its own script, and Starlight's version already collapses groups with native details and summary elements, which keyboard and screen reader users get for free. `@astrojs/starlight-tailwind` was chosen over hand written layers because it is Starlight's own bridge and keeps Tailwind's reset from fighting Starlight's; the runner up (importing Tailwind's theme and utilities by hand) would work but leaves the layer order to us. `github-light` and `github-dark` code themes were chosen because they ship with Expressive Code, read well beside a purple accent, and are widely used; a custom `mk` theme would be more on brand but every token color would need its own contrast check. The blog is removed rather than turned on empty, since an empty blog looks abandoned and the plugin adds weight for nothing; it can return as its own feature.
 
 Decisions made while writing (not asked): the dark palette values (measured and listed in `index.md`, all passing AA), the exact Starlight variable mapping, deleting the docs sidebar block from `global.css` (dead once the override goes; runner up was leaving dead CSS), and keeping only Plus Jakarta Sans weights 400, 600 and 700 on docs (runner up: all five weights from `fonts.css`).
+
+### Header between 800 and 1151 pixels (added 2026-11-26)
+
+The first build showed AC-3 could not hold as written: all eleven header controls need about 984 pixels inside the header (search as an icon) and Starlight shows no menu from 50rem up, so the bar overflowed from 800 to about 1031 pixels wide. Two layouts were weighed for that range:
+
+- **Chosen: logo, search, Sign in and Start free trial in the bar**, with the nav links, social icons and theme switch at the sidebar foot. About 430 pixels, so it fits at 800 with plenty of room, keeps both calls to action in view, and reuses the phone menu block.
+- Logo, nav links, search and Start free trial in the bar, with Sign in, social icons and theme at the sidebar foot. About 690 pixels: it fits at 800, but with little margin, so a longer label or a translation would overflow again.
+
+The switch sits at 72rem, not 64rem: at 1024 pixels the full bar was still 8 pixels too wide. 72rem is Starlight's own wide breakpoint, so the docs gain no layout step of their own. The engineer picked the compact bar during /develop's spec gap check.
