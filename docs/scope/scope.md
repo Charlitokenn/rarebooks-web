@@ -34,6 +34,8 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 19 | Pricing page | Slice 10 | in-progress |
 | 20 | Compare and alternatives pages | Slice 10 | in-progress |
 | 21 | Sign up conversion tracking | Slice 10 | planned |
+| 22 | Marketing site load speed | Slice 10 | in-progress |
+| 23 | Welcome page after sign up | Slice 7 | planned |
 
 ## Already built
 
@@ -259,6 +261,11 @@ spec [0014](../specs/0014-self-serve-onboarding/index.md) · amends specs 0010, 
 - [ ] Review it (fresh model): `/check review self serve onboarding`
 - [ ] Document it: `/document self serve onboarding`
 
+### 23. Welcome page after sign up · needs a decision
+Rename `/dashboard` to `/welcome`: a reception page while a new site is being created, which sends a signed in user whose site is ready straight to their site (from spec 0022).
+**Done when:** a new user waits on `/welcome` while their site is created; a signed in user whose site is ready who opens `/welcome` lands on their site; and old `/dashboard` links still work.
+- [ ] Design it (spec): `/architect welcome page after sign up` (settle the route change and redirects, what the page shows while the site is created, and how it fits spec 0014's sign up flow)
+
 ## Slice 8: Documentation links
 
 ### 14. Documentation links to the RareBooks docs · done · Beta
@@ -367,6 +374,21 @@ spec [0021](../specs/0021-compare-alternatives-pages/index.md) · code in `rareb
 Track clicks on every Start free trial and sign up button so you can compare conversion before and after the redesign.
 **Done when:** each sign up call to action sends one named event with the page and button location; the events show in your analytics; tracking is in place on the current site before the new pages ship, so there is a baseline; and no tracking runs before any consent the privacy policy needs.
 - [ ] Design it (spec): `/architect sign up conversion tracking` (settle the event names and how they reach the existing Google Tag Manager, and whether consent is needed)
+
+### 22. Marketing site load speed · in-progress
+Make every marketing page fast on a phone by loading only what first paint needs: the chat waits for the visitor's first touch, Contact us opens the chat instead of a form, Google Tag Manager gives way to a light PostHog setup, and Turnstile leaves pages that don't use it (from spec 0021, whose Checks are blocked on it).
+**Done when:** every marketing page on `Layout.astro` shows LCP ≤ 2.5 s, TBT ≤ 200 ms and CLS ≤ 0.1 on the median of 3 Lighthouse mobile runs; Contact us opens the chat with an email fallback; pageviews and the sign up and contact clicks reach PostHog through `/ingest`; and a test fails if an eager script comes back.
+spec [0022](../specs/0022-marketing-site-load-speed.md) · code in `rarebooks-site` (`src/layouts/Layout.astro`, `src/components/TawkWidget.astro`, `src/pages/ingest/`, `src/middleware.ts`, `src/pages/privacy.astro`, `tests/marketing/`)
+- [x] Design it (spec): `/architect marketing site load speed`
+- [ ] Build it: `/develop marketing site load speed`
+  - [ ] Baseline and the thread: Lighthouse before numbers, then the chat on first interaction, deployed and measured (AC-1, AC-2, AC-12)
+  - [ ] Contact us opens the chat, with the form, its API route and email template removed (AC-3, AC-4, AC-12)
+  - [ ] GTM out, PostHog in: the key, the snippet after load, the `/ingest` proxy, the middleware skip and the two events (AC-5 to AC-9, AC-12)
+  - [ ] Turnstile out of Layout, the privacy page, then the full Lighthouse, axe and keyboard pass and the Clerk checkpoint (AC-1, AC-10, AC-11, AC-13, AC-14)
+- [ ] Verify it: `/check verify marketing site load speed`
+- [ ] Test it: `/test marketing site load speed`
+- [ ] Review it (fresh model): `/check review marketing site load speed`
+- [ ] Document it: `/document marketing site load speed`
 
 ## Deferred
 
