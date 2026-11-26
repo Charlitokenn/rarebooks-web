@@ -1,7 +1,7 @@
 # 0023. Welcome page after sign up
 
 **Date**: 2026-11-26 (cross checked the same day: sign in return URL, server to browser handoff, prefetch safe opens, timeouts, a temporary redirect first)
-**Status**: Proposed
+**Status**: In Progress
 
 Amends: spec [0014](../0014-self-serve-onboarding/index.md) (AC-1: the start form moves from `/dashboard/start` to `/welcome`; AC-4: the page moves to `/welcome`, the address is returned while the site is built, and a signed in user whose site is Ready no longer stays on the page; AC-5: the open route moves from `/dashboard/site/open` to `/welcome/open`; AC-6: the Ready email links to `/welcome/open`). Every other rule in spec 0014, and spec [0016](../0016-release-sign-up/index.md)'s released sign up, still holds.
 

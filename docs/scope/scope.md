@@ -267,9 +267,9 @@ Rename `/dashboard` to `/welcome`: a reception page while a new site is being cr
 spec [0023](../specs/0023-welcome-page-after-sign-up/index.md) · amends spec 0014 · code in `rarebooks-site` (`src/middleware.ts`, `src/pages/welcome/`, `src/layouts/WelcomeLayout.astro`, `src/components/onboarding/`, `src/lib/onboarding/`) and the `rarebooks_control` repo (`onboarding.py` `_summary`)
 - [x] Design it (spec): `/architect welcome page after sign up` (settle the route change and redirects, what the page shows while the site is created, and how it fits spec 0014's sign up flow)
 - [ ] Build it: `/develop welcome page after sign up`
-  - [ ] The thread: shared reads, `/welcome` and `/welcome/open` with the Ready redirect, prefetch guard and retry fallback, the 302 legacy map, Clerk redirect props, load speed test updates (AC-1 to AC-4, AC-6, AC-9)
-  - [ ] Control site address while building, then the reception shell and the waiting, failed and Ready cards (AC-3 to AC-8, AC-11)
-  - [ ] Links, copy, docs page and the no `/dashboard` guard, then remove the old shell (AC-10, AC-12)
+  - [x] The thread: shared reads, `/welcome` and `/welcome/open` with the Ready redirect, prefetch guard and retry fallback, the 302 legacy map, Clerk redirect props, load speed test updates (AC-1 to AC-4, AC-6, AC-9)
+  - [x] Control site address while building, then the reception shell and the waiting, failed and Ready cards (AC-3 to AC-8, AC-11)
+  - [x] Links, copy, docs page and the no `/dashboard` guard, then remove the old shell (AC-10, AC-12)
   - [ ] Staging run, then the switch to 301 after one week live (AC-1 to AC-12)
 - [ ] Verify it: `/check verify welcome page after sign up`
 - [ ] Test it: `/test welcome page after sign up`
