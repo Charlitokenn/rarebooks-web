@@ -145,8 +145,11 @@ _2026-11-19: created from this container with `start_time` `2026-11-24T20:00:00Z
   - 2026-11-19, approved by you: `ACTIVE`, `next_billing_time` `2026-11-24T10:00:00Z`, 24 November (13:00 in Dar es Salaam). The noon Pacific rule holds for Monthly
 - [x] Approve Yearly `I-D3EMHU4N44BH` the same way → `next_billing_time` on 24 November → AC-4
   - 2026-11-19, approved by you: `ACTIVE`, `next_billing_time` `2026-11-24T10:00:00Z`, 24 November (13:00 in Dar es Salaam). The noon Pacific rule holds for Yearly
-- [ ] Let both charge on 24 November and check the charge day step below, then cancel them → housekeeping
-- [ ] Once the first charge lands (or on a lapsed site charged at approval), `paid_until` is PayPal's next charge day itself, and the customer site reads `active`, not `grace`, on that morning → AC-9
+- [x] Let both charge on 24 November and check the charge day step below → AC-4, AC-9
+  - 2026-11-26: both charged on 24 November (Pacific). Monthly `I-1X9M6LU63YXN` USD 9.0 at `2026-11-24T15:23:47Z`, next `2026-12-24T10:00:00Z`; Yearly `I-D3EMHU4N44BH` USD 90.0 at `2026-11-24T11:35:23Z`, next `2027-11-24T10:00:00Z`. The charge itself can land hours after the 10:00 UTC `next_billing_time` (15:23 UTC is 04:23 the next day in Auckland, so a far east site can show the "first payment hasn't arrived" note for a few hours on the day after; no lock comes of it)
+- [ ] Cancel both 11a subscriptions in the sandbox → housekeeping
+- [x] Once the first charge lands (or on a lapsed site charged at approval), `paid_until` is PayPal's next charge day itself → AC-9
+  - 2026-11-26: those two real answers through `state.paypal_paid_until` give 2026-12-24 (Monthly) and 2027-11-24 (Yearly) in Dar es Salaam, New York, Tokyo, Auckland and Honolulu. The customer site reading `active` on that morning is still to see on staging
 
 ## Value sourcing (task 11a)
 - [x] `start_time` ignores the site zone for the hour (always 12:00 Pacific) but uses it for the today gate: at 04:00 UTC on 19 November a trial ending the 18th sends none for Dar es Salaam and `2026-11-19T20:00:00Z` for New York → AC-4
@@ -156,7 +159,7 @@ _2026-11-19: created from this container with `start_time` `2026-11-24T20:00:00Z
 
 ## Acceptance-criteria coverage
 - AC-4: the `start_time` unit tests, the sandbox approvals and the two Value sourcing `start_time` steps · AC-9: the `paid_until` unit tests, the integration tests on realistic 10:00 UTC charge times, the charge day step · AC-21: the clock, refusal, node and browser tests and the day 22 to 26 step
-- Not yet covered: the charge day step waits for the 24 November sandbox charge
+- Not yet covered: the customer site's `active` on the charge morning, on staging
 
 
 # Verify: billing control site, Milestone 4 (operator tools and hardening) · spec 0008 · updated 2026-11-19
@@ -190,3 +193,23 @@ _Steps derived from spec 0008 AC-13 to AC-15, AC-20 and AC-22. Covers build plan
 
 ## Acceptance-criteria coverage
 - AC-13: the push after an edit and after the swap · AC-14: the edit, ClickPesa period, reference and Push now steps · AC-15: the rotation steps · AC-20: the role and two factor steps · AC-22: the signature alert and per bench limit steps
+
+# Verify: billing control site, PayPal go live check (build plan task 20) · spec 0008 · updated 2026-11-26
+_`bench --site <control site> execute rarebooks_control.paypal_check.run` compares the site's PayPal config and enabled PayPal Books Plans with what PayPal holds. Read only; run it before and after `paypal_mode` changes to live._
+
+## Automated
+- [x] `bench --site <control site> run-tests --app rarebooks_control --module rarebooks_control.tests.test_paypal_check` → 14 tests pass (threshold, price, currency, cycle, trial, setup fee, tax, changed price, webhook URL and events, missing plan or period, unset mode, refused credentials, test plan in live, the token cache key per mode and app)
+
+## PayPal sandbox (2026-11-26, Books Plans at the pricing page's USD 39 and 399, the staging webhook)
+- [x] Token, webhook `73911102J1804474H` to `https://rarebooks-control.frappe.cloud/api/method/rarebooks_control.webhooks.paypal` with all 9 events → PASS
+- [ ] Both sandbox plans have `payment_failure_threshold` 1, the spec says 3 → FAIL. With 1, one failed charge suspends the subscription and turns auto renew off, and AC-21's "PayPal is retrying the first payment" never happens. Create the live plans with 3
+- [ ] Sandbox Yearly `P-5VE281007K242924ENL7IDDA` charges USD 390.0; the pricing page (rarebooks-site `src/constants/pricing.ts`) says 399 → FAIL. Decide the price, then make the live plan and the Books Plan say the same
+- [ ] Both sandbox plans were repriced on 2026-11-21 (9/90 to 39/390, pricing version 2), yet the 24 November charges were still 9.0 and 90.0 → WARN. Never reprice a live plan: make a new PayPal plan and a new Books Plan, and disable the old Books Plan (kept, so its subscribers still match)
+
+## Live (task 20, by you in the PayPal live dashboard, then on the control site)
+- [ ] One live product, a Monthly and a Yearly plan in USD: one regular cycle, no end, no trial, no setup fee, no tax, `payment_failure_threshold` 3
+- [ ] A live webhook to `…/api/method/rarebooks_control.webhooks.paypal` for the 9 events; its id in `paypal_webhook_id`
+- [ ] `paypal_mode` live, the live `paypal_client_id` and `paypal_client_secret` in the control site config; Books Plan `paypal_plan_id`s set to the live plan ids
+- [ ] `paypal_check.run` answers `OK`, with no WARN other than a test plan you mean to keep
+- [ ] One real Monthly subscription from a staging customer site, charged at approval (a lapsed site), lifts the lock; then cancel and refund it → `Refund` event, ops email, site unchanged → AC-10, AC-23
+
