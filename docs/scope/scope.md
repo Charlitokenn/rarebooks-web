@@ -35,7 +35,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 20 | Compare and alternatives pages | Slice 10 | in-progress |
 | 21 | Sign up conversion tracking | Slice 10 | planned |
 | 22 | Marketing site load speed | Slice 10 | in-progress |
-| 23 | Welcome page after sign up | Slice 7 | planned |
+| 23 | Welcome page after sign up | Slice 7 | in-progress |
 
 ## Already built
 
@@ -261,10 +261,20 @@ spec [0014](../specs/0014-self-serve-onboarding/index.md) · amends specs 0010, 
 - [ ] Review it (fresh model): `/check review self serve onboarding`
 - [ ] Document it: `/document self serve onboarding`
 
-### 23. Welcome page after sign up · needs a decision
+### 23. Welcome page after sign up · in-progress
 Rename `/dashboard` to `/welcome`: a reception page while a new site is being created, which sends a signed in user whose site is ready straight to their site (from spec 0022).
 **Done when:** a new user waits on `/welcome` while their site is created; a signed in user whose site is ready who opens `/welcome` lands on their site; and old `/dashboard` links still work.
-- [ ] Design it (spec): `/architect welcome page after sign up` (settle the route change and redirects, what the page shows while the site is created, and how it fits spec 0014's sign up flow)
+spec [0023](../specs/0023-welcome-page-after-sign-up/index.md) · amends spec 0014 · code in `rarebooks-site` (`src/middleware.ts`, `src/pages/welcome/`, `src/layouts/WelcomeLayout.astro`, `src/components/onboarding/`, `src/lib/onboarding/`) and the `rarebooks_control` repo (`onboarding.py` `_summary`)
+- [x] Design it (spec): `/architect welcome page after sign up` (settle the route change and redirects, what the page shows while the site is created, and how it fits spec 0014's sign up flow)
+- [ ] Build it: `/develop welcome page after sign up`
+  - [ ] The thread: shared reads, `/welcome` and `/welcome/open` with the Ready redirect, prefetch guard and retry fallback, the 302 legacy map, Clerk redirect props, load speed test updates (AC-1 to AC-4, AC-6, AC-9)
+  - [ ] Control site address while building, then the reception shell and the waiting, failed and Ready cards (AC-3 to AC-8, AC-11)
+  - [ ] Links, copy, docs page and the no `/dashboard` guard, then remove the old shell (AC-10, AC-12)
+  - [ ] Staging run, then the switch to 301 after one week live (AC-1 to AC-12)
+- [ ] Verify it: `/check verify welcome page after sign up`
+- [ ] Test it: `/test welcome page after sign up`
+- [ ] Review it (fresh model): `/check review welcome page after sign up`
+- [ ] Document it: `/document welcome page after sign up`
 
 ## Slice 8: Documentation links
 
