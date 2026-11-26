@@ -70,3 +70,16 @@ Claims not in `hostedPlan.included` or `hostedPlan.features`, still to confirm o
 
 - [x] Read the Xero entry in `rarebooks-site/src/data/competitors.ts` (or on `/compare/xero` and `/alternatives/xero`) and approve the wording (AC-15). Done 2026-11-25.
 - [x] Read and approve the QuickBooks, FreshBooks, Wave, Zoho Books, FreeAgent, Reckon One, MYOB, Manager, Sage and NetSuite entries the same way (AC-15). Done 2026-11-25.
+
+## Checks on the deployed pages (step 6, 2026-11-26)
+
+Run against `https://rarebooks.cc` on `/compare/xero`, `/alternatives/xero`, `/compare` and `/alternatives`, at 390 and 1280 pixels.
+
+- [x] **Redirects (AC-10):** all 16 retired URLs and all 9 `/blog/rarebooks-vs-*` URLs answer a single 301 to the expected page; every target answers 200; `/compare/not-a-tool` answers 404.
+- [x] **Cache header (AC-6):** the detail pages send `Cache-Control: private, no-cache`.
+- [x] **axe (AC-16):** no violations on any of the 8 views.
+- [x] **Phone (AC-9):** no sideways scroll at 390 or 1280; the table keeps its table role and its 9 row headers at both widths.
+- [x] **Keyboard (AC-16):** tabbing reaches every link in `<main>` in order (breadcrumb, hero buttons, switching guide card, closing button, every index card), each with a visible focus ring.
+- [x] **Schema.org validator (AC-8):** one BreadcrumbList on each detail page, 0 errors and 0 warnings; the index pages carry no JSON-LD.
+- [x] **Lighthouse mobile, Accessibility and SEO (AC-16):** 100 and 100 on all four pages. CLS 0.009 on all four.
+- [ ] **Lighthouse mobile, LCP ≤ 2.5 s (AC-16): fails.** `/compare/xero` 2.9 s, `/alternatives/xero` 1.8 s, `/compare` 2.9 s, `/alternatives` 2.8 s, and runs of the same page swing from 1.9 s to 3.0 s. The LCP element is text (the h1 or hero lead), with no load time and about 2.3 s of render delay after first paint. The cause is site wide, in the shared `Layout.astro`: the tawk.to widget (about 600 ms of main thread), a Cloudflare script served from `/163f/` (about 750 ms) and the Astro client bundle (about 300 ms), about 930 ms of blocking time under Lighthouse's mobile CPU slowdown. The homepage (2.8 to 3.6 s) and `/pricing` (2.6 to 2.7 s) miss the same target. Fixing it means changing how the chat widget (and the Cloudflare feature behind `/163f/`) loads on every marketing page, which is outside this feature: owed as its own change.
