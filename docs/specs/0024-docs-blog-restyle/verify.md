@@ -20,6 +20,13 @@ Verdict: FAIL. Evidence in the session scratchpad (`verify/ledger.txt`, `verify/
 - AC-13: all 10 screenshots match the before set pixel for pixel on the local preview; the deployed retake is still owed.
 - Met with evidence: AC-1, AC-2 (via tests), AC-4, AC-5, AC-7, AC-9, AC-10, AC-11, AC-14, AC-15; AC-8 frames follow the mapping and axe found no contrast issue in code blocks.
 
+## /debug fixes for the FAIL (2026-11-26, local `astro preview` on workerd)
+
+- AC-3 `landmark-unique` from 1152 px: Starlight's sidebar nav was also named "Main". `src/content/i18n/en.json` (new `i18n` collection in `content.config.ts`) renames it "Docs". axe clean at 1024 and 1280 on the three AC-12 pages, both themes.
+- AC-6 font shift: size adjusted `Plus Jakarta Sans Fallback` faces (400, 600, 700, Arial or Liberation Sans as reference, values from `scripts/font-fallback-sans.mjs`) in `docs.css`, added to `--sl-font`. Docs home CLS now 0.000 to 0.001 (Lighthouse mobile, 6 runs).
+- AC-12 axe: `src/lib/docs/rehypeDocsContent.ts` gives tables `tabindex="0"` (scrollable-region-focusable) and gives `/images/...` Markdown images their real width and height (the phone page CLS drops from 0.238 to 0.000). Expressive Code now wraps long lines (`defaultProps: { wrap: true }`), so no unnamed `role="region"` blocks (landmark-unique). axe clean at 390, 1024 and 1280 on all three pages in both themes; Accessibility 100 on all 18 runs.
+- Still owed: Performance on the deployed site (local best, uncompressed: 87, 78, 77) and the deployed AC-13 retake.
+
 ## UI / manual
 - [ ] Open `/` on the deployed site, click Docs in the marketing nav → docs home with the mk header, logo, four links (Docs underlined), search, social icons, theme switch, Sign in, Start free trial → AC-3
 - [ ] Switch the theme to Dark, then Auto with the device set to dark and light → page, sidebar, header, code blocks and asides follow; the Start free trial button stays white on brand purple → AC-3, AC-7, AC-8
