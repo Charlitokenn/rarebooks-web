@@ -38,7 +38,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 23 | Welcome page after sign up | Slice 7 | in-progress |
 | 24 | Dashboard greeting | Slice 11 | done |
 | 25 | Docs and blog restyle | Slice 12 | in-progress |
-| 26 | Bulk import from the control site | Slice 13 | planned |
+| 26 | Bulk import from the control site | Slice 13 | in-progress |
 
 ## Already built
 
@@ -428,13 +428,25 @@ spec: [0024](../specs/0024-docs-blog-restyle/index.md) · code in `rarebooks-sit
 
 ## Slice 13: Bulk import from the control site
 
-### 26. Bulk import from the control site · needs a decision
+### 26. Bulk import from the control site · in-progress
 A spreadsheet style grid on the control site where you paste or type rows into the columns of any document type the site's Import Wizard imports (Sales and Purchase Invoices, Payments, Expenses, Parties, Items, Journal Entries, Taxes, Accounts, Addresses, Number Series, plus the stock types when inventory is on). The control site checks every cell is in the right format first, then you pick one hosted site and the rows are imported into that site only. Billing Manager only; builds on the signed site calls of features 8 and 11.
 **Done when:** a Billing Manager can fill the grid for each importable document type, sees every wrong cell marked with its reason before anything is sent, picks one Active hosted site and gets the rows imported there through the site's own controller rules (no other site touched), sees per row success or failure from the site, and a user without Billing Manager, or a call without a valid signature, imports nothing.
-- [ ] Design it (spec): `/architect bulk import from the control site` (settle where the column list and format rules come from (read from the picked site, or kept on the control site), how rows reach the site (a new signed endpoint into Frappe's Data Import, or something else), all or nothing versus keep what saved like the wizard, size limits and background jobs, drafts versus submit, which site states can be picked (locked, being removed), and the audit trail of who imported what where)
+spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_books/subscription/bulk_import.py` and the `rarebooks_control` repo (`bulk_import.py`, the Books Bulk Import DocType, `public/js/vendor/jspreadsheet/`)
+- [x] Design it (spec): `/architect bulk import from the control site` (settle where the column list and format rules come from (read from the picked site, or kept on the control site), how rows reach the site (a new signed endpoint into Frappe's Data Import, or something else), all or nothing versus keep what saved like the wizard, size limits and background jobs, drafts versus submit, which site states can be picked (locked, being removed), and the audit trail of who imported what where)
+- [ ] Build it: `/develop bulk import from the control site`
+  - [ ] Site read side: importable types, columns from meta, the CSV builder, `import_columns` with the lock and type checks, drift tests (AC-3, AC-11, AC-13, AC-15, AC-17)
+  - [ ] The thread, one Books Item import end to end: the Books Bulk Import DocType and grid, `start_import` and `import_report`, `send` with confirmed attempts, `refresh` and the sweep (AC-1, AC-2, AC-4, AC-7, AC-8, AC-9, AC-14, AC-16)
+  - [ ] The dry run: structural checks and caps, `preview_import` writing nothing, warnings on the grid, Checked gating Import (AC-5, AC-6, AC-12)
+  - [ ] Every type, child tables and submit, golden CSV cases in Python and node (AC-3, AC-7, AC-15, AC-17)
+  - [ ] Retry, refusals, stall rule, Reload columns, paste and CSV load, then retention and removal clearing (AC-4, AC-10, AC-11, AC-14)
+- [ ] Verify it: `/check verify bulk import from the control site`
+- [ ] Test it: `/test bulk import from the control site`
+- [ ] Review it (fresh model): `/check review bulk import from the control site`
+- [ ] Document it: `/document bulk import from the control site`
 
 ## Deferred
 
+- Bulk import: an Update existing mode, an email to the site owner after an import, a workbook of several types sent in order, and an asynchronous dry run if 2,000 rows proves too small (from spec 0025)
 - Add a sitemap with `/pricing`, `/compare/*` and `/alternatives/*` (from spec 0020)
 - Bring the blog back as its own feature once there are posts (posts, author, RSS, the `/blog` route) (from spec 0024)
 - Restyle `/dashboard` to match the new marketing look (from the slice 10 scope; docs and blog moved to feature 25)
