@@ -378,11 +378,11 @@ Track clicks on every Start free trial and sign up button so you can compare con
 ### 22. Marketing site load speed · in-progress
 Make every marketing page fast on a phone by loading only what first paint needs: the chat waits for the visitor's first touch, Contact us opens the chat instead of a form, Google Tag Manager gives way to a light PostHog setup, and Turnstile leaves pages that don't use it (from spec 0021, whose Checks are blocked on it).
 **Done when:** every marketing page on `Layout.astro` shows LCP ≤ 2.5 s, TBT ≤ 200 ms and CLS ≤ 0.1 on the median of 3 Lighthouse mobile runs; Contact us opens the chat with an email fallback; pageviews and the sign up and contact clicks reach PostHog through `/ingest`; and a test fails if an eager script comes back.
-spec [0022](../specs/0022-marketing-site-load-speed.md) · code in `rarebooks-site` (`src/layouts/Layout.astro`, `src/components/TawkWidget.astro`, `src/pages/ingest/`, `src/middleware.ts`, `src/pages/privacy.astro`, `tests/marketing/`)
+spec [0022](../specs/0022-marketing-site-load-speed/index.md) · code in `rarebooks-site` (`src/layouts/Layout.astro`, `src/components/TawkWidget.astro`, `src/pages/ingest/`, `src/middleware.ts`, `src/pages/privacy.astro`, `tests/marketing/`)
 - [x] Design it (spec): `/architect marketing site load speed`
 - [ ] Build it: `/develop marketing site load speed`
   - [ ] Baseline and the thread: Lighthouse before numbers, then the chat on first interaction, deployed and measured (AC-1, AC-2, AC-12)
-  - [ ] Contact us opens the chat, with the form, its API route and email template removed (AC-3, AC-4, AC-12)
+  - [x] Contact us opens the chat, with the form, its API route and email template removed (AC-3, AC-4, AC-12)
   - [ ] GTM out, PostHog in: the key, the snippet after load, the `/ingest` proxy, the middleware skip and the two events (AC-5 to AC-9, AC-12)
   - [ ] Turnstile out of Layout, the privacy page, then the full Lighthouse, axe and keyboard pass and the Clerk checkpoint (AC-1, AC-10, AC-11, AC-13, AC-14)
 - [ ] Verify it: `/check verify marketing site load speed`
