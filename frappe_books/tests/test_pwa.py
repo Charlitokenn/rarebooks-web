@@ -27,11 +27,19 @@ class IntegrationTestPWA(IntegrationTestCase):
 		self.assertEqual(endpoint, "books")
 		self.assertNotIsInstance(renderer, ServiceWorkerPage)
 
+	def test_manifest_is_served_uncached(self):
+		# An immutable /assets copy kept installed phones on their first manifest.
+		set_request(method="GET", path="/books/manifest.webmanifest")
+		response = get_response_without_exception_handling()
+
+		self.assertEqual(response.mimetype, "application/manifest+json")
+		self.assertEqual(response.headers["Cache-Control"], "no-cache")
+		self.assertEqual(json.loads(response.get_data(as_text=True))["short_name"], "RareBooks")
+
 	def test_manifest_scope_covers_the_app_without_a_trailing_slash(self):
-		# Chrome shows its out of scope bar on /books when the scope is /books/.
-		manifest = json.loads(
-			Path(frappe.get_app_path("frappe_books", "public", "pwa", "manifest.json")).read_text()
-		)
+		# Chrome shows its out of scope bar on /books when the scope is /books/,
+		# and the server redirects /books/ to /books.
+		manifest = json.loads(Path(frappe.get_app_path("frappe_books", "pwa", "manifest.json")).read_text())
 
 		for path in ("/books", "/books/", manifest["start_url"]):
 			self.assertTrue(path.startswith(manifest["scope"]), path)

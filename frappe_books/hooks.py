@@ -26,10 +26,11 @@ add_to_apps_screen = [
 
 website_route_rules = [
 	{"from_route": "/books/sw.js", "to_route": "books-service-worker"},
+	{"from_route": "/books/manifest.webmanifest", "to_route": "books-manifest"},
 	{"from_route": "/books/<path:app_path>", "to_route": "books"},
 ]
 
-page_renderer = ["frappe_books.pwa.ServiceWorkerPage"]
+page_renderer = ["frappe_books.pwa.ServiceWorkerPage", "frappe_books.pwa.ManifestPage"]
 extend_bootinfo = "frappe_books.boot.extend_bootinfo"
 
 jinja = {
