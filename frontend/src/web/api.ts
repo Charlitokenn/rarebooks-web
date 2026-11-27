@@ -50,7 +50,7 @@ const errorClassByStatus: Record<number, ErrorClass | undefined> = {
 /** Browsers reject fetch with these messages when the network is down. */
 const CONNECTION_FAILURE = /failed to fetch|load failed|networkerror/i;
 
-const LOGIN_URL = `/login?redirect-to=${encodeURIComponent('/books')}`;
+const LOGIN_URL = `/login?redirect-to=${encodeURIComponent('/books/')}`;
 
 // frappe-ui passes `_server_messages` from a successful `call()` here; set before any call.
 setConfig('serverMessagesHandler', (raw: string[]) => {

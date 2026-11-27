@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+
+import frappe
 from frappe.tests import IntegrationTestCase
 from frappe.utils import set_request
 from frappe.website.path_resolver import PathResolver
@@ -22,3 +26,12 @@ class IntegrationTestPWA(IntegrationTestCase):
 
 		self.assertEqual(endpoint, "books")
 		self.assertNotIsInstance(renderer, ServiceWorkerPage)
+
+	def test_manifest_scope_covers_the_app_without_a_trailing_slash(self):
+		# Chrome shows its out of scope bar on /books when the scope is /books/.
+		manifest = json.loads(
+			Path(frappe.get_app_path("frappe_books", "public", "pwa", "manifest.json")).read_text()
+		)
+
+		for path in ("/books", "/books/", manifest["start_url"]):
+			self.assertTrue(path.startswith(manifest["scope"]), path)
