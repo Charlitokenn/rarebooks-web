@@ -21,7 +21,7 @@ You can run these on the control site (`control.localhost`) with one claimed, Ac
 
 ## Commands
 - [ ] `bench --site control.localhost run-tests --module rarebooks_control.tests.test_bulk_import` → 25 tests pass → AC-1 to AC-14
-- [ ] `bench --site books-test.localhost run-tests --app frappe_books --module frappe_books.tests.test_bulk_import` → the site side passes (signature, lock, type list, drift guard, golden CSV cases) → AC-3, AC-8, AC-11, AC-13, AC-15, AC-17
+- [ ] `bench --site books-test.localhost run-tests --app frappe_books --module frappe_books.tests.test_subscription_bulk_import` → the site side passes (signature, lock, type list, drift guard, golden CSV cases) → AC-3, AC-8, AC-11, AC-13, AC-15, AC-17
 - [ ] `cd frontend && yarn test` → the golden CSV cases pass through the wizard's builder → AC-17
 - [ ] In `bench --site control.localhost console`, set an Importing import's `last_progress_on` 3 hours back, then call `bulk_import.refresh(name)` → Failed with the 2 hour reason → AC-11
 - [ ] Make the site answer `import_report` with 502 → the import stays Importing and `last_error` says HTTP 502, with no row values in it → AC-11, AC-16
