@@ -44,6 +44,7 @@ yarn lint        # eslint .
 - Styling is Tailwind with the frappe-ui preset; use logical (RTL safe) classes from `tailwindcss-rtl`.
 - Translate with the `t` tag at runtime, never in module level constants (they run before translations load).
 - Docs links go through `src/utils/docs.ts`, never a hand built URL. A screen sets `docsPathRef` from `docsPathMap` in `activated` and clears it in `deactivated`; an overlay over a screen (the Settings dialog) uses `holdDocsPath`, so a screen that activates under it can't take over (spec 0015 AC-2, AC-7).
+- The Import Wizard writes Int, Float and Currency cells with `getImportNumberText` in `src/utils/precision.ts`, in the user's import number format (`boot.books.number_format`, not `sysdefaults.number_format`). The site's control site import uses the same rule, checked by the shared `frappe_books/tests/import_csv_cases.json` (spec 0025 AC-17).
 - Import with the path aliases (`fyo/`, `src/`, `models/`, `utils/`, `reports/`, `schemas/`), not long relative paths.
 - Components are PascalCase `.vue`; utils camelCase `.ts`; tests kebab case `*.test.mjs` and `*.spec.ts`.
 
