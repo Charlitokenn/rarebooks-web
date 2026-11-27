@@ -1,0 +1,1856 @@
+[
+ {
+  "schema_name": "SalesInvoice",
+  "doctype": "Books Sales Invoice",
+  "label": "Sales Invoice",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Invoice No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "party",
+    "label": "Customer",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "party"
+   },
+   {
+    "key": "account",
+    "label": "Account",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "account"
+   },
+   {
+    "key": "date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "price_list",
+    "label": "Price List",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "price_list"
+   },
+   {
+    "key": "discount_after_tax",
+    "label": "Apply Discount After Tax",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "discount_after_tax"
+   },
+   {
+    "key": "make_auto_payment",
+    "label": "Make Payment On Submit",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "make_auto_payment"
+   },
+   {
+    "key": "make_auto_stock_transfer",
+    "label": "Make Shipment On Submit",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "make_auto_stock_transfer"
+   },
+   {
+    "key": "terms",
+    "label": "Notes",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "terms"
+   },
+   {
+    "key": "back_reference",
+    "label": "Back Reference",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "back_reference"
+   },
+   {
+    "key": "return_against",
+    "label": "Return Against",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "return_against"
+   },
+   {
+    "key": "quote",
+    "label": "Quote Reference",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "quote"
+   },
+   {
+    "key": "redeem_loyalty_points",
+    "label": "Redeem Loyalty Points",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "redeem_loyalty_points"
+   },
+   {
+    "key": "loyalty_points",
+    "label": "Loyalty Points",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "loyalty_points"
+   },
+   {
+    "key": "coupons.name",
+    "label": "ID (Coupons)",
+    "required": false,
+    "table": "coupons",
+    "table_label": "Coupons",
+    "csv_key": null
+   },
+   {
+    "key": "coupons.coupons",
+    "label": "Coupons (Coupons)",
+    "required": false,
+    "table": "coupons",
+    "table_label": "Coupons",
+    "csv_key": "coupons.coupons"
+   },
+   {
+    "key": "items.name",
+    "label": "ID (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": null
+   },
+   {
+    "key": "items.item",
+    "label": "Item (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item"
+   },
+   {
+    "key": "items.description",
+    "label": "Description (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.description"
+   },
+   {
+    "key": "items.rate",
+    "label": "Rate (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.rate"
+   },
+   {
+    "key": "items.transfer_unit",
+    "label": "Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_unit"
+   },
+   {
+    "key": "items.transfer_quantity",
+    "label": "Qty. in Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_quantity"
+   },
+   {
+    "key": "items.batch",
+    "label": "Batch (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.batch"
+   },
+   {
+    "key": "items.serial_number",
+    "label": "Serial Number (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.serial_number"
+   },
+   {
+    "key": "items.quantity",
+    "label": "Quantity (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.quantity"
+   },
+   {
+    "key": "items.unit_conversion_factor",
+    "label": "Conversion Factor (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.unit_conversion_factor"
+   },
+   {
+    "key": "items.account",
+    "label": "Account (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.account"
+   },
+   {
+    "key": "items.tax",
+    "label": "Tax (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.tax"
+   },
+   {
+    "key": "items.set_item_discount_amount",
+    "label": "Set Discount Amount (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.set_item_discount_amount"
+   },
+   {
+    "key": "items.item_discount_amount",
+    "label": "Discount Amount (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_amount"
+   },
+   {
+    "key": "items.item_discount_percent",
+    "label": "Discount Percent (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_percent"
+   },
+   {
+    "key": "items.hsn_code",
+    "label": "HSN/SAC (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.hsn_code"
+   }
+  ]
+ },
+ {
+  "schema_name": "PurchaseInvoice",
+  "doctype": "Books Purchase Invoice",
+  "label": "Purchase Invoice",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Invoice No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "party",
+    "label": "Supplier",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "party"
+   },
+   {
+    "key": "account",
+    "label": "Account",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "account"
+   },
+   {
+    "key": "date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "price_list",
+    "label": "Price List",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "price_list"
+   },
+   {
+    "key": "discount_after_tax",
+    "label": "Apply Discount After Tax",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "discount_after_tax"
+   },
+   {
+    "key": "make_auto_payment",
+    "label": "Make Payment On Submit",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "make_auto_payment"
+   },
+   {
+    "key": "make_auto_stock_transfer",
+    "label": "Make Purchase Receipt On Submit",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "make_auto_stock_transfer"
+   },
+   {
+    "key": "terms",
+    "label": "Notes",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "terms"
+   },
+   {
+    "key": "back_reference",
+    "label": "Back Reference",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "back_reference"
+   },
+   {
+    "key": "return_against",
+    "label": "Return Against",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "return_against"
+   },
+   {
+    "key": "items.name",
+    "label": "ID (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": null
+   },
+   {
+    "key": "items.item",
+    "label": "Item (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item"
+   },
+   {
+    "key": "items.description",
+    "label": "Description (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.description"
+   },
+   {
+    "key": "items.rate",
+    "label": "Rate (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.rate"
+   },
+   {
+    "key": "items.transfer_unit",
+    "label": "Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_unit"
+   },
+   {
+    "key": "items.transfer_quantity",
+    "label": "Qty. in Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_quantity"
+   },
+   {
+    "key": "items.batch",
+    "label": "Batch (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.batch"
+   },
+   {
+    "key": "items.serial_number",
+    "label": "Serial Number (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.serial_number"
+   },
+   {
+    "key": "items.quantity",
+    "label": "Quantity (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.quantity"
+   },
+   {
+    "key": "items.unit_conversion_factor",
+    "label": "Conversion Factor (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.unit_conversion_factor"
+   },
+   {
+    "key": "items.account",
+    "label": "Account (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.account"
+   },
+   {
+    "key": "items.tax",
+    "label": "Tax (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.tax"
+   },
+   {
+    "key": "items.set_item_discount_amount",
+    "label": "Set Discount Amount (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.set_item_discount_amount"
+   },
+   {
+    "key": "items.item_discount_amount",
+    "label": "Discount Amount (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_amount"
+   },
+   {
+    "key": "items.item_discount_percent",
+    "label": "Discount Percent (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_percent"
+   },
+   {
+    "key": "items.hsn_code",
+    "label": "HSN/SAC (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.hsn_code"
+   }
+  ]
+ },
+ {
+  "schema_name": "Payment",
+  "doctype": "Books Payment",
+  "label": "Payment",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Payment No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "party",
+    "label": "Party",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "party"
+   },
+   {
+    "key": "date",
+    "label": "Posting Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "payment_type",
+    "label": "Payment Type",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "payment_type"
+   },
+   {
+    "key": "account",
+    "label": "Party Account",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "account"
+   },
+   {
+    "key": "payment_account",
+    "label": "Payment Account",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "payment_account"
+   },
+   {
+    "key": "payment_method",
+    "label": "Payment Method",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "payment_method"
+   },
+   {
+    "key": "clearance_date",
+    "label": "Clearance Date",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "clearance_date"
+   },
+   {
+    "key": "reference_id",
+    "label": "Ref. / Cheque No.",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reference_id"
+   },
+   {
+    "key": "reference_date",
+    "label": "Reference Date",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reference_date"
+   },
+   {
+    "key": "amount",
+    "label": "Amount",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "amount"
+   },
+   {
+    "key": "writeoff",
+    "label": "Write Off",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "writeoff"
+   },
+   {
+    "key": "payment_references.name",
+    "label": "ID (Payment Reference)",
+    "required": false,
+    "table": "payment_references",
+    "table_label": "Payment Reference",
+    "csv_key": null
+   },
+   {
+    "key": "payment_references.reference_type",
+    "label": "Type (Payment Reference)",
+    "required": false,
+    "table": "payment_references",
+    "table_label": "Payment Reference",
+    "csv_key": "payment_references.reference_type"
+   },
+   {
+    "key": "payment_references.reference_name",
+    "label": "Name (Payment Reference)",
+    "required": false,
+    "table": "payment_references",
+    "table_label": "Payment Reference",
+    "csv_key": "payment_references.reference_name"
+   },
+   {
+    "key": "payment_references.amount",
+    "label": "Amount (Payment Reference)",
+    "required": false,
+    "table": "payment_references",
+    "table_label": "Payment Reference",
+    "csv_key": "payment_references.amount"
+   }
+  ]
+ },
+ {
+  "schema_name": "Expense",
+  "doctype": "Books Expense",
+  "label": "Expense",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Expense No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "paid_from",
+    "label": "Paid From",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "paid_from"
+   },
+   {
+    "key": "party",
+    "label": "Supplier",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "party"
+   },
+   {
+    "key": "reference_number",
+    "label": "Reference Number",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reference_number"
+   },
+   {
+    "key": "user_remark",
+    "label": "Remark",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "user_remark"
+   },
+   {
+    "key": "accounts.name",
+    "label": "ID (Expenses)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Expenses",
+    "csv_key": null
+   },
+   {
+    "key": "accounts.account",
+    "label": "Account (Expenses)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Expenses",
+    "csv_key": "accounts.account"
+   },
+   {
+    "key": "accounts.description",
+    "label": "Description (Expenses)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Expenses",
+    "csv_key": "accounts.description"
+   },
+   {
+    "key": "accounts.amount",
+    "label": "Amount (Expenses)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Expenses",
+    "csv_key": "accounts.amount"
+   }
+  ]
+ },
+ {
+  "schema_name": "Party",
+  "doctype": "Books Party",
+  "label": "Party",
+  "naming": "manual",
+  "name_key": "name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Name",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "name"
+   },
+   {
+    "key": "role",
+    "label": "Role",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "role"
+   },
+   {
+    "key": "email",
+    "label": "Email",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "email"
+   },
+   {
+    "key": "phone",
+    "label": "Phone",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "phone"
+   },
+   {
+    "key": "address",
+    "label": "Address",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "address"
+   },
+   {
+    "key": "default_account",
+    "label": "Default Account",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "default_account"
+   },
+   {
+    "key": "currency",
+    "label": "Currency",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "currency"
+   },
+   {
+    "key": "loyalty_program",
+    "label": "Loyalty Program",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "loyalty_program"
+   },
+   {
+    "key": "tax_id",
+    "label": "Tax ID",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "tax_id"
+   }
+  ]
+ },
+ {
+  "schema_name": "Item",
+  "doctype": "Books Item",
+  "label": "Item",
+  "naming": "manual",
+  "name_key": "name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Item Name",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "name"
+   },
+   {
+    "key": "item_code",
+    "label": "Item Code",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "item_code"
+   },
+   {
+    "key": "item_group",
+    "label": "Item Group",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "item_group"
+   },
+   {
+    "key": "item_usage",
+    "label": "Purpose",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "item_usage"
+   },
+   {
+    "key": "item_type",
+    "label": "Type",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "item_type"
+   },
+   {
+    "key": "unit",
+    "label": "Unit Type",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "unit"
+   },
+   {
+    "key": "rate",
+    "label": "Rate",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "rate"
+   },
+   {
+    "key": "description",
+    "label": "Description",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "description"
+   },
+   {
+    "key": "income_account",
+    "label": "Sales Acc.",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "income_account"
+   },
+   {
+    "key": "expense_account",
+    "label": "Purchase Acc.",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "expense_account"
+   },
+   {
+    "key": "tax",
+    "label": "Tax",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "tax"
+   },
+   {
+    "key": "hsn_code",
+    "label": "HSN/SAC",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "hsn_code"
+   },
+   {
+    "key": "barcode",
+    "label": "Barcode",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "barcode"
+   },
+   {
+    "key": "track_item",
+    "label": "Track Inventory",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "track_item"
+   },
+   {
+    "key": "has_batch",
+    "label": "Has Batch",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "has_batch"
+   },
+   {
+    "key": "batch_series",
+    "label": "Batch Series",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "batch_series"
+   },
+   {
+    "key": "has_serial_number",
+    "label": "Has Serial Number",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "has_serial_number"
+   },
+   {
+    "key": "serial_number_series",
+    "label": "Serial Number Series",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "serial_number_series"
+   },
+   {
+    "key": "uom_conversions.name",
+    "label": "ID (UOM Conversions)",
+    "required": false,
+    "table": "uom_conversions",
+    "table_label": "UOM Conversions",
+    "csv_key": null
+   },
+   {
+    "key": "uom_conversions.uom",
+    "label": "UOM (UOM Conversions)",
+    "required": false,
+    "table": "uom_conversions",
+    "table_label": "UOM Conversions",
+    "csv_key": "uom_conversions.uom"
+   },
+   {
+    "key": "uom_conversions.conversion_factor",
+    "label": "Conversion Factor (UOM Conversions)",
+    "required": false,
+    "table": "uom_conversions",
+    "table_label": "UOM Conversions",
+    "csv_key": "uom_conversions.conversion_factor"
+   }
+  ]
+ },
+ {
+  "schema_name": "JournalEntry",
+  "doctype": "Books Journal Entry",
+  "label": "Journal Entry",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Entry No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "entry_type",
+    "label": "Entry Type",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "entry_type"
+   },
+   {
+    "key": "posting_date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "posting_date"
+   },
+   {
+    "key": "reference_number",
+    "label": "Reference Number",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reference_number"
+   },
+   {
+    "key": "reference_date",
+    "label": "Reference Date",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reference_date"
+   },
+   {
+    "key": "user_remark",
+    "label": "User Remark",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "user_remark"
+   },
+   {
+    "key": "accounts.name",
+    "label": "ID (Account Entries)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Account Entries",
+    "csv_key": null
+   },
+   {
+    "key": "accounts.account",
+    "label": "Account (Account Entries)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Account Entries",
+    "csv_key": "accounts.account"
+   },
+   {
+    "key": "accounts.debit",
+    "label": "Debit (Account Entries)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Account Entries",
+    "csv_key": "accounts.debit"
+   },
+   {
+    "key": "accounts.credit",
+    "label": "Credit (Account Entries)",
+    "required": false,
+    "table": "accounts",
+    "table_label": "Account Entries",
+    "csv_key": "accounts.credit"
+   }
+  ]
+ },
+ {
+  "schema_name": "Tax",
+  "doctype": "Books Tax",
+  "label": "Tax Template",
+  "naming": "manual",
+  "name_key": "name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Name",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "name"
+   },
+   {
+    "key": "details.name",
+    "label": "ID (Details)",
+    "required": false,
+    "table": "details",
+    "table_label": "Details",
+    "csv_key": null
+   },
+   {
+    "key": "details.account",
+    "label": "Tax Invoice Account (Details)",
+    "required": false,
+    "table": "details",
+    "table_label": "Details",
+    "csv_key": "details.account"
+   },
+   {
+    "key": "details.payment_account",
+    "label": "Tax Payment Account (Details)",
+    "required": false,
+    "table": "details",
+    "table_label": "Details",
+    "csv_key": "details.payment_account"
+   },
+   {
+    "key": "details.rate",
+    "label": "Rate (Details)",
+    "required": false,
+    "table": "details",
+    "table_label": "Details",
+    "csv_key": "details.rate"
+   }
+  ]
+ },
+ {
+  "schema_name": "Account",
+  "doctype": "Books Account",
+  "label": "Account",
+  "naming": "manual",
+  "name_key": "account_name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "account_name",
+    "label": "Account Name",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "account_name"
+   },
+   {
+    "key": "root_type",
+    "label": "Root Type",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "root_type"
+   },
+   {
+    "key": "parent_books_account",
+    "label": "Parent Account",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "parent_books_account"
+   },
+   {
+    "key": "account_type",
+    "label": "Account Type",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "account_type"
+   },
+   {
+    "key": "is_group",
+    "label": "Is Group",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "is_group"
+   }
+  ]
+ },
+ {
+  "schema_name": "Address",
+  "doctype": "Books Address",
+  "label": "Address",
+  "naming": "manual",
+  "name_key": "name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Address Name",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "name"
+   },
+   {
+    "key": "address_line1",
+    "label": "Address Line 1",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "address_line1"
+   },
+   {
+    "key": "address_line2",
+    "label": "Address Line 2",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "address_line2"
+   },
+   {
+    "key": "city",
+    "label": "City / Town",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "city"
+   },
+   {
+    "key": "country",
+    "label": "Country",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "country"
+   },
+   {
+    "key": "state",
+    "label": "State",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "state"
+   },
+   {
+    "key": "postal_code",
+    "label": "Postal Code",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "postal_code"
+   },
+   {
+    "key": "email_address",
+    "label": "Email Address",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "email_address"
+   },
+   {
+    "key": "phone",
+    "label": "Phone",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "phone"
+   },
+   {
+    "key": "fax",
+    "label": "Fax",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "fax"
+   }
+  ]
+ },
+ {
+  "schema_name": "NumberSeries",
+  "doctype": "Books Number Series",
+  "label": "Number Series",
+  "naming": "manual",
+  "name_key": "name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Prefix",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "name"
+   },
+   {
+    "key": "start",
+    "label": "Start",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "start"
+   },
+   {
+    "key": "pad_zeros",
+    "label": "Digits",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "pad_zeros"
+   },
+   {
+    "key": "reference_type",
+    "label": "Reference Type",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reference_type"
+   }
+  ]
+ },
+ {
+  "schema_name": "StockMovement",
+  "doctype": "Books Stock Movement",
+  "label": "Stock Movement",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Stock Movement No.",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "movement_type",
+    "label": "Movement Type",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "movement_type"
+   },
+   {
+    "key": "date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "items.name",
+    "label": "ID (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": null
+   },
+   {
+    "key": "items.item",
+    "label": "Item (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item"
+   },
+   {
+    "key": "items.from_location",
+    "label": "From (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.from_location"
+   },
+   {
+    "key": "items.to_location",
+    "label": "To (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.to_location"
+   },
+   {
+    "key": "items.transfer_unit",
+    "label": "Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_unit"
+   },
+   {
+    "key": "items.transfer_quantity",
+    "label": "Qty. in Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_quantity"
+   },
+   {
+    "key": "items.batch",
+    "label": "Batch (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.batch"
+   },
+   {
+    "key": "items.serial_number",
+    "label": "Serial Number (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.serial_number"
+   },
+   {
+    "key": "items.quantity",
+    "label": "Quantity (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.quantity"
+   },
+   {
+    "key": "items.unit_conversion_factor",
+    "label": "Conversion Factor (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.unit_conversion_factor"
+   },
+   {
+    "key": "items.rate",
+    "label": "Rate (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.rate"
+   }
+  ]
+ },
+ {
+  "schema_name": "Shipment",
+  "doctype": "Books Shipment",
+  "label": "Shipment",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Transfer No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "party",
+    "label": "Party",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "party"
+   },
+   {
+    "key": "date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "terms",
+    "label": "Notes",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "terms"
+   },
+   {
+    "key": "back_reference",
+    "label": "Back Reference",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "back_reference"
+   },
+   {
+    "key": "return_against",
+    "label": "Return Against",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "return_against"
+   },
+   {
+    "key": "items.name",
+    "label": "ID (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": null
+   },
+   {
+    "key": "items.item",
+    "label": "Item (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item"
+   },
+   {
+    "key": "items.location",
+    "label": "From Loc. (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.location"
+   },
+   {
+    "key": "items.transfer_unit",
+    "label": "Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_unit"
+   },
+   {
+    "key": "items.transfer_quantity",
+    "label": "Qty. in Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_quantity"
+   },
+   {
+    "key": "items.batch",
+    "label": "Batch (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.batch"
+   },
+   {
+    "key": "items.serial_number",
+    "label": "Serial Number (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.serial_number"
+   },
+   {
+    "key": "items.quantity",
+    "label": "Quantity (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.quantity"
+   },
+   {
+    "key": "items.unit_conversion_factor",
+    "label": "Conversion Factor (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.unit_conversion_factor"
+   },
+   {
+    "key": "items.rate",
+    "label": "Rate (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.rate"
+   },
+   {
+    "key": "items.item_discount_amount",
+    "label": "Discount Amount (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_amount"
+   },
+   {
+    "key": "items.item_discount_percent",
+    "label": "Discount Percent (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_percent"
+   },
+   {
+    "key": "items.description",
+    "label": "Description (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.description"
+   },
+   {
+    "key": "items.hsn_code",
+    "label": "HSN/SAC (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.hsn_code"
+   }
+  ]
+ },
+ {
+  "schema_name": "PurchaseReceipt",
+  "doctype": "Books Purchase Receipt",
+  "label": "Purchase Receipt",
+  "naming": "numberSeries",
+  "name_key": "name",
+  "submittable": true,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Transfer No",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": null
+   },
+   {
+    "key": "number_series",
+    "label": "Number Series",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "number_series"
+   },
+   {
+    "key": "party",
+    "label": "Party",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "party"
+   },
+   {
+    "key": "date",
+    "label": "Date",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "date"
+   },
+   {
+    "key": "terms",
+    "label": "Notes",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "terms"
+   },
+   {
+    "key": "back_reference",
+    "label": "Back Reference",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "back_reference"
+   },
+   {
+    "key": "return_against",
+    "label": "Return Against",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "return_against"
+   },
+   {
+    "key": "items.name",
+    "label": "ID (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": null
+   },
+   {
+    "key": "items.item",
+    "label": "Item (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item"
+   },
+   {
+    "key": "items.location",
+    "label": "To Loc. (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.location"
+   },
+   {
+    "key": "items.transfer_unit",
+    "label": "Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_unit"
+   },
+   {
+    "key": "items.transfer_quantity",
+    "label": "Qty. in Transfer Unit (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.transfer_quantity"
+   },
+   {
+    "key": "items.batch",
+    "label": "Batch (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.batch"
+   },
+   {
+    "key": "items.serial_number",
+    "label": "Serial Number (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.serial_number"
+   },
+   {
+    "key": "items.quantity",
+    "label": "Quantity (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.quantity"
+   },
+   {
+    "key": "items.unit_conversion_factor",
+    "label": "Conversion Factor (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.unit_conversion_factor"
+   },
+   {
+    "key": "items.rate",
+    "label": "Rate (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.rate"
+   },
+   {
+    "key": "items.item_discount_amount",
+    "label": "Discount Amount (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_amount"
+   },
+   {
+    "key": "items.item_discount_percent",
+    "label": "Discount Percent (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.item_discount_percent"
+   },
+   {
+    "key": "items.description",
+    "label": "Description (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.description"
+   },
+   {
+    "key": "items.hsn_code",
+    "label": "HSN/SAC (Items)",
+    "required": false,
+    "table": "items",
+    "table_label": "Items",
+    "csv_key": "items.hsn_code"
+   }
+  ]
+ },
+ {
+  "schema_name": "Location",
+  "doctype": "Books Location",
+  "label": "Location",
+  "naming": "manual",
+  "name_key": "name",
+  "submittable": false,
+  "columns": [
+   {
+    "key": "name",
+    "label": "Location Name",
+    "required": true,
+    "table": null,
+    "table_label": null,
+    "csv_key": "name"
+   },
+   {
+    "key": "address",
+    "label": "Address",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "address"
+   }
+  ]
+ }
+]

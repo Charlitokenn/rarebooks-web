@@ -66,7 +66,9 @@ doc_events = {
 			"on_trash",
 			"before_rename",
 		)
-	}
+	},
+	# Bulk import (spec 0025 AC-16): a control site import's private CSV goes once its Data Import finishes.
+	"Data Import": {"on_change": "frappe_books.subscription.delete_finished_import_file"},
 }
 
 scheduler_events = {

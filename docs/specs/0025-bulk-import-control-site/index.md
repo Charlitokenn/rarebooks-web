@@ -1,7 +1,7 @@
 # 0025. Bulk import into one hosted site from the control site
 
 **Date**: 2026-11-26
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
