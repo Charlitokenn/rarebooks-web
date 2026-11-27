@@ -433,12 +433,13 @@ A spreadsheet style grid on the control site where you paste or type rows into t
 **Done when:** a Billing Manager can fill the grid for each importable document type, sees every wrong cell marked with its reason before anything is sent, picks one Active hosted site and gets the rows imported there through the site's own controller rules (no other site touched), sees per row success or failure from the site, and a user without Billing Manager, or a call without a valid signature, imports nothing.
 spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_books/subscription/bulk_import.py` and the `rarebooks_control` repo (`bulk_import.py`, the Books Bulk Import DocType, `public/js/vendor/jspreadsheet/`)
 - [x] Design it (spec): `/architect bulk import from the control site` (settle where the column list and format rules come from (read from the picked site, or kept on the control site), how rows reach the site (a new signed endpoint into Frappe's Data Import, or something else), all or nothing versus keep what saved like the wizard, size limits and background jobs, drafts versus submit, which site states can be picked (locked, being removed), and the audit trail of who imported what where)
-- [x] Build it: `/develop bulk import from the control site`
+- [ ] Build it: `/develop bulk import from the control site`
   - [x] Site read side: importable types, columns from meta, the CSV builder, `import_columns` with the lock and type checks, drift tests (AC-3, AC-11, AC-13, AC-15, AC-17)
   - [x] The thread, one Books Item import end to end: the Books Bulk Import DocType and grid, `start_import` and `import_report`, `send` with confirmed attempts, `refresh` and the sweep (AC-1, AC-2, AC-4, AC-7, AC-8, AC-9, AC-14, AC-16)
   - [x] The dry run: structural checks and caps, `preview_import` writing nothing, warnings on the grid, Checked gating Import (AC-5, AC-6, AC-12)
   - [x] Every type, child tables and submit, the shared number rule in the site and the wizard, golden CSV cases in Python and node (AC-3, AC-7, AC-15, AC-17)
   - [x] Retry, refusals, stall rule, Reload columns, paste and CSV load, then retention and removal clearing (AC-4, AC-10, AC-11, AC-14)
+  - [ ] The eligibility amend: only a live removal under way blocks a site, a Released sign up counts, the picker searches subdomain and company (AC-2, build plan step 8)
 - [ ] Verify it: `/check verify bulk import from the control site`
 - [ ] Test it: `/test bulk import from the control site`
 - [ ] Review it (fresh model): `/check review bulk import from the control site`

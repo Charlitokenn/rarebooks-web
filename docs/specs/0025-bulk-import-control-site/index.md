@@ -2,7 +2,7 @@
 
 **Date**: 2026-11-26
 **Status**: In Progress
-**Updated**: 2026-11-27 (AC-17: one number rule for the site and the wizard)
+**Updated**: 2026-11-27 (AC-17: one number rule for the site and the wizard. AC-2: only a live removal under way blocks a site, a Released sign up counts as Ready, and the picker searches the subdomain and company)
 
 ## Summary
 
@@ -17,7 +17,7 @@ You get a spreadsheet style grid on the control site. You pick one claimed hoste
 
 **Acceptance criteria**:
 - **AC-1**: Only a Billing Manager (and the Administrator user, who passes every check in Frappe) can read, create or edit a Books Bulk Import, in desk and over the API. Every whitelisted method in `bulk_import.py` calls `frappe.only_for("Billing Manager")`. System Manager, Removal Manager and every other role get no permission on it. No role can delete one.
-- **AC-2**: The site picker offers only eligible sites. A site is eligible when all of these hold: `status` Active, `config_status` Active, an `owner_email` set, `pool_status` blank or Claimed, a Ready Books Signup when one points to it, and no open Books Removal Case (`removal.open_case` is empty). The same rule is checked again on save, before the dry run and right before sending.
+- **AC-2**: The site picker offers only eligible sites. A site is eligible when all of these hold: `status` Active, `config_status` Active, an `owner_email` set, `pool_status` blank or Claimed, a Books Signup that is Ready or Released when one points to it (spec 0016 AC-6 counts a Released request as Ready), and no removal under way: no Books Removal Case with `mode` live whose `status` is Holding or Dropping, or Paused with an accepted export (`export_sha256` set, so it resumes to Holding) (`removal.drop_under_way(site)` is false). A Scheduled case, which every unpaid site has from the first day of its trial, and Exporting, Failed and Cancelled cases never block, nor does any dry run case. A Removed case comes with a Removed site row, which is refused by its `status`. A Released sign up counts whatever it was released from, the same rule as `removal.awaits_signup`; a failed sign up's site gets a Discard case that starts in Dropping, so it is blocked by that case. The same rule is checked on save, in `load_columns`, `reload_columns` and `check` (before the dry run) and right before sending; a refusal reads "Site {0} is being removed." when a removal is under way. An import already Importing when a removal starts carries on and reports (the site's own lock stops new writes once it locks), and a Checked one is refused at `send` and set to Refused. The picker matches the typed text against the site name, `subdomain`, `company_name` and `owner_email`, and shows the subdomain, company and owner email under each site name.
 - **AC-3**: Picking a site fetches its columns through the signed `import_columns` call. The type picker shows the types the site's Import Wizard offers to a user who may import everything (the four stock types only when the site has inventory on). For each type, the grid shows the wizard's template columns in the wizard's order: the name column first, then parent fields, then child table fields labelled `Field (Table)`, with required parent columns marked. The columns stay fixed for the life of the import. A Reload columns action fetches them again, keeps cells by column key, names any column that is gone, and puts the status back to Draft.
 - **AC-4**: You can paste a block copied from Google Sheets or Excel into the grid at any cell, add rows, load a CSV whose headers match the column labels (unknown headers are named and ignored), and download a blank template CSV with the site's headers. Each grid row carries a stable id that moves with it when rows are inserted, sorted or deleted.
 - **AC-5**: Check first runs the structural rules on the control site: at least one row, every row has a name cell (it groups a document's rows), every column key is one the site gave, and the caps of AC-12 hold. It then calls the site's dry run (`preview_import`). The site builds the import CSV (AC-17) and runs Frappe's preview, which checks dates, numbers, Select options, required cells and Link values that don't exist on the site. Each warning is shown on the grid rows and column it names, and a warning that names no row is shown above the grid.
@@ -86,7 +86,7 @@ Books Bulk Import, named `BIMP-.#####`, track changes off, module Rarebooks Cont
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `hosted_site` | Link → Books Hosted Site | yes | N imports to 1 site. Link query `bulk_import.site_query` lists eligible sites only (AC-2). Can change only while `attempt` is 0 |
+| `hosted_site` | Link → Books Hosted Site | yes | N imports to 1 site. Link query `bulk_import.site_query` lists eligible sites only, searched by site, subdomain, company and owner email (AC-2). Can change only while `attempt` is 0 |
 | `import_type` | Data | yes | A site DocType name, for example `Books Sales Invoice`, from `columns`. Can change only while `attempt` is 0. Changing the site or type clears the rows (the form asks first) |
 | `submit_after_import` | Check | | Forced to 0 for `Books Expense` in `validate()` |
 | `status` | Select, read only | yes | Draft · Checked · Importing · Success · Partial Success · Failed · Refused. Default Draft |
@@ -163,9 +163,9 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 
 | Method | Key inputs | Key outputs | Key errors |
 |---|---|---|---|
-| `site_query` (link query) | `txt`, standard link query args | eligible sites | |
+| `site_query` (link query) | `txt`, standard link query args | eligible sites as `[name, subdomain, company_name, owner_email]`, a blank value as an empty string. The query matches `txt` against the hosted site's own `name`, `subdomain`, `company_name` and `owner_email`, then drops ineligible sites in Python, then applies `start` and `page_len`. No `search_fields` change on the DocType | |
 | `load_columns` | `name: str` | the `columns` for the type, and the `types` for the picker | site not eligible, site call failed |
-| `check` | `name: str` | `status`, `warnings: [{row_ids, column_key, message, blocking}]` | over 2,000 rows or 2 MB, a row with no name, site call failed |
+| `check` | `name: str` | `status`, `warnings: [{row_ids, column_key, message, blocking}]` | not eligible (Refused), over 2,000 rows or 2 MB, a row with no name, site call failed |
 | `send` | `name: str` | `status`, `site_import` | status not Checked, a send already waiting, not eligible (Refused), site call failed |
 | `refresh` | `name: str` | `status`, counts, `results` | site call failed (the status stays Importing) |
 | `sweep` (scheduler, every 5 minutes) | | queues `refresh_job(name)` per Importing import, with a job id so it is never queued twice | |
@@ -195,7 +195,7 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 
 | Action | Value produced / displayed | Source |
 |---|---|---|
-| Site picker | eligible sites | Books Hosted Site `status`, `config_status`, `owner_email` and `pool_status`; Books Signup `status` by `hosted_site`; `removal.open_case(site)` |
+| Site picker | eligible sites | Books Hosted Site `status`, `config_status`, `owner_email` and `pool_status`; Books Signup `status` by `hosted_site` (Ready or Released); `removal.drop_under_way(site)`: a Books Removal Case for the site with `mode` live and `status` Holding or Dropping. Never `removal.open_case`, which also counts the Scheduled case every unpaid site has and dry run cases |
 | Type picker | the importable types | site `import_columns.types`: a Python list mirroring `getImportableSchemaNames` (as an Administrator sees it), with the stock types added when Accounting Settings `enable_inventory` is on (AC-15) |
 | Grid columns | key, label, type, required, options, order | site `import_columns`, built from DocType meta with the wizard's rules. It skips hidden fields, virtual fields, read only fields that aren't required, and Attach, Attach Image and layout fields. The name column goes first and is required. Child fields are keyed `<table fieldname>.<fieldname>` and labelled `Field (Table)` |
 | Dry run and import | the CSV | built on the site from `rows` and the column keys (AC-17), using System Settings `date_format` and `number_format` (the language's own, when its Language record sets one, as Frappe's importer reads them) |
@@ -248,7 +248,8 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 - Rows moved: sorting the grid after a Partial result keeps every result on its own row. Verifies **AC-4**, **AC-10**.
 - Locked site: a site set locked (and one set lapsed) with `set_hosted_phase` answers 409 `site_locked` to the three write calls and writes nothing, while `import_report` still answers. Verifies **AC-11**.
 - Stall: an Importing import whose report shows no progress for 2 hours becomes Failed with the stall reason. Verifies **AC-11**.
-- Eligibility: an unclaimed pool site, a site with an open removal case and a Removed site are missing from the picker and refused at `send`. Verifies **AC-2**.
+- Eligibility: an unclaimed pool site, a site with a live Holding case, a site with a live Dropping case and a Removed site are missing from the picker and refused at `send`. A site with a live Paused case that has an accepted export is missing too. A site with a live Scheduled, Exporting, Failed or Cancelled case, a live Paused case with no export, a dry run Holding case, and a site whose sign up is Released (from Ready or from Failed) are listed and accepted. A Checked import whose site gets a live Holding case is Refused at `send` with "Site {0} is being removed.". Verifies **AC-2**.
+- Picker search: a site found by part of its subdomain, by part of its company name and by its owner email, each result showing the subdomain and company. Verifies **AC-2**.
 - Signature: an unsigned call, a call signed for another site and a stale `issued_at` each get a signed 401 and no Data Import. Verifies **AC-11**.
 - Type allowlist: `start_import` with `User` or `Role` is refused with a 400 and no Data Import. Verifies **AC-13**.
 - Caps: 2,001 rows, or a body over 2 MB, is refused with no call to the site. Verifies **AC-12**.
@@ -281,6 +282,7 @@ The approach is Tracer Bullet: one type (Books Item, no child table, nothing to 
    
    Satisfies **AC-3**, **AC-4**, **AC-10**, **AC-11**.
 7. **Retention and removal.** Build the daily `clear_old_rows` (skipping Importing), `clear_for_site` called from `removal.mark_removed`, the final state for a cleared import, and their tests. Satisfies **AC-14**.
+8. **The eligibility amend (2026-11-27).** Add `removal.drop_under_way(site: str) -> bool`, a plain read with no row lock (the site's own lock is the last guard against a race with the hourly round): a case for the site with `mode` live and `status` Holding or Dropping, or Paused with `export_sha256` set. Use it in `eligibility_refusal` in place of `removal.open_case`, with the refusal "Site {0} is being removed.". Accept a Released sign up beside Ready. Widen `site_query` to match and return `subdomain` and `company_name`. Update the eligibility test with the cases above and add the picker search test. Satisfies **AC-2**.
 
 ## Consequences
 

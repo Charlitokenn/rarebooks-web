@@ -5,7 +5,8 @@ You can run these on the control site (`control.localhost`) with one claimed, Ac
 
 ## UI / manual
 - [ ] Sign in as a System Manager and open `/app/books-bulk-import` → permission error. As a Billing Manager → the list opens, and there is no Delete action → AC-1
-- [ ] New Books Bulk Import, open the site picker → only eligible sites are listed. An unclaimed pool site, a Removed site and a site with an open removal case are missing → AC-2
+- [ ] New Books Bulk Import, open the site picker → only eligible sites are listed. An unclaimed pool site, a Removed site and a site with a live Holding or Dropping removal case are missing. A trial site with a Scheduled case (live or dry run) and a site whose sign up is Released are listed → AC-2
+- [ ] Type part of a claimed site's subdomain, then part of its company name, then its owner email → the site is found each time, with the subdomain and company shown under the `rb-...` name → AC-2
 - [ ] Pick the site → the type picker lists the wizard's types (the stock types only when inventory is on there). Pick Books Sales Invoice → the name column comes first, required columns carry `*`, and child columns read `Field (Table)` → AC-3
 - [ ] Copy a 3 row by 4 column block from Google Sheets and paste it at a cell in the middle → the cells land there, new rows are added past the end, and every row gets an id → AC-4
 - [ ] Paste a block wider than the grid → an orange alert says the extra columns were left out, and no new columns appear → AC-4
@@ -31,7 +32,7 @@ You can run these on the control site (`control.localhost`) with one claimed, Ac
 - [ ] Try 2,001 rows, or a body over 2 MB → refused before any site call → AC-12
 
 ## Value sourcing
-- [ ] Eligible sites: flip each of `status`, `config_status`, `owner_email`, `pool_status`, the Books Signup status and an open removal case one at a time → the site drops out of the picker and `send` refuses it → AC-2
+- [ ] Eligible sites: flip each of `status`, `config_status`, `owner_email`, `pool_status`, the Books Signup status (Preparing or Failed, not Released) and a live Holding, Dropping or Paused (with an export) removal case one at a time → the site drops out of the picker and `send` refuses it with "Site {0} is being removed.". A live Scheduled, Exporting, Failed or Cancelled case, a Paused one with no export, or a dry run case of any status leaves it listed → AC-2
 - [ ] Type list: turn inventory off on the site, Reload Columns → the four stock types are gone → AC-3
 - [ ] Number format: on a `#.###,##` site, `1.234,5` and `1234.5` are both written `1234,5`, and `1.234` is marked by the dry run → AC-17
 - [ ] Owner: a record imported on the site shows Administrator as its owner, and the Books Bulk Import comment names the Billing Manager → AC-7, AC-14
