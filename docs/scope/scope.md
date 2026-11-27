@@ -441,7 +441,7 @@ spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_
   - [x] Retry, refusals, stall rule, Reload columns, paste and CSV load, then retention and removal clearing (AC-4, AC-10, AC-11, AC-14)
   - [x] The eligibility amend: only a live removal under way blocks a site, a Released sign up counts, the picker searches subdomain and company (AC-2, build plan step 8)
 - [x] Verify it: `/check verify bulk import from the control site`
-- [ ] Test it: `/test bulk import from the control site`
+- [x] Test it: `/test bulk import from the control site`
 - [ ] Review it (fresh model): `/check review bulk import from the control site`
 - [ ] Document it: `/document bulk import from the control site`
 
