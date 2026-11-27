@@ -1,0 +1,182 @@
+{
+ "about": "Grid text in, import CSV out (spec 0025 AC-17). The site's builder runs every case; the Import Wizard runs each case not marked site_only through its own load step and getImportFile. A case is site_only when its grid text is something the wizard never keeps: text sent as typed, or a number or date written in the site's own format (the wizard reads only plain numbers and ISO dates). Each csv lists only the columns the case names.",
+ "cases": [
+  {
+   "name": "a three row invoice whose rows are apart in the grid, with a numbered name that is not sent",
+   "schema_name": "SalesInvoice",
+   "doctype": "Books Sales Invoice",
+   "number_format": "#,###.##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": false,
+   "columns": ["name", "party", "items.item", "items.quantity", "items.rate"],
+   "rows": [
+    ["A", "Ann", "Pen", "2", "10.50"],
+    ["B", "Bob", "Ink", "1", "4"],
+    ["A", "", "Pad", "3", "1.25"],
+    ["", "", "", "", ""],
+    ["A", "Amy", "Pen", "1", "10.50"]
+   ],
+   "csv": [
+    ["docstatus", "party", "items.item", "items.quantity", "items.rate"],
+    ["0", "Amy", "Pen", "2", "10.5"],
+    ["", "", "Pad", "3", "1.25"],
+    ["", "", "Pen", "1", "10.5"],
+    ["0", "Bob", "Ink", "1", "4"]
+   ]
+  },
+  {
+   "name": "plain amounts on a #.###,## site are written with its comma, trailing zeros trimmed",
+   "schema_name": "Expense",
+   "doctype": "Books Expense",
+   "number_format": "#.###,##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": false,
+   "columns": ["name", "date", "paid_from", "accounts.account", "accounts.amount"],
+   "rows": [
+    ["E1", "2026-11-27", "Cash", "Rent", "1234.50"],
+    ["E1", "", "", "Fuel", "1.5"],
+    ["E2", "2026-11-28", "Cash", "Rent", "100.00000000000"]
+   ],
+   "csv": [
+    ["docstatus", "date", "paid_from", "accounts.account", "accounts.amount"],
+    ["0", "2026-11-27", "Cash", "Rent", "1234,5"],
+    ["", "", "", "Fuel", "1,5"],
+    ["0", "2026-11-28", "Cash", "Rent", "100"]
+   ]
+  },
+  {
+   "name": "a negative amount keeps its leading minus",
+   "schema_name": "JournalEntry",
+   "doctype": "Books Journal Entry",
+   "number_format": "#,###.##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": false,
+   "columns": ["name", "accounts.account", "accounts.debit", "accounts.credit"],
+   "rows": [
+    ["J1", "Cash", "-250.75", "0"],
+    ["J1", "Sales", "0", "-250.75"]
+   ],
+   "csv": [
+    ["docstatus", "accounts.account", "accounts.debit", "accounts.credit"],
+    ["0", "Cash", "-250.75", "0"],
+    ["", "Sales", "0", "-250.75"]
+   ]
+  },
+  {
+   "name": "a #.### site writes a whole number as digits and a fraction with a plain point",
+   "schema_name": "Expense",
+   "doctype": "Books Expense",
+   "number_format": "#.###",
+   "date_format": "dd-mm-yyyy",
+   "site_only": false,
+   "columns": ["name", "accounts.account", "accounts.amount"],
+   "rows": [
+    ["E1", "Rent", "1234"],
+    ["E1", "Fuel", "12.5"]
+   ],
+   "csv": [
+    ["docstatus", "accounts.account", "accounts.amount"],
+    ["0", "Rent", "1234"],
+    ["", "Fuel", "12.5"]
+   ]
+  },
+  {
+   "name": "a named document sends its name, and an item rate is written by the number rule",
+   "schema_name": "Item",
+   "doctype": "Books Item",
+   "number_format": "#,###.##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": false,
+   "columns": ["name", "rate"],
+   "rows": [
+    ["Pen", "12.000"],
+    ["Ink", "0.10"]
+   ],
+   "csv": [
+    ["docstatus", "name", "rate"],
+    ["0", "Pen", "12"],
+    ["0", "Ink", "0.1"]
+   ]
+  },
+  {
+   "name": "a #.###,## site reads its own 1.234,5 and writes 1234,5",
+   "schema_name": "Expense",
+   "doctype": "Books Expense",
+   "number_format": "#.###,##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": true,
+   "columns": ["name", "accounts.account", "accounts.amount"],
+   "rows": [
+    ["E1", "Rent", "1.234,5"],
+    ["E1", "Fuel", "-12,50"]
+   ],
+   "csv": [
+    ["docstatus", "accounts.account", "accounts.amount"],
+    ["0", "Rent", "1234,5"],
+    ["", "Fuel", "-12,5"]
+   ]
+  },
+  {
+   "name": "an ambiguous or not finite number is sent as typed, so the dry run marks it",
+   "schema_name": "Expense",
+   "doctype": "Books Expense",
+   "number_format": "#.###,##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": true,
+   "columns": ["name", "accounts.account", "accounts.amount"],
+   "rows": [
+    ["E1", "Rent", "1.234"],
+    ["E1", "Fuel", "nan"],
+    ["E1", "Food", "inf"],
+    ["E1", "Rent", "1e5"],
+    ["E1", "Fuel", "(12)"]
+   ],
+   "csv": [
+    ["docstatus", "accounts.account", "accounts.amount"],
+    ["0", "Rent", "1.234"],
+    ["", "Fuel", "nan"],
+    ["", "Food", "inf"],
+    ["", "Rent", "1e5"],
+    ["", "Fuel", "(12)"]
+   ]
+  },
+  {
+   "name": "a #.### site sends a three decimal value as typed, since it reads two ways there",
+   "schema_name": "Expense",
+   "doctype": "Books Expense",
+   "number_format": "#.###",
+   "date_format": "dd-mm-yyyy",
+   "site_only": true,
+   "columns": ["name", "accounts.account", "accounts.amount"],
+   "rows": [
+    ["E1", "Rent", "1.234"],
+    ["E1", "Fuel", "1.2340"]
+   ],
+   "csv": [
+    ["docstatus", "accounts.account", "accounts.amount"],
+    ["0", "Rent", "1.234"],
+    ["", "Fuel", "1.2340"]
+   ]
+  },
+  {
+   "name": "dates in the site format or ISO are written as ISO, and a bad one as typed",
+   "schema_name": "Expense",
+   "doctype": "Books Expense",
+   "number_format": "#,###.##",
+   "date_format": "dd-mm-yyyy",
+   "site_only": true,
+   "columns": ["name", "date", "accounts.account"],
+   "rows": [
+    ["E1", "27-11-2026", "Rent"],
+    ["E2", "2026-11-28", "Rent"],
+    ["E3", "31-02-2026", "Rent"]
+   ],
+   "csv": [
+    ["docstatus", "date", "accounts.account"],
+    ["0", "2026-11-27", "Rent"],
+    ["0", "2026-11-28", "Rent"],
+    ["0", "31-02-2026", "Rent"]
+   ]
+  }
+ ]
+}

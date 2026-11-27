@@ -124,8 +124,8 @@ test('an expense template holds its rows, without the values the server sets', (
   ];
   assert.deepEqual(parseCSV(importer.getImportFile().csv), [
     ['docstatus', 'paid_from', 'accounts.account', 'accounts.amount'],
-    ['0', 'Cash', 'Rent', '100.00000000000'],
-    ['', '', 'Fuel', '20.00000000000'],
+    ['0', 'Cash', 'Rent', '100'],
+    ['', '', 'Fuel', '20'],
   ]);
 });
 

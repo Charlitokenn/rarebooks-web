@@ -1,6 +1,6 @@
 import { Fyo } from 'fyo';
 import { DocValue } from 'fyo/core/types';
-import { getEmptyValuesByFieldTypes, isPesa } from 'fyo/utils';
+import { getEmptyValuesByFieldTypes } from 'fyo/utils';
 import { ValidationError } from 'fyo/utils/errors';
 import { ModelNameEnum } from 'models/types';
 import {
@@ -17,6 +17,10 @@ import { getFileFields, getSchema } from 'src/frappe/registry';
 import { getNamingField } from 'src/frappe/schema';
 import { toDocValue, toFrappeValue } from 'src/frappe/values';
 import { getCsvKey } from 'src/utils/export';
+import {
+  getImportNumberFormat,
+  getImportNumberText,
+} from 'src/utils/precision';
 import { generateCSV, parseCSV } from 'utils/csvParser';
 import { getValueMapFromList } from 'utils/index';
 
@@ -79,6 +83,13 @@ type ValueMatrixItem =
 type ValueMatrix = ValueMatrixItem[][];
 
 type ImportColumn = { index: number; field: TemplateField; key: string };
+
+// Cells written by the number rule of spec 0025 AC-17.
+const NUMBER_FIELDTYPES: FieldType[] = [
+  FieldTypeEnum.Int,
+  FieldTypeEnum.Float,
+  FieldTypeEnum.Currency,
+];
 
 const skippedFieldsTypes: FieldType[] = [
   FieldTypeEnum.AttachImage,
@@ -361,11 +372,15 @@ export class Importer {
       return '';
     }
 
-    if (isPesa(value)) {
-      return String(value.float);
+    const text = toFrappeValue(value, field, this.fyo);
+    if (NUMBER_FIELDTYPES.includes(field.fieldtype)) {
+      return getImportNumberText(
+        text as number | string,
+        getImportNumberFormat()
+      );
     }
 
-    return String(toFrappeValue(value, field, this.fyo) ?? '');
+    return String(text ?? '');
   }
 
   selectParsed(parsed: string[][]): void {

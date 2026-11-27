@@ -235,13 +235,18 @@ def type_columns(doctype: str) -> list[dict]:
 
 
 def formats() -> dict:
-	"""The formats the dry run and the import read cells in (AC-17): System Settings, unless the site's
-	language sets its own, as Frappe's importer reads them."""
-	from frappe.locale import get_date_format, get_locale_value
+	"""The formats Frappe's importer reads cells in for Administrator, the user the import runs as (AC-17).
 
+	Frappe's job sets that user's language with `set_user_lang`, and `frappe.locale` reads the format from the
+	Language record, else System Settings. A signed call runs as Guest, so the language is named here.
+	"""
+	from frappe.locale import get_date_format, get_locale_value
+	from frappe.translate import get_user_lang
+
+	language = get_user_lang("Administrator")
 	return {
-		"date_format": get_date_format(),
-		"number_format": get_locale_value("number_format") or "#,###.##",
+		"date_format": get_date_format(language),
+		"number_format": get_locale_value("number_format", language) or "#,###.##",
 	}
 
 
@@ -676,30 +681,66 @@ class _CellFormat:
 		return None
 
 	def _number(self, value: str) -> str:
-		"""A number read in the site's format or plain, written in the site's format with no grouping.
+		return number_text(value, self.number_format)
 
-		A value that reads differently in the two ways (`1.234` on a `#.###,##` site) is sent as typed, so
-		Frappe's dry run marks it on its cell.
-		"""
-		from frappe.core.doctype.data_import.importer import _parse_number
 
-		if _parse_number(value, self.number_format) is None:
-			return value
-		try:
-			number = Decimal(_plain_number(value, self.number_format))
-		except InvalidOperation:
-			return value
-		text = format(number, "f")
-		decimal = self.number_format.decimal_separator
-		return text.replace(".", decimal) if decimal else text
+def number_text(value: str, number_format) -> str:
+	"""A number cell as the import CSV writes it, by the number rule of AC-17.
+
+	The cell is read plain (`1234.50`) or in the import's number format (`1.234,50`). It is written as its digits,
+	with a leading `-` when negative, no thousands separator, no exponent and no trailing fractional zeros, with
+	the format's own decimal separator (`.` for a format with none). A cell that reads differently in the two
+	ways, or that is not a finite number (`nan`, `inf`, `1e5`, `(12)`), is sent as typed, so the dry run marks it.
+	So is a number whose written form Frappe would itself read two ways (three decimals on a `#.###` site).
+	"""
+	from frappe.core.doctype.data_import.importer import _parse_number
+
+	value = value.strip()
+	plain = _decimal(value) if PLAIN_NUMBER.fullmatch(value) else None
+	formatted = _decimal(_plain_number(value, number_format)) if _in_format(value, number_format) else None
+	if plain is None and formatted is None:
+		return value
+	if plain is not None and formatted is not None and plain != formatted:
+		return value
+	number = plain if plain is not None else formatted
+	text = _digits(number, number_format.decimal_separator or ".")
+	if _parse_number(text, number_format) != float(number):
+		return value
+	return text
+
+
+# A plain number as the exporter writes it: digits, one optional `.`, no exponent.
+PLAIN_NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)")
+
+
+def _in_format(value: str, number_format) -> bool:
+	"""Whether a cell is written in the number format, by the pattern Frappe's `_parse_number` reads."""
+	group = re.escape(number_format.thousands_separator)
+	decimal = re.escape(number_format.decimal_separator)
+	integer = rf"\d+|[1-9]\d{{0,2}}(?:{group}\d{{2,3}})*{group}\d{{3}}" if group else r"\d+"
+	fraction = rf"(?:{decimal}\d+)?" if decimal else ""
+	return bool(re.fullmatch(rf"[+-]?(?:{integer}){fraction}", value))
+
+
+def _decimal(value: str) -> Decimal | None:
+	try:
+		number = Decimal(value)
+	except InvalidOperation:
+		return None
+	return number if number.is_finite() else None
+
+
+def _digits(number: Decimal, decimal_separator: str) -> str:
+	"""Digits only: a leading `-` when negative, no exponent, trailing fractional zeros trimmed."""
+	if not number:
+		return "0"
+	text = format(number, "f")
+	if "." in text:
+		text = text.rstrip("0").rstrip(".")
+	return text.replace(".", decimal_separator)
 
 
 def _plain_number(value: str, number_format) -> str:
-	try:
-		float(value)
-		return value
-	except ValueError:
-		pass
 	if number_format.thousands_separator:
 		value = value.replace(number_format.thousands_separator, "")
 	if number_format.decimal_separator:

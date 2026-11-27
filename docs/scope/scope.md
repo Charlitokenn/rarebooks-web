@@ -437,7 +437,7 @@ spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_
   - [x] Site read side: importable types, columns from meta, the CSV builder, `import_columns` with the lock and type checks, drift tests (AC-3, AC-11, AC-13, AC-15, AC-17)
   - [x] The thread, one Books Item import end to end: the Books Bulk Import DocType and grid, `start_import` and `import_report`, `send` with confirmed attempts, `refresh` and the sweep (AC-1, AC-2, AC-4, AC-7, AC-8, AC-9, AC-14, AC-16)
   - [x] The dry run: structural checks and caps, `preview_import` writing nothing, warnings on the grid, Checked gating Import (AC-5, AC-6, AC-12)
-  - [ ] Every type, child tables and submit, the shared number rule in the site and the wizard, golden CSV cases in Python and node (AC-3, AC-7, AC-15, AC-17)
+  - [x] Every type, child tables and submit, the shared number rule in the site and the wizard, golden CSV cases in Python and node (AC-3, AC-7, AC-15, AC-17)
   - [ ] Retry, refusals, stall rule, Reload columns, paste and CSV load, then retention and removal clearing (AC-4, AC-10, AC-11, AC-14)
 - [ ] Verify it: `/check verify bulk import from the control site`
 - [ ] Test it: `/test bulk import from the control site`

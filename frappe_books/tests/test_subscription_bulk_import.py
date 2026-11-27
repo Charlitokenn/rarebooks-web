@@ -13,7 +13,7 @@ from frappe.tests import IntegrationTestCase
 
 from frappe_books.subscription import bulk_import
 from frappe_books.subscription.clock import utc_now
-from frappe_books.tests.accounting import make_account, make_item, unique_name
+from frappe_books.tests.accounting import make_account, make_item, make_party, unique_name
 from frappe_books.tests.subscription import (
 	TEST_SECRET,
 	SubscriptionTestMixin,
@@ -26,6 +26,8 @@ from frappe_books.tests.subscription import (
 from frappe_books.tests.test_subscription_remote import signed_json, site_call
 
 IMPORTER_TS = Path(frappe.get_app_path("frappe_books")).parent / "frontend" / "src" / "importer.ts"
+# Grid text in, import CSV out, shared with the wizard's node test (AC-17).
+CSV_CASES = Path(__file__).with_name("import_csv_cases.json")
 STOCK_DOCTYPES = ["Books Stock Movement", "Books Shipment", "Books Purchase Receipt", "Books Location"]
 
 
@@ -52,6 +54,20 @@ def wizard_schema_names() -> tuple[list[str], list[str]]:
 
 def csv_rows(text: str) -> list[list[str]]:
 	return list(csv.reader(io.StringIO(text)))
+
+
+def golden_csv(case: dict) -> list[list[str]]:
+	"""A golden case through the site's builder, with the case's formats, keeping only its own columns."""
+	rows = [
+		{"id": f"r{index}", "cells": dict(zip(case["columns"], cells, strict=True))}
+		for index, cells in enumerate(case["rows"])
+	]
+	site_formats = {"date_format": case["date_format"], "number_format": case["number_format"]}
+	with patch.object(bulk_import, "formats", return_value=site_formats):
+		text, _row_ids = bulk_import.build_import_csv(case["doctype"], rows)
+	matrix = csv_rows(text)
+	keep = [matrix[0].index(key) for key in case["csv"][0]]
+	return [[row[index] for index in keep] for row in matrix]
 
 
 class IntegrationTestBulkImportColumns(SubscriptionTestMixin, IntegrationTestCase):
@@ -213,7 +229,7 @@ class IntegrationTestBulkImportCsv(IntegrationTestCase):
 		rate = header.index("rate")
 		self.assertEqual([row[0] for row in matrix[1:]], ["0", "0"])
 		self.assertEqual([row[1] for row in matrix[1:]], ["Pen", "Ink"])
-		self.assertEqual([row[rate] for row in matrix[1:]], ["1250.50", "7"])
+		self.assertEqual([row[rate] for row in matrix[1:]], ["1250.5", "7"])
 		self.assertEqual(row_ids, ["r1", "r3"])
 
 	def test_a_document_rows_come_together_with_parent_values_on_the_first(self):
@@ -249,6 +265,47 @@ class IntegrationTestBulkImportCsv(IntegrationTestCase):
 		)
 		rate = matrix[0].index("rate")
 		self.assertEqual([row[rate] for row in matrix[1:]], ["1234,5", "1234,5", "1.234"])
+
+	def test_every_golden_case_builds_its_csv(self):
+		# covers: AC-17
+		for case in json.loads(CSV_CASES.read_text())["cases"]:
+			with self.subTest(case["name"]):
+				self.assertEqual(golden_csv(case), case["csv"])
+
+	def test_the_number_rule_writes_digits_in_the_format(self):
+		# covers: AC-17
+		from frappe.utils.number_format import NumberFormat
+
+		cases = {
+			"#.###,##": {"1.234,5": "1234,5", "1234.50": "1234,5", "100.00000000000": "100", "-0,00": "0"},
+			"#,###.##": {"1,234.50": "1234.5", "+7": "7", "0.10": "0.1", "12": "12"},
+			"#.########": {"1234.56780000": "1234.5678"},
+			"#,###": {"1,234": "1234", "12.5": "12.5"},
+		}
+		for number_format, values in cases.items():
+			for value, expected in values.items():
+				with self.subTest(number_format=number_format, value=value):
+					self.assertEqual(
+						bulk_import.number_text(value, NumberFormat.from_string(number_format)), expected
+					)
+
+	def test_the_formats_are_administrators_not_the_callers(self):
+		# covers: AC-17
+		language = frappe.get_doc("Language", "de")
+		kept = (language.number_format, frappe.db.get_value("User", "Administrator", "language"))
+		language.db_set("number_format", "#.###,##")
+		frappe.db.set_value("User", "Administrator", "language", "de")
+		frappe.client_cache.delete_value(frappe.get_document_cache_key("Language", "de"))
+		frappe.clear_cache(user="Administrator")
+		try:
+			frappe.set_user("Guest")
+			self.assertEqual(bulk_import.formats()["number_format"], "#.###,##")
+		finally:
+			frappe.set_user("Administrator")
+			language.db_set("number_format", kept[0])
+			frappe.db.set_value("User", "Administrator", "language", kept[1])
+			frappe.client_cache.delete_value(frappe.get_document_cache_key("Language", "de"))
+			frappe.clear_cache(user="Administrator")
 
 	def test_dates_in_the_site_format_or_iso_are_written_as_iso(self):
 		# covers: AC-17
@@ -381,6 +438,86 @@ class IntegrationTestBulkImportCalls(SubscriptionTestMixin, IntegrationTestCase)
 		self.assertEqual([log["row_ids"] for log in report["logs"]], [["row-0"], ["row-1"]])
 		self.assertEqual([log["docname"] for log in report["logs"]], names)
 		self.assertFalse(report["more"])
+
+	def test_an_invoice_with_rows_apart_in_the_grid_is_one_submitted_document(self):
+		# covers: AC-7, AC-17
+		receivable = make_account("Bulk Receivable", account_type="Receivable").name
+		party = make_party(receivable).name
+		pen, ink = (make_item(self.income, self.expense).name for _ in range(2))
+		frappe.db.commit()
+		other = {"party": party, "account": receivable, "date": "05-01-2031 10:00"}
+		rows = [
+			{
+				"id": "a1",
+				"cells": {
+					"name": "A",
+					**other,
+					"items.item": pen,
+					"items.quantity": "2",
+					"items.rate": "10.50",
+				},
+			},
+			{
+				"id": "b1",
+				"cells": {"name": "B", **other, "items.item": ink, "items.quantity": "1", "items.rate": "4"},
+			},
+			{"id": "a2", "cells": {"name": "A", "items.item": ink, "items.quantity": "1", "items.rate": "5"}},
+		]
+		ref = new_ref()
+
+		_body, response = site_call(
+			"start_import",
+			{"import_ref": ref, "import_type": "Books Sales Invoice", "submit": 1, "rows": rows},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(frappe.db.get_value("Data Import", f"CTRL-{ref}", "submit_after_import"), 1)
+		_body, report = site_call("import_report", {"data_import": f"CTRL-{ref}"})
+		logs = signed_json(report)["logs"]
+		self.assertEqual(sorted(log["row_ids"] for log in logs), [["a1", "a2"], ["b1"]])
+		self.assertTrue(all(log["success"] for log in logs))
+		invoice = frappe.get_doc(
+			"Books Sales Invoice", next(log["docname"] for log in logs if "a1" in log["row_ids"])
+		)
+		self.assertEqual(invoice.docstatus, 1)
+		self.assertEqual(str(invoice.date), "2031-01-05 10:00:00")
+		self.assertEqual(
+			[(row.item, row.quantity, row.rate) for row in invoice.items], [(pen, 2, 10.5), (ink, 1, 5)]
+		)
+
+	def test_an_expense_stays_a_draft_even_with_submit_on(self):
+		# covers: AC-7
+		cash = make_account("Bulk Cash", account_type="Cash").name
+		rent = make_account("Bulk Rent", root_type="Expense").name
+		fuel = make_account("Bulk Fuel", root_type="Expense").name
+		frappe.db.commit()
+		reference = unique_name("IMP").replace(" ", "")
+		rows = [
+			{
+				"id": "e1",
+				"cells": {
+					"name": "E1",
+					"paid_from": cash,
+					"date": "2031-01-05",
+					"reference_number": reference,
+					"accounts.account": rent,
+					"accounts.amount": "100.00",
+				},
+			},
+			{"id": "e2", "cells": {"name": "E1", "accounts.account": fuel, "accounts.amount": "20"}},
+		]
+		ref = new_ref()
+
+		_body, response = site_call(
+			"start_import", {"import_ref": ref, "import_type": "Books Expense", "submit": 1, "rows": rows}
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(frappe.db.get_value("Data Import", f"CTRL-{ref}", "submit_after_import"), 0)
+		expense = frappe.get_last_doc("Books Expense", filters={"reference_number": reference})
+		self.assertEqual(expense.docstatus, 0)
+		self.assertEqual([row.account for row in expense.accounts], [rent, fuel])
+		self.assertEqual(expense.total, 120)
 
 	def test_a_row_naming_an_existing_record_fails_and_the_record_stays(self):
 		# covers: AC-13
