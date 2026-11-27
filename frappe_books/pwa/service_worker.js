@@ -43,7 +43,7 @@ function offlinePage() {
 	const html = `<!doctype html>
 <html lang="en">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Offline · Books</title>
+<title>Offline · RareBooks</title>
 <style>
 	:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
 	body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; text-align: center; }
@@ -55,7 +55,7 @@ function offlinePage() {
 <main>
 	<div style="width: 56px; margin: auto">__ICON__</div>
 	<h1>You're offline</h1>
-	<p>Books needs a connection. Your data is safe on the server.</p>
+	<p>RareBooks needs a connection. Your data is safe on the server.</p>
 	<button onclick="location.reload()">Try again</button>
 </main>
 </html>`;
