@@ -442,7 +442,7 @@ spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_
   - [x] The eligibility amend: only a live removal under way blocks a site, a Released sign up counts, the picker searches subdomain and company (AC-2, build plan step 8)
 - [x] Verify it: `/check verify bulk import from the control site`
 - [x] Test it: `/test bulk import from the control site`
-- [ ] Review it (fresh model): `/check review bulk import from the control site`
+- [x] Review it (fresh model): `/check review bulk import from the control site`
 - [ ] Document it: `/document bulk import from the control site`
 
 ## Deferred
