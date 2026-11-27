@@ -3,7 +3,7 @@ import { after, before, test } from 'node:test';
 import { setImmediate } from 'node:timers/promises';
 import { call, errors, getDocuments } from './helpers/accounting.mjs';
 
-const LOGIN_URL = '/login?redirect-to=%2Fbooks';
+const LOGIN_URL = '/login?redirect-to=%2Fbooks%2F';
 
 before(() => {
   globalThis.window = { location: { hostname: 'books.localhost' } };

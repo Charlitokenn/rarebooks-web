@@ -43,3 +43,17 @@ class IntegrationTestPWA(IntegrationTestCase):
 
 		for path in ("/books", "/books/", manifest["start_url"]):
 			self.assertTrue(path.startswith(manifest["scope"]), path)
+
+	def test_manifest_keeps_the_installed_app_id(self):
+		# Phones key the installed app on id; a new id would install a second app.
+		manifest = json.loads(Path(frappe.get_app_path("frappe_books", "pwa", "manifest.json")).read_text())
+
+		self.assertEqual(manifest["id"], "/books/")
+		self.assertEqual(manifest["display"], "standalone")
+
+	def test_offline_page_names_the_app_rarebooks(self):
+		set_request(method="GET", path="/books/sw.js")
+		script = get_response_without_exception_handling().get_data(as_text=True)
+
+		self.assertIn("Offline · RareBooks", script)
+		self.assertNotIn("__ICON__", script)

@@ -590,7 +590,7 @@ test("a logged out caller's 403 still goes to login, lock type or not", async ()
   await new Promise((resolve) => setTimeout(resolve, 10));
   globalThis.document.cookie = 'user_id=Administrator; user_lang=en';
   assert.equal(settled, false);
-  assert.equal(window.location.href, '/login?redirect-to=%2Fbooks');
+  assert.equal(window.location.href, '/login?redirect-to=%2Fbooks%2F');
 });
 
 test('the return refresh asks the server to pull from billing and updates the shared status', async () => {

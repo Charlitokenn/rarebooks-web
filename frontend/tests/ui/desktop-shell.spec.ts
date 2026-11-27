@@ -138,5 +138,5 @@ test('a logout elsewhere sends the next action to the login page', async ({
 
   await sidebar(page).getByRole('link', { name: 'Sales', exact: true }).click();
 
-  await expect(page).toHaveURL(/\/login\?redirect-to=%2Fbooks$/);
+  await expect(page).toHaveURL(/\/login\?redirect-to=%2Fbooks%2F$/);
 });
