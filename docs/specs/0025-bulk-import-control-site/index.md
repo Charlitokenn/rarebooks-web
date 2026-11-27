@@ -2,6 +2,7 @@
 
 **Date**: 2026-11-26
 **Status**: In Progress
+**Updated**: 2026-11-27 (AC-17: one number rule for the site and the wizard)
 
 ## Summary
 
@@ -54,9 +55,16 @@ You get a spreadsheet style grid on the control site. You pick one claimed hoste
   - each parent cell taking the last non empty value among the document's rows, with blank parent cells on the following rows;
   - blank rows dropped;
   - dates read in the site's date format or ISO and written as ISO;
-  - numbers read in the site's number format or plain (`1234.50`) and written in the site's format.
+  - numbers (Int, Float, Currency and Percent cells) read in the import's number format or plain (`1234.50`), and written by the number rule below;
+  - a number cell that reads differently in the two ways (`1.234` on a `#.###,##` site), or that is not a finite number (`nan`, `inf`, `1e5`, `(12)`), sent exactly as typed, so the dry run marks that cell for a fix.
   
-  A shared golden fixture (`frappe_books/tests/import_csv_cases.json`, grid rows in and CSV out) is run by a Python test and by a frontend node test against the wizard's builder, so the two can't drift.
+  **The number rule**, the same in the site's builder and the wizard's:
+  - The format is the one Frappe's importer reads for the user the import runs as (`frappe.locale` number format: that user's Language record, else System Settings). On the site that is Administrator, whose language the job sets with `set_user_lang`. In the wizard it is the logged in user's, resolved on the server with `get_locale_value` and sent in the boot, never the plain System Settings `sysdefaults.number_format`.
+  - A number is written as its digits, with a leading `-` when negative, no thousands separator, no exponent, and trailing fractional zeros trimmed (`1234.50` becomes `1234,5` on a `#.###,##` site and `1234.5` on a `#,###.##` site; `100.00000000000` becomes `100`).
+  - The decimal separator is the format's own. A format with none (`#.###`, `#,###`) gets a plain `.`. On `#.###` a value with exactly three decimals still reads two ways, so the site sends it as typed and the dry run marks it.
+  - Check cells are outside this rule: they are sent as typed, and Frappe reads `1`, `yes` and the like itself.
+  
+  This also fixes the wizard on a `#.###,##` site, where its plain `1.234` is flagged as "could mean two numbers". A shared golden fixture (`frappe_books/tests/import_csv_cases.json`) holds cases of grid text in and CSV out, each with its own `number_format` and `date_format`. A Python test runs every case through the site's builder. A frontend node test runs each case not marked `site_only` through the wizard's own load step (`toDocValue`) and then `getImportFile`, with the case's formats. A case about text sent as typed is `site_only`, since the wizard never keeps typed text. So the two builders can't drift.
 
 ## Decision
 
@@ -190,7 +198,8 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 | Site picker | eligible sites | Books Hosted Site `status`, `config_status`, `owner_email` and `pool_status`; Books Signup `status` by `hosted_site`; `removal.open_case(site)` |
 | Type picker | the importable types | site `import_columns.types`: a Python list mirroring `getImportableSchemaNames` (as an Administrator sees it), with the stock types added when Accounting Settings `enable_inventory` is on (AC-15) |
 | Grid columns | key, label, type, required, options, order | site `import_columns`, built from DocType meta with the wizard's rules. It skips hidden fields, virtual fields, read only fields that aren't required, and Attach, Attach Image and layout fields. The name column goes first and is required. Child fields are keyed `<table fieldname>.<fieldname>` and labelled `Field (Table)` |
-| Dry run and import | the CSV | built on the site from `rows` and the column keys (AC-17), using System Settings `date_format` and `number_format` |
+| Dry run and import | the CSV | built on the site from `rows` and the column keys (AC-17), using System Settings `date_format` and `number_format` (the language's own, when its Language record sets one, as Frappe's importer reads them) |
+| Dry run, import and the wizard | a number cell as written | the number format Frappe's importer reads for the importing user (`frappe.locale`: the Language record, else System Settings): Administrator's on the site, the logged in user's in the wizard (from the boot). Its decimal separator (`.` when it has none), no thousands separator, trailing zeros trimmed. A cell that reads differently plain and in that format, or is not a finite number, is sent as typed |
 | Dry run | warnings per row and column | Frappe `Importer.get_data_for_import_preview()` plus `get_blocking_warnings`. Its file rows map to row ids through the CSV builder's row map, and its `col` to column keys through the CSV header |
 | Start | the Data Import name | `CTRL-` + `import_ref`, where `import_ref` is the Books Bulk Import name, `-`, and the attempt |
 | Start | the same rows or not | SHA-256 of the built CSV, kept in `template_options.control_csv_sha256` |
@@ -232,7 +241,7 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 - Happy path: a Billing Manager picks an eligible stub site, picks Books Item, pastes 3 rows, checks and imports. The stub's `start_import` is called once with `BIMP-00001-1`, the report gives 3 successes, and the status is Success with 3 docnames. Verifies **AC-3**, **AC-4**, **AC-7**, **AC-9**.
 - Dry run on a real site: a bad date, an unknown Select option and an unknown account each come back as a warning on their own row and column. The counts of Data Import and File rows are unchanged, and no temporary file is left. Verifies **AC-5**, **AC-6**.
 - Status reset: editing a cell after Checked sets Draft and `send` refuses. A save with no change keeps Checked. Verifies **AC-6**.
-- The CSV builder: the golden cases cover a three row invoice whose rows are not next to each other in the grid, a numbered name that isn't sent, a `#.###,##` site with `1.234` as a quantity, and dates in the site format. They pass in both the Python and the node test. Verifies **AC-17**.
+- The CSV builder: the golden cases cover a three row invoice whose rows are not next to each other in the grid, a numbered name that isn't sent, a `#.###,##` site where `1.234,5` and `1234.5` are both written `1234,5` and an ambiguous `1.234` is sent as typed (`site_only`), `1234.50` written `1234,5`, a negative amount, a `#.###` site with a whole number and a three decimal value, and dates in the site format. They pass in both the Python and the node test, and the wizard's own import of `1,5` as a quantity on a `#.###,##` site is not flagged. Verifies **AC-17**.
 - Idempotent start: `start_import` twice, and twice in parallel, with the same ref and rows gives one Data Import. The second answer is the same Data Import with `started` false. Different rows give 409 `ref_conflict`. Verifies **AC-8**.
 - Lost answer: the site starts the import but the answer times out. The status stays Checked and `attempt` stays 1. The next send finds `CTRL-BIMP-00001-1` with `import_report` and adopts it, and no second import starts. Verifies **AC-8**, **AC-11**.
 - Partial and retry: 2 of 3 invoices fail on an unknown item. Fixing them sends only those rows as attempt 2, and the saved row can't be edited. The totals end at 3 saved and 0 failed. Verifies **AC-9**, **AC-10**.
@@ -263,7 +272,7 @@ The approach is Tracer Bullet: one type (Books Item, no child table, nothing to 
 2. **Control site: the DocType and a thin form.** Build Books Bulk Import (desk, developer mode, Billing Manager only, track changes off, a comment on each status change), `site_query`, `load_columns`, the vendored Jspreadsheet with a plain grid and row ids, and the `checked_hash` reset in `validate()`. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-14**, **AC-16**.
 3. **The thread: one Books Item import end to end.** On the site, build `start_import` (named with `set_name`, the fingerprint, Administrator, the duplicate and scheduler answers), `import_report` with paging, and the doc event that deletes the File. On the control site, build `send` (confirmed attempts, `sending_since`, adopting an unconfirmed one), `refresh`, the form polling and the `*/5` sweep with one job per import. Test against a `call_site` stub, plus one run on a real bench site. Satisfies **AC-7**, **AC-8**, **AC-9**, **AC-13**, **AC-16**.
 4. **The dry run.** Build `check` with its structural rules and the caps, and the site's `preview_import` (an unsaved Data Import, `console=True`, the temporary file deleted, blocking warnings, mapping back to row ids and column keys), with the warnings painted on the grid and Checked gating Import. Satisfies **AC-5**, **AC-6**, **AC-12**.
-5. **Every type, child tables and submit.** Add child table grouping in the CSV builder, the Submit switch with the Expense rule and `mute_emails`, the column fixtures for every type (taken from the wizard's Save template), the golden CSV cases with the frontend node test, and tests for Sales Invoice and Expense like `test_data_import.py`. Satisfies **AC-3**, **AC-7**, **AC-15**, **AC-17**.
+5. **Every type, child tables and submit.** Add child table grouping in the CSV builder, the Submit switch with the Expense rule and `mute_emails`, the column fixtures for every type (taken from the wizard's Save template), the wizard's number rule of AC-17 (`getCellText` through one number writer for Int, Float, Currency and Percent, the user's resolved number format in the boot, and `#.########` added to `NUMBER_FORMAT_DECIMALS` in `src/utils/precision.ts`), the site's builder trimming trailing zeros and using Administrator's format, the golden CSV cases with the frontend node test, and tests for Sales Invoice and Expense like `test_data_import.py`. Satisfies **AC-3**, **AC-7**, **AC-15**, **AC-17**.
 6. **Retry, refusals and the rest of the grid.** Build:
    - locked saved rows, and sending only the rows without a success as the next attempt;
    - Refused, the answer table, and the 2 hour stall rule;
@@ -281,6 +290,7 @@ The approach is Tracer Bullet: one type (Books Item, no child table, nothing to 
 - The columns, the format checks and the CSV all come from the target site, so a site on a newer Books version, or with inventory off, shows and accepts exactly what it supports.
 
 **Negative / tradeoffs**:
+- The wizard's number output changes from plain to the site's format. A file someone saved from the wizard's CSV before is not affected (that is the template, not the import file), but any test that pins the wizard's plain number output needs its expected value updated.
 - The column rules and the CSV shape now live in two places: the wizard's TypeScript and the site's Python. The AC-15 and AC-17 tests catch drift in the type list, the column keys and the golden CSV cases, but not every rule. A new field property the wizard starts to honor still needs a fixture refresh.
 - The control site holds customer books data for up to 30 days after an import, which widens what a control site breach would expose.
 - Frappe treats a missing Link value as blocking, so one unknown Party stops the whole file at the dry run. Load in order: Accounts, Parties and Items before Invoices and Payments.
