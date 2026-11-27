@@ -2,7 +2,7 @@
 
 **Date**: 2026-11-26
 **Status**: In Progress
-**Updated**: 2026-11-27 (AC-17: one number rule for the site and the wizard. AC-2: only a live removal under way blocks a site, a Released sign up counts as Ready, and the picker searches the subdomain and company)
+**Updated**: 2026-11-27 (AC-17: one number rule for the site and the wizard. AC-2: only a live removal under way blocks a site, a Released sign up counts as Ready, and the picker searches the subdomain and company. AC-10, AC-11 after review: `import_report` carries the logs so far for any status, a stall keeps the rows the site saved and needs an answer from the site, and a write that lands after a site call never undoes a send. Cross check amend: the stall ends by the count rule, `send` re-checks its late writes and waits for a running previous attempt, and ops hear of a site unreachable for 24 hours)
 
 ## Summary
 
@@ -30,19 +30,19 @@ You get a spreadsheet style grid on the control site. You pick one claimed hoste
   - Failed when none has saved, or when the site's Data Import stopped (Error, Timed Out, or back to Pending with blocking warnings), with the reason.
   
   `success_count` and `failed_count` count grid rows and are always computed again from `results`.
-- **AC-10**: After Partial Success or Failed, the rows that saved are locked: read only, never deleted, moved or sent again. Check and Import send only the rows without a success, as the next attempt. No edits are allowed while Importing. No grid row is ever imported twice.
+- **AC-10**: After Partial Success or Failed, the rows that saved are locked: read only, never deleted, moved or sent again. Check and Import send only the rows without a success, as the next attempt. No edits are allowed while Importing. No grid row is ever imported twice. A write that lands after a site call changes the import only if it is still in the state the call started from: the answer to a check, a refusal or a Reload columns is dropped (or refused) once the import is Importing, final or cleared, and a report is written only onto the same Importing attempt (`site_import`) whose rows were not cleared. A late check answers the import's current status and writes nothing, a late Reload columns refuses with a message, and a late report is dropped silently. `send` writes after `start_import` only while the import is still Checked on the attempt it claimed; if the rows were cleared while it waited, it still records `site_import` with status Failed and a reason, so the started import is not lost. Before it sends the next attempt, `send` reads the previous attempt's report and merges its logs, and refuses while that Data Import is still In Progress (a stalled job that came back), so a revived job and a retry never send the same row. Results written while Importing show on their rows as they arrive, and a retry is only possible once the import has a final status.
 - **AC-11**: The site's answers lead to a defined outcome (the table in Feature design):
   - A locked site (`clock.is_locked()`, which covers lapsed too) answers a signed 409 `site_locked` to `import_columns`, `preview_import` and `start_import` before any write. `import_report` still answers on a locked site, since it only reads.
   - A site no longer eligible at send time sets the status to Refused, with the reason in `last_error` and the rows kept.
   - A call with a bad or missing signature, a stale `issued_at`, or another site's name gets a signed 401 and imports nothing.
   - A site that can't be reached, or answers 5xx, leaves the status where it was, with `last_error` set.
-  - An import with no progress for 2 hours (a job stopped by the lock, a dead worker) becomes Failed, with a reason saying so.
+  - An import with no progress for 2 hours (a job stopped by the lock, a dead worker) ends by the count rule of AC-9 (Success when every row saved, Partial Success when some did, Failed when none did), with the stall reason in `last_error`. The clock is `last_progress_on`: set when the start is confirmed, and moved each time the site's `processed` count rises. Each report is weighed in order: a finished status first, then progress, then the stall, so a site that kept working through an outage is never stalled on its first answer. The rows the site saved before it stopped keep their success, since the report carries the logs so far (Frappe's importer commits each record and its Data Import Log as it goes), so a retry sends only the others (AC-10). The rule needs an answer from the site: a site that can't be reached keeps the import Importing with `last_error`, and after 24 hours unreachable the control site alerts ops once through `alerts.send_ops`, since the stall rule no longer gives up on its own.
 - **AC-12**: An import over 2,000 grid rows, or a rows body over 2 MB, is refused on the control site with a message, before any call to the site. The site refuses a body over 2 MB with a signed 413.
 - **AC-13**: Imports only insert. A row naming a record that already exists on the site fails that row with the site's reason. Nothing on the site is ever updated or deleted from the control site. The site refuses any `import_type` outside its own list on every call, so Frappe's Data Import can never be pointed at User, Role or any other DocType.
 - **AC-14**: The control site's copy of the rows is cleared on a schedule:
   - A daily job clears `rows`, `results` and `columns` and sets `rows_cleared_on`, 30 days after `finished_on` (or 30 days after the last change for an import never finished, never while Importing).
   - The site, type, owner, dates, status and counts stay.
-  - When a site reaches Removed (`removal.mark_removed`), all its imports are cleared the same way, at once.
+  - When a site reaches Removed (`removal.mark_removed`), all its imports are cleared the same way, at once. An import still Importing becomes Failed with "The site was removed while this import ran.", so the sweep never queues it again.
   - A cleared import is final: check, send, refresh and edits are refused with a message.
   
   Books Bulk Import has track changes off, so no Version record ever copies the rows. Each status change instead adds a comment naming the user, the status, the attempt and the counts.
@@ -124,7 +124,7 @@ Draft ──check, no blocking warning──▶ Checked ──send, 2xx──▶
 - Draft → Checked: only through `check` (AC-5, AC-6).
 - Checked → Importing: only through `send`, after the eligibility check and a 2xx from `start_import`, or by adopting an unconfirmed attempt found on the site (AC-7, AC-8).
 - Checked → Refused: not eligible at send, or 409 `site_locked` (AC-11). Refused → Draft by an edit, or Refused → Checked by `check` again.
-- Importing → Success, Partial Success or Failed: only from an `import_report` with a finished status, or the stall rule (AC-9, AC-11).
+- Importing → Success, Partial Success or Failed: only from an `import_report` for the same attempt (`site_import`) with a finished status, or the stall rule after an answer from the site, which ends by the same count rule (AC-9, AC-11). A report that is not finished still records the rows saved so far.
 - Partial Success or Failed → Draft: an edit of a failed row. Then Checked → Importing again as the next attempt (AC-10).
 - No edits while Importing. Success, and any import with `rows_cleared_on` set, are final.
 
@@ -142,7 +142,7 @@ Customer site (`frappe_books/subscription/bulk_import.py`, exported as `frappe_b
 | `import_columns` | POST | none beyond `site`, `issued_at` | `types: [{doctype, schema_name, label, submittable, columns: [{key, label, fieldtype, required, options, table_label}]}]`, `date_format`, `number_format` | signed guest | 401, 409 site_locked |
 | `preview_import` | POST | `import_type: str` (req), `rows: [{id, cells}]` (req) | `warnings: [{row_ids, column_key, message, blocking}]` | signed guest | 400 unknown type or bad rows, 401, 409, 413 |
 | `start_import` | POST | `import_ref: str` (req, `^BIMP-\d{5,}-\d+$`), `import_type: str` (req), `submit: 0/1` (req), `rows: [{id, cells}]` (req) | `data_import`, `status`, `started: bool` | signed guest | 400, 401, 409 site_locked or ref_conflict, 413, 503 scheduler_inactive |
-| `import_report` | POST | `data_import: str` (req, `^CTRL-BIMP-`), `after_log_index: int` (opt) | `status`, `total`, `processed`, and once finished `logs: [{log_index, row_ids, success, docname, message}]` (up to 500 per page, `more: bool`) and `blocking_warnings` when it went back to Pending | signed guest | 400 not a control import, 401, 404 unknown |
+| `import_report` | POST | `data_import: str` (req, `^CTRL-BIMP-`), `after_log_index: int` (opt) | `status`, `total`, `processed`, and the `logs` saved so far, whatever the status: `[{log_index, row_ids, success, docname, message}]` (up to 500 per page, `more: bool`) and `blocking_warnings` when it went back to Pending | signed guest | 400 not a control import, 401, 404 unknown |
 
 How the site does each call:
 - **`preview_import`**:
@@ -172,7 +172,7 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 | `clear_old_rows` (scheduler, daily) | | | |
 | `clear_for_site(site)` (called from `removal.mark_removed`) | `site: str` | | |
 
-`send` and `refresh` each take the row with `for_update` only to read and to write. The lock is never held across the call to the site (the same rule as `state.py`). `refresh` writes `results` per row id and computes the counts again, so a form refresh and a sweep job that land together give the same result. The template CSV download and the CSV load run in the browser from `columns`.
+`send` and `refresh` each take the row with `for_update` only to read and to write. The lock is never held across the call to the site (the same rule as `state.py`). `refresh` writes `results` per row id and computes the counts again, so a form refresh and a sweep job that land together give the same result. Every write after a site call checks the locked row again (AC-10): `check`, its refusals and `reload_columns` write only while the import is not Importing, final or cleared, and `refresh` writes only onto the same Importing `site_import` whose rows were not cleared. The template CSV download and the CSV load run in the browser from `columns`.
 
 **What each site answer does**:
 
@@ -189,7 +189,9 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 | any call | 401 (bad secret, or a site with no secret) | stays as it was, `last_error`, ops alert through `alerts.send_ops` |
 | any call | unreachable, timeout, unsigned or 5xx | stays as it was, `last_error`. A lost `start_import` answer stays unconfirmed (AC-8) |
 | `refresh` → `import_report` | 404 for a confirmed attempt | Failed, the site no longer has the import |
-| | no new progress for 2 hours | Failed, stall reason |
+| | no new progress for 2 hours | by the count rule of AC-9 (Success, Partial Success or Failed), stall reason in `last_error`. The rows the site saved keep their results, so a retry sends only the others |
+| | unreachable when the stall is due | stays Importing, `last_error`. Never ends without the site's logs. After 24 hours unreachable, one ops alert |
+| `send` → `import_report` (previous attempt) | In Progress | refused, `last_error` says the previous attempt is still running on the site; its logs are merged first |
 
 **Value sourcing**:
 
@@ -207,7 +209,8 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 | Start | submit or draft | `submit_after_import`, forced off for `Books Expense` on both sides, and ignored for a type that can't be submitted |
 | Report | the result per grid row | Data Import Log `row_indexes` (file rows) mapped through `template_options.control_row_ids` to row ids, plus `docname`, `success`, and the message: the log's messages, else the last line of its exception, as `getLogMessage` in `dataImport.ts` does |
 | Report | the final status | the per row `results` (AC-9), plus the Data Import status for a stop |
-| Stall rule | when to give up | `last_progress_on` + 2 hours |
+| Stall rule | when to give up | `last_progress_on` + 2 hours; `last_progress_on` is set at a confirmed start and moved when the report's `processed` rises |
+| Unreachable alert | when to tell ops | the first unanswered refresh of this attempt + 24 hours, alerted once |
 | Retry | which rows to send | rows with no `results` entry, or one with `success` false |
 | Retention | when to clear | `finished_on` + 30 days, else `modified` + 30 days, never while Importing; and the site's removal through `removal.mark_removed` |
 
@@ -247,7 +250,9 @@ Control site (`rarebooks_control/bulk_import.py`, every method type annotated, P
 - Partial and retry: 2 of 3 invoices fail on an unknown item. Fixing them sends only those rows as attempt 2, and the saved row can't be edited. The totals end at 3 saved and 0 failed. Verifies **AC-9**, **AC-10**.
 - Rows moved: sorting the grid after a Partial result keeps every result on its own row. Verifies **AC-4**, **AC-10**.
 - Locked site: a site set locked (and one set lapsed) with `set_hosted_phase` answers 409 `site_locked` to the three write calls and writes nothing, while `import_report` still answers. Verifies **AC-11**.
-- Stall: an Importing import whose report shows no progress for 2 hours becomes Failed with the stall reason. Verifies **AC-11**.
+- Stall: an Importing import whose report shows no progress for 2 hours becomes Failed with the stall reason. A row the site saved before it stopped keeps its success and a retry sends only the others, and a site unreachable when the stall is due keeps the import Importing. Verifies **AC-10**, **AC-11**.
+- Late writes: a check, a 409 refusal or a Reload columns whose answer lands after a send leaves the import Importing, and a report that lands after the next attempt started, or after the rows were cleared, writes nothing. A `send` whose answer lands after an edit or a clear does not undo it, and a cleared one still records its `site_import`. Verifies **AC-10**, **AC-14**.
+- Stall outcome: a stall after every row saved ends Success, after some saved ends Partial Success. A retry whose previous attempt is still In Progress on the site is refused, and its saved rows are merged first. A site unreachable for 24 hours alerts ops once. Verifies **AC-9**, **AC-10**, **AC-11**.
 - Eligibility: an unclaimed pool site, a site with a live Holding case, a site with a live Dropping case and a Removed site are missing from the picker and refused at `send`. A site with a live Paused case that has an accepted export is missing too. A site with a live Scheduled, Exporting, Failed or Cancelled case, a live Paused case with no export, a dry run Holding case, and a site whose sign up is Released (from Ready or from Failed) are listed and accepted. A Checked import whose site gets a live Holding case is Refused at `send` with "Site {0} is being removed.". Verifies **AC-2**.
 - Picker search: a site found by part of its subdomain, by part of its company name and by its owner email, each result showing the subdomain and company. Verifies **AC-2**.
 - Signature: an unsigned call, a call signed for another site and a stale `issued_at` each get a signed 401 and no Data Import. Verifies **AC-11**.
@@ -283,6 +288,7 @@ The approach is Tracer Bullet: one type (Books Item, no child table, nothing to 
    Satisfies **AC-3**, **AC-4**, **AC-10**, **AC-11**.
 7. **Retention and removal.** Build the daily `clear_old_rows` (skipping Importing), `clear_for_site` called from `removal.mark_removed`, the final state for a cleared import, and their tests. Satisfies **AC-14**.
 8. **The eligibility amend (2026-11-27).** Add `removal.drop_under_way(site: str) -> bool`, a plain read with no row lock (the site's own lock is the last guard against a race with the hourly round): a case for the site with `mode` live and `status` Holding or Dropping, or Paused with `export_sha256` set. Use it in `eligibility_refusal` in place of `removal.open_case`, with the refusal "Site {0} is being removed.". Accept a Released sign up beside Ready. Widen `site_query` to match and return `subdomain` and `company_name`. Update the eligibility test with the cases above and add the picker search test. Satisfies **AC-2**.
+9. **The cross check amend (2026-11-27).** The stall ends by the count rule of AC-9. `send` writes after `start_import` only while the import is still Checked on its claimed attempt, and records `site_import` with Failed if the rows were cleared meanwhile. Before a next attempt, `send` merges the previous attempt's report and refuses while it is In Progress. One ops alert after 24 hours unreachable, tracked per attempt. Tests for each. Satisfies **AC-9**, **AC-10**, **AC-11**.
 
 ## Consequences
 
@@ -302,11 +308,13 @@ The approach is Tracer Bullet: one type (Books Item, no child table, nothing to 
 - Records show Administrator as their owner, so a customer can't tell which person in your team imported them. The Books Bulk Import names that person.
 
 **Neutral**:
-- A site that locks during an import leaves its job stuck, and the control site marks it Failed after 2 hours. Since nothing saved in a read only transaction, sending again after the lock lifts is safe.
+- A site that locks during an import leaves its job stuck, and the control site ends it after 2 hours by the count rule. The rows that saved before the lock keep their success, and nothing saved in a read only transaction, so sending again after the lock lifts sends only the rest.
+- An import whose site stays unreachable stays Importing until the site answers again or is removed (removal ends it as Failed). Ops hear of it once after 24 hours.
 - There are two new scheduler entries on the control site (`bulk_import.sweep` every 5 minutes and `bulk_import.clear_old_rows` daily), one call added to `removal.mark_removed`, and one doc event on Data Import in `frappe_books`.
 
 ## Follow-up
 
 - [ ] Agent Skills and MCP servers for Jspreadsheet CE were searched for on 2026-11-26. None were found, so there is nothing to install.
 - [ ] Add the new endpoints to `frappe_books/subscription/AGENTS.md` and the new DocType to `rarebooks_control/rarebooks_control/doctype/AGENTS.md` once they are built (`/sync`).
+- [ ] Deferred: a stored log cursor for `refresh`. Today each poll reads the logs from the start, up to 4 signed calls per 5 second poll at 2,000 rows. Correct, but costly on a large import.
 - [ ] Deferred: an Update existing mode, an email to the site owner after an import, a workbook with several types sent in order, and an asynchronous dry run if 2,000 rows proves too small. None is in this spec.
