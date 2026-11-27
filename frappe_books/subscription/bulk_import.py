@@ -152,7 +152,7 @@ def start_import() -> Response:
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 @rate_limit(limit=CALLS_PER_MINUTE, seconds=60)
 def import_report() -> Response:
-	"""A control site Data Import's status and, once it finished, its results per grid row (AC-9). Read only,
+	"""A control site Data Import's status and the results per grid row so far (AC-9, AC-10). Read only,
 	so it still answers on a locked site."""
 	call = _verified()
 	if isinstance(call, Response):
@@ -172,10 +172,11 @@ def import_report() -> Response:
 	options = json.loads(data_import.template_options or "{}")
 	processed = frappe.db.count("Data Import Log", {"data_import": name})
 	report = {"status": data_import.status, "total": data_import.payload_count or 0, "processed": processed}
-	if data_import.status in FINISHED:
-		logs = _report_logs(name, after, options.get("control_row_ids") or [])
-		report.update({"logs": logs[:LOGS_PER_PAGE], "more": len(logs) > LOGS_PER_PAGE})
-	elif data_import.status == "Pending" and data_import.template_warnings:
+	# The logs so far, whatever the status: Frappe commits each record and its log as it goes, so a job that
+	# stops part way has rows that saved, and the control site must know them before it offers a resend (AC-10).
+	logs = _report_logs(name, after, options.get("control_row_ids") or [])
+	report.update({"logs": logs[:LOGS_PER_PAGE], "more": len(logs) > LOGS_PER_PAGE})
+	if data_import.status == "Pending" and data_import.template_warnings:
 		warnings = json.loads(data_import.template_warnings)
 		report["blocking_warnings"] = [
 			_warning(

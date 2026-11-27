@@ -439,6 +439,25 @@ class IntegrationTestBulkImportCalls(SubscriptionTestMixin, IntegrationTestCase)
 		self.assertEqual([log["docname"] for log in report["logs"]], names)
 		self.assertFalse(report["more"])
 
+	def test_a_report_before_the_import_finished_carries_the_rows_saved_so_far(self):
+		# covers: AC-9, AC-10
+		ref, names = new_ref(), [unique_name("Pen"), unique_name("Ink")]
+		_body, response = self.start(ref, self.rows(*names))
+		self.assertEqual(response.status_code, 200)
+		name = f"CTRL-{ref}"
+		# A job that stopped part way: Frappe committed each record and its log, but the import never finished.
+		frappe.db.set_value("Data Import", name, "status", "Pending")
+		frappe.db.delete("Data Import Log", {"data_import": name, "docname": names[1]})
+		# The test client answers on its own connection, so it reads only what is committed (as the import did).
+		frappe.db.commit()
+
+		_body, report = site_call("import_report", {"data_import": name})
+		report = signed_json(report)
+		self.assertEqual((report["status"], report["processed"]), ("Pending", 1))
+		self.assertEqual(
+			[(log["row_ids"], log["docname"]) for log in report["logs"]], [(["row-0"], names[0])]
+		)
+
 	def test_an_invoice_with_rows_apart_in_the_grid_is_one_submitted_document(self):
 		# covers: AC-7, AC-17
 		receivable = make_account("Bulk Receivable", account_type="Receivable").name
