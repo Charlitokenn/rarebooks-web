@@ -1,5 +1,5 @@
 app_name = "frappe_books"
-app_title = "Books"
+app_title = "RareBooks"
 app_publisher = "Frappe Technologies Pvt. Ltd."
 app_description = "RareBooks for Frappe Framework"
 app_email = "hello@frappe.io"

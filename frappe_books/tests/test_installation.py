@@ -66,3 +66,25 @@ class IntegrationTestInstallation(IntegrationTestCase):
 		bootstrap()
 
 		self.assertEqual(frappe.db.get_value("Books Payment Method", "Bank", "type"), "Bank")
+
+	def test_patch_renames_the_books_desktop_icon(self):
+		from frappe_books.patches.rename_desktop_icon_to_rarebooks import execute
+
+		for name in ("Books", "RareBooks"):
+			frappe.delete_doc_if_exists("Desktop Icon", name, force=True)
+		icon = frappe.get_doc(
+			{
+				"doctype": "Desktop Icon",
+				"label": "Books",
+				"icon_type": "App",
+				"app": "frappe_books",
+				"link_type": "External",
+				"link": app_icon_route,
+			}
+		).insert(ignore_permissions=True)
+
+		execute()
+
+		self.assertFalse(frappe.db.exists("Desktop Icon", icon.name))
+		self.assertEqual(frappe.db.get_value("Desktop Icon", "RareBooks", "label"), "RareBooks")
+		self.assertEqual(app_icon_title, "RareBooks")
