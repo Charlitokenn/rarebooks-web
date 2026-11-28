@@ -33,7 +33,7 @@ Set up first: a Firebase test project, its three keys in the test site's config 
 - [x] Repeat for `renew_soon` ("Renewal due"), `grace` ("Payment overdue") and `locked` ("RareBooks is now read only") → one push each, tapping opens /books/subscription → AC-7
 - [x] Move `locked` to `lapsed` → no new push → AC-7
 - [ ] Self hosted (`unmanaged`) or exempt site → no subscription push ever; a first run stores the phase only → AC-7
-- [ ] Settings → Notifications tab shows for a Manager with three switches on; it is absent for a Books User and when push is off; switch Payment received off → payments push nothing; switch it back on → nothing missed is resent → AC-8
+- [x] Settings → Notifications tab shows for a Manager with three switches on; it is absent for a Books User and when push is off; switch Payment received off → payments push nothing; switch it back on → nothing missed is resent → AC-8
 - [x] Set Manager B's language to French (with French translations present) → B's push text is French, A's is the site language → AC-9
 - [ ] Revoke the service account key in Google, submit a payment → the payment stays submitted, one Error Log entry with only HTTP status and error code (no token, no key) → AC-10, AC-12
 - [x] Uninstall the browser that holds a registered token, submit a payment → its row is deleted after the send (FCM `UNREGISTERED`) → AC-10
