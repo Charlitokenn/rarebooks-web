@@ -11,6 +11,7 @@ The server side of Books: 68 `books_*` DocTypes with their controllers, plus pla
 | `hooks.py` | Routes for `/books`, app permission, install and test hooks, scheduler, `sqlite_search`, API flags, and the subscription lock hooks (`before_request`, `before_job`, `on_session_creation`, wildcard `doc_events`) |
 | `subscription/` | Trial clock, subscription state and the read only lock ([subscription/AGENTS.md](subscription/AGENTS.md)) |
 | `support_chat.py` | The tawk.to chat block in the boot (`books.support_chat`): the Secure Mode visitor hash and the support attributes; never raises, off unless all three `books_tawk_*` keys are set (spec 0009) |
+| `notifications/` | Push notifications through Firebase Cloud Messaging: devices, the four event hooks, the hourly subscription push, and `fcm.py`, the only module that talks to Google; off unless all three `books_fcm_*` keys are set (spec 0026, [notifications/AGENTS.md](notifications/AGENTS.md)) |
 | `frappe_books/doctype/books_*/` | One DocType each: `.json`, `.py` controller, optional `.js`, `test_*.py` |
 | `frappe_books/report/`, `print_format/`, `workspace/` | "Books " script reports, print formats, the workspace |
 | `accounting/`, `inventory/`, `commerce/` | Shared domain logic the controllers call (ledger, settlement, stock posting, FIFO valuation, POS, pricing, loyalty) |
@@ -57,6 +58,7 @@ bench --site <site> run-tests --app frappe_books --module frappe_books.tests.tes
 - The test site must have the setup wizard completed (`books_setup_wizard.complete_setup`) before the Playwright tests run.
 - No ERPNext doctypes exist. Do not add links, checks or fallbacks for them.
 - Support chat rollout (spec 0009): set `books_tawk_property_id`, `books_tawk_widget_id`, `books_tawk_api_key` and optionally `books_support_email` with `bench set-config -g` on the hosting bench, and turn on Secure Mode for the tawk.to property, or the hash is ignored and identities are unverified. The API key is a secret: it lives only in the bench config and is read only in `support_chat.py`, but `bench get-config` and `bench show-config` print it, so don't paste their output anywhere. The browser tests put test keys in the site's own config (`tests/support_chat.py`), so they assume no real keys in `common_site_config.json` on a test bench.
+- Push rollout (spec 0026): set `books_fcm_service_account` (the Firebase service account JSON, one line), `books_fcm_web_config` and `books_fcm_vapid_key` with `bench set-config -g` on the hosting bench, all from the same Firebase project (a mismatch fails every send with `SENDER_ID_MISMATCH`). The service account key is a secret read only in `notifications/fcm.py`; `bench get-config` and `bench show-config` print it, so don't paste their output anywhere. A failed send shows in the Error Log as "Books push" with only the HTTP status and FCM error code.
 
 ## Agent skills
 

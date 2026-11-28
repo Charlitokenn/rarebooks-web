@@ -11,6 +11,7 @@ The Books user interface: a Vue 3 + frappe-ui 1.0.0 single page app that renders
 | `src/frappe/` | The Frappe data layer: meta, schema, `FrappeDoc`, `/api/v2` calls, field state. Mapped in [docs/framework-backed-doctypes.md](../docs/framework-backed-doctypes.md) |
 | `src/web/api.ts` | `call()` for whitelisted methods, server errors, session expiry |
 | `src/utils/supportChat.ts` | The tawk.to support chat: the only place that loads the tawk.to script or calls `Tawk_API`, from the server signed `books.support_chat` boot block, on the first pick only (spec 0009) |
+| `src/utils/pushNotifications.ts` | Push notifications for this device: the app menu state, turn on and off, the start up register, the sign out step, and `listenForPushClicks`; the only place that loads `firebase` (lazily, never at start up) (spec 0026) |
 | `src/utils/docs.ts` | Every help link: the RareBooks docs address `DOCS_BASE_URL`, the screen to page map `docsPathMap`, `docsUrl`/`openDocs`, and `holdDocsPath` for overlays (spec 0015) |
 | `models/index.ts` | `frappeModels`: one model per schema name, extending `FrappeDoc` ([models/README.md](models/README.md)) |
 | `fyo/` | Shared primitives: the `fyo` singleton, translation, formatting, money, observer events ([fyo/README.md](fyo/README.md)) |
@@ -58,6 +59,8 @@ yarn lint        # eslint .
 - `tests/docs_pages.json` lists the `rarebooks-site` docs pages that `docsPathMap` may point at. Update it when a docs page there is added, renamed or removed; the drift check against `../rarebooks-site` runs only when that checkout sits next to this repo, so CI skips it (spec 0015 AC-8).
 - frappe-ui's `text-<size>` classes set their own font weight (420), which beats `font-semibold`. Use the combined `text-<size>-semibold` (or `-medium`, `-bold`) class instead.
 - Every tawk.to `setAttributes` call must carry the signed visitor identity (`hash` included): with Secure Mode on, tawk.to answers `UNAUTHORIZED_API_CALL` to one without it (spec 0009 AC-5).
+- /books usually runs at `/books`, outside the service worker's `/books/` scope, so the worker doesn't control the page: `navigator.serviceWorker.ready` never resolves there and the worker can't `navigate()` it. Wait on the registration itself, and have the worker `postMessage` the page instead (spec 0026 AC-11).
+- Headless Chromium's old mode reports notification permission as denied and refuses every notification. Push browser tests stub the permission, and the service worker test launches `chromium.launch({ channel: 'chromium' })` (the new headless mode).
 
 ## Agent skills
 

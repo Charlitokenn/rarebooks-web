@@ -64,5 +64,6 @@ Area skills are listed in each nested doc. MCP servers: Frappe built in MCP (rec
 - [frappe_books/AGENTS.md](frappe_books/AGENTS.md): the Frappe app, its `books_*` DocTypes, reports, hooks and Python tests
 - [frontend/AGENTS.md](frontend/AGENTS.md): the Vue app at /books, its Frappe data layer, models and tests
 - [frappe_books/subscription/AGENTS.md](frappe_books/subscription/AGENTS.md): the trial clock, subscription state, control site contract and read only lock (spec 0005)
+- [frappe_books/notifications/AGENTS.md](frappe_books/notifications/AGENTS.md): push notifications through Firebase Cloud Messaging, the devices, events and the only module that talks to Google (spec 0026)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
