@@ -65,7 +65,7 @@ The privacy choices follow from what `/books` holds. Route templates, not paths,
 
 The control site path copies patterns already proven there. `providers/posthog.py` follows the ClickPesa, Frappe Cloud and Cloudflare provider rule, so tests patch one function. `enqueue_after_commit` means a rolled back payment sends nothing, and an outage only loses events. The date events (`trial_ended_unpaid`, `subscription_lapsed`) use a daily job by date, not a stored flag, because a lost event costs little and a schema change for analytics is not worth it. The 3 day lapse rule leaves room for PayPal renewals that land after `paid_until` (spec 0008 amendment on PayPal billing dates).
 
-On groups: PostHog group analytics appears to be a paid add on (found in search results during design; the pricing page could not be fetched). So every event also carries `site_key` as a plain property. Per shop breakdowns work for free today, and the group view lights up the day you turn the add on on, with no code change.
+On groups: PostHog group analytics is a paid add on, and once on it bills every identified event in the project (confirmed in PostHog's group analytics docs through the PostHog connector). So every event also carries `site_key` as a plain property. Per shop breakdowns work for free today, and the group view lights up the day you turn the add on on, with no code change.
 
 ## References
 
@@ -82,4 +82,10 @@ On groups: PostHog group analytics appears to be a paid add on (found in search 
 - Keyed hashing (HMAC) for pseudonymous ids, not plain hashes of emails
 - Transactional outbox style sending: side effects only after commit
 
-**Links**: none verified. posthog.com could not be reached from the design session, so PostHog's capture API, posthog-js config, group analytics pricing and MCP server docs are named here but not linked; check them at build.
+**Links** (confirmed through the PostHog connector's docs search on 2026-11-28):
+- Capture API (v1): https://posthog.com/docs/api/capture-v1
+- Capture and batch API endpoints (legacy): https://posthog.com/docs/api/capture
+- Group analytics, billing: https://posthog.com/docs/product-analytics/group-analytics
+- Error tracking pricing, `capture_exceptions` options: https://posthog.com/docs/error-tracking/pricing
+- Capture exceptions, `$exception_list` properties: https://posthog.com/docs/error-tracking/capture
+- EU pricing: https://posthog.com/eu
