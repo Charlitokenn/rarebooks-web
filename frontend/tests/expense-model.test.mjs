@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { DateTime } from 'luxon';
 import {
   frappeModels,
   fyo,
@@ -52,8 +53,8 @@ test('a new expense gets a temporary name, today and one empty row', () => {
   assert.equal(expense.isTransactional, true);
   assert.equal(
     expense.date.toDateString(),
-    new Date().toDateString(),
-    'the DocType default Today'
+    siteToday('Asia/Kolkata'),
+    'the DocType default Today, in the site time zone'
   );
   assert.equal(expense.accounts.length, 1);
   assert.equal(expense.accounts[0].schemaName, 'ExpenseAccount');
@@ -200,6 +201,27 @@ test('the expense list shows its columns and filters by status', () => {
   );
 });
 
+// A user ahead of the site (Tanzania on a US site) must not date it the site's tomorrow,
+// or the dashboard's balances, as of the site's today, leave it out.
+test("a new expense is dated the site's today, wherever the browser is", () => {
+  const boot = globalThis.window.frappe.boot;
+  const systemZone = boot.time_zone.system;
+  try {
+    for (const zone of ['Pacific/Kiritimati', 'Etc/GMT+12']) {
+      boot.time_zone.system = zone;
+      const expense = newFrappeDoc('Expense');
+      assert.equal(expense.date.toDateString(), siteToday(zone), zone);
+      assert.equal(
+        expense.getFrappeValues().date,
+        DateTime.now().setZone(zone).toISODate(),
+        zone
+      );
+    }
+  } finally {
+    boot.time_zone.system = systemZone;
+  }
+});
+
 test("a submitted expense's accounting entries open on its date", () => {
   const expense = newFrappeDoc('Expense', {
     name: 'EXP-0001',
@@ -253,3 +275,9 @@ test('a forced filter cannot expose an account the user cannot read', (t) => {
     'permission checks do not mutate metadata'
   );
 });
+
+/** The site zone's today as the browser shows that day. */
+function siteToday(zone) {
+  const today = DateTime.now().setZone(zone);
+  return new Date(today.year, today.month - 1, today.day).toDateString();
+}

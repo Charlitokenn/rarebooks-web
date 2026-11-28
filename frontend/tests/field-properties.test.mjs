@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { DateTime } from 'luxon';
 import { newFrappeDoc, toSchema } from './helpers/frappe.mjs';
 import { loadFrappeModels } from './helpers/models.mjs';
 
@@ -69,7 +70,6 @@ test('the server date defaults Now and Today give a new document the current dat
   for (const [schemaName, fieldname] of [
     ['SalesInvoice', 'date'],
     ['Payment', 'date'],
-    ['JournalEntry', 'posting_date'],
     ['Shipment', 'date'],
   ]) {
     const before = Date.now();
@@ -80,6 +80,17 @@ test('the server date defaults Now and Today give a new document the current dat
       schemaName
     );
   }
+
+  // A Date field takes the site's today, not the browser's.
+  const today = DateTime.now().setZone(
+    globalThis.window.frappe.boot.time_zone.system
+  );
+  const date = newFrappeDoc('JournalEntry').posting_date;
+  assert.ok(date instanceof Date);
+  assert.equal(
+    date.toDateString(),
+    new Date(today.year, today.month - 1, today.day).toDateString()
+  );
 });
 
 test('Frappe field types and links become Books field types and targets', () => {
