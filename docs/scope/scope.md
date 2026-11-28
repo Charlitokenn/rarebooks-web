@@ -456,13 +456,13 @@ Push notifications on phones and computers for three events: a payment received,
 spec: [0026](../specs/0026-push-notifications/index.md)
 code in `frappe_books/notifications/`, `frontend/src/utils/pushNotifications.ts` and `frappe_books/pwa/service_worker.js`
 - [x] Design it (spec): `/architect push notifications`
-- [ ] Build it: `/develop push notifications`
+- [x] Build it: `/develop push notifications`
   - [x] The thread, a payment push end to end: `fcm.py`, Books Push Device and the register calls, the boot block, Books Notification Settings and its Settings tab, `notify` and `send_job`, the payment and POS sale hooks (AC-1, AC-3, AC-5, AC-8, AC-9, AC-10, AC-12)
   - [x] The device side: the `firebase` module, the app menu entry, start up re register, sign out, and the service worker `push` and `notificationclick` handlers (AC-2, AC-3, AC-4, AC-11, AC-13)
   - [x] Low stock: the Books Item fields and the locked check after stock posting and on item save (AC-6)
   - [x] Subscription and cleanup: the hourly phase job, the locked site case, stale device removal, and the Playwright pass (AC-7, AC-13, AC-14)
   - [x] The verify amend: the trial push names the lock date (`lock_starts_on`) with the new text, and skips a site whose PayPal subscription is set to start after the trial (AC-7, build plan step 11)
-  - [ ] The daily low stock summary: the 08:00 hourly job, its own switch and the patch, one push for all low items (AC-8, AC-15, build plan step 12)
+  - [x] The daily low stock summary: the 08:00 hourly job, its own switch and the patch, one push for all low items (AC-8, AC-15, build plan step 12)
 - [ ] Verify it: `/check verify push notifications` (real iPhone step still to try)
 - [ ] Test it: `/test push notifications`
 - [ ] Review it (fresh model): `/check review push notifications`

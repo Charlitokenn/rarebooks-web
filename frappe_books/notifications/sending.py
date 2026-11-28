@@ -1,6 +1,7 @@
 """Who gets a push, in which language, and the job that sends it (spec 0026 AC-5, AC-9, AC-10)."""
 
 from collections.abc import Callable
+from typing import NamedTuple
 
 import frappe
 from frappe.exceptions import InReadOnlyMode
@@ -17,7 +18,19 @@ JOB_TIMEOUT = 120
 MessageBuilder = Callable[[str], dict]
 
 
-EVENTS = ("payment_received", "low_stock", "subscription")
+EVENTS = ("payment_received", "low_stock", "low_stock_daily", "subscription")
+
+
+class SendReport(NamedTuple):
+	"""How many pushes went out and how many Google refused (spec 0026 AC-7, AC-15)."""
+
+	sent: int = 0
+	failed: int = 0
+
+	@property
+	def ok(self) -> bool:
+		"""At least one push went out, or none was refused (no devices counts as done)."""
+		return self.sent > 0 or not self.failed
 
 
 def store_default_events():
@@ -97,32 +110,32 @@ def notify(build: MessageBuilder, exclude_user: str | None = None):
 		)
 
 
-def send_now(build: MessageBuilder) -> bool:
-	"""Send inside the current job, for the scheduled subscription push (AC-7, AC-10).
+def send_now(build: MessageBuilder) -> SendReport:
+	"""Send inside the current job, for the scheduled pushes (AC-7, AC-10, AC-15).
 
-	Returns False when Google refused every send, so the caller can try again next run.
+	Passes on `send_job`'s report, so the caller can decide whether the next run tries again.
 	"""
 	if not fcm.is_configured():
-		return True
+		return SendReport()
 	messages = build_messages(build)
 	if not messages:
-		return True
+		return SendReport()
 	return send_job(messages)
 
 
-def send_job(messages: list[dict]) -> bool:
+def send_job(messages: list[dict]) -> SendReport:
 	"""Send each message to its device, delete the dead ones and log any failure once (AC-10).
 
-	Nothing is retried. Returns whether at least one push went out (or none was needed).
+	Nothing is retried. Reports how many pushes went out and how many failed.
 	"""
 	if not messages or not fcm.is_configured():
-		return True
+		return SendReport()
 	try:
 		# One exchange up front: a bad key fails the job once, not once per device.
 		fcm.access_token()
 	except fcm.FcmError as error:
 		_log_failures([error], len(messages))
-		return False
+		return SendReport(failed=len(messages))
 
 	tokens = dict(
 		frappe.get_all(
@@ -148,7 +161,7 @@ def send_job(messages: list[dict]) -> bool:
 	_delete_dead(dead)
 	if failures:
 		_log_failures(failures, len(messages))
-	return sent > 0 or not failures
+	return SendReport(sent=sent, failed=len(failures))
 
 
 def _delete_dead(names: list[str]):

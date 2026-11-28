@@ -15,6 +15,7 @@ from frappe_books.notifications.devices import (
 from frappe_books.notifications.events import (
 	check_low_stock,
 	item_saved,
+	notify_low_stock_daily,
 	notify_subscription_phase,
 	payment_submitted,
 	pos_sale_paid,
@@ -29,6 +30,7 @@ __all__ = [
 	"has_permission",
 	"item_saved",
 	"notify",
+	"notify_low_stock_daily",
 	"notify_subscription_phase",
 	"payment_submitted",
 	"pos_sale_paid",

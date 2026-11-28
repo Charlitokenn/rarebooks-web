@@ -5,7 +5,7 @@
  "engine": "InnoDB",
  "grid_page_length": 50,
  "links": [],
- "modified": "2026-11-28 12:00:00.000000",
+ "modified": "2026-11-28 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Books",
  "owner": "Administrator",
@@ -20,8 +20,10 @@
   "events_section",
   "payment_received",
   "low_stock",
+  "low_stock_daily",
   "subscription",
-  "last_subscription_phase"
+  "last_subscription_phase",
+  "last_low_stock_nudge_on"
  ],
  "fields": [
   {
@@ -45,6 +47,13 @@
   },
   {
    "default": "1",
+   "description": "Each morning, one reminder listing the items still at or below their reorder level.",
+   "fieldname": "low_stock_daily",
+   "fieldtype": "Check",
+   "label": "Daily low stock reminder"
+  },
+  {
+   "default": "1",
    "description": "When the trial or the subscription is about to end, and when the site turns read only.",
    "fieldname": "subscription",
    "fieldtype": "Check",
@@ -55,6 +64,13 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Last Subscription Phase",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_low_stock_nudge_on",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Last Low Stock Reminder On",
    "read_only": 1
   }
  ],

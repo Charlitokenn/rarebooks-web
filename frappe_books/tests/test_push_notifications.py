@@ -2,7 +2,9 @@
 
 import hashlib
 import json
+from datetime import datetime
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import frappe
 import jwt
@@ -879,3 +881,146 @@ class IntegrationTestSubscriptionPushes(PushEventsBase):
 		# The lock still pushes as usual.
 		self.run_at("locked")
 		self.assertEqual({title for title, *_rest in self.sent}, {"RareBooks is now read only"})
+
+
+class IntegrationTestLowStockSummary(PushEventsBase):
+	ZONE = ZoneInfo("Africa/Dar_es_Salaam")  # UTC+3, so 05:00 UTC is 08:00 at the site
+
+	def setUp(self):
+		super().setUp()
+		from frappe_books.frappe_books.doctype.books_shipment.test_books_shipment import seed_stock
+
+		self.seed_stock = seed_stock
+		# Items other tests left with a level would join the summary.
+		frappe.db.set_value("Books Item", {"reorder_level": [">", 0]}, "reorder_level", 0)
+		self.income = make_account("Push Summary Income", root_type="Income").name
+		self.expense = make_account("Push Summary Received", root_type="Liability").name
+		self.sent = []
+		self.outcome = fcm.SENT
+		self.locked = False
+
+	def item(self, stock, level, name=None):
+		values = {"name": name} if name else {}
+		item = make_item(self.income, self.expense, track_item=1, **values).name
+		if stock:
+			with push_off():
+				self.seed_stock(item, stock, 10)
+		frappe.db.set_value("Books Item", item, "reorder_level", level)
+		return item
+
+	def run_at(self, utc):
+		def send(token, title, body, link, tag):
+			self.sent.append((title, body, link, tag))
+			return self.outcome
+
+		with (
+			push_on(),
+			patch.object(fcm, "send", side_effect=send),
+			patch.object(fcm, "access_token", return_value="ya29.test"),
+			patch.object(events, "utc_now", return_value=utc),
+			patch.object(events, "site_zone", return_value=self.ZONE),
+			patch.object(events, "is_locked", return_value=self.locked),
+		):
+			notifications.notify_low_stock_daily()
+		sent, self.sent = self.sent, []
+		return sent
+
+	def stored_day(self):
+		# The raw value: `get_single_value` reads an empty Date as 0001-01-01.
+		return frappe.db.get_singles_dict(SETTINGS).get("last_low_stock_nudge_on")
+
+	def test_one_summary_a_day_most_urgent_first(self):  # covers: AC-15
+		low = self.item(2, 10)
+		empty = self.item(0, 5)
+		half = self.item(6, 10)
+		near = self.item(4, 5)
+		self.item(20, 10)  # restocked, so not listed
+
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 4, 59)), [])  # 07:59 at the site
+		sent = self.run_at(datetime(2031, 5, 6, 5, 0))
+		# One push for each of the two Manager devices, none for the Cashier.
+		self.assertEqual(len(sent), 2)
+		title, body, link, tag = sent[0]
+		self.assertEqual(title, "Low stock items: 4")
+		self.assertEqual(body, f"{empty} 0 Unit, {low} 2 Unit, {half} 6 Unit, +1 more")
+		self.assertNotIn(near, body)
+		self.assertEqual((link, tag), ("/books/report/StockBalance", "low-stock:daily"))
+		self.assertEqual(str(self.stored_day()), "2031-05-06")
+
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 6, 0)), [])
+		self.assertEqual(self.run_at(datetime(2031, 5, 7, 4, 0)), [])
+		self.assertEqual(len(self.run_at(datetime(2031, 5, 7, 9, 30))), 2)
+		self.assertEqual(str(self.stored_day()), "2031-05-07")
+
+	def test_a_single_low_item_links_the_item(self):  # covers: AC-15
+		item = self.item(2, 10)
+		title, body, link, tag = self.run_at(datetime(2031, 5, 6, 5, 0))[0]
+		self.assertEqual(title, f"Low stock: {item}")
+		self.assertEqual(body, "2 Unit left (reorder level 10)")
+		self.assertEqual((link, tag), (f"/books/edit/Item/{item}", "low-stock:daily"))
+
+	def test_long_names_are_cut(self):  # covers: AC-15
+		long_name = unique_name("A long item name " + "x" * 40)
+		self.item(1, 10, name=long_name)
+		other = self.item(3, 10)
+		body = self.run_at(datetime(2031, 5, 6, 5, 0))[0][1]
+		self.assertEqual(body, f"{long_name[:40]} 1 Unit, {other} 3 Unit")
+
+	def test_an_item_that_dropped_while_push_was_off_is_listed(self):  # covers: AC-15
+		item = self.item(2, 10)
+		self.assertFalse(frappe.db.get_value("Books Item", item, "low_stock_notified"))
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0))[0][0], f"Low stock: {item}")
+
+	def test_nothing_low_records_nothing(self):  # covers: AC-15
+		self.item(20, 10)
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+		self.assertIsNone(self.stored_day())
+
+	def test_no_devices_then_a_device_sends_the_next_hour(self):  # covers: AC-15
+		self.item(2, 10)
+		frappe.db.delete(DEVICE)
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+		self.assertIsNone(self.stored_day())
+		add_device(MANAGER)
+		self.assertEqual(len(self.run_at(datetime(2031, 5, 6, 6, 0))), 1)
+
+	def test_every_send_refused_records_nothing(self):  # covers: AC-15
+		self.item(2, 10)
+		self.outcome = fcm.Outcome(fcm.FAILED, 503, "UNAVAILABLE")
+		self.run_at(datetime(2031, 5, 6, 5, 0))
+		self.assertIsNone(self.stored_day())
+		self.outcome = fcm.SENT
+		self.assertEqual(len(self.run_at(datetime(2031, 5, 6, 6, 0))), 2)
+		self.assertEqual(str(self.stored_day()), "2031-05-06")
+
+	def test_switch_lock_and_push_off_send_nothing(self):  # covers: AC-8, AC-15
+		self.item(2, 10)
+		frappe.db.set_single_value(SETTINGS, "low_stock_daily", 0)
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+		frappe.db.set_single_value(SETTINGS, "low_stock_daily", 1)
+
+		self.locked = True
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+		self.locked = False
+
+		with push_off(), patch.object(fcm, "send") as send:
+			with patch.object(events, "utc_now", return_value=datetime(2031, 5, 6, 5, 0)):
+				notifications.notify_low_stock_daily()
+		send.assert_not_called()
+		self.assertIsNone(self.stored_day())
+
+	def test_a_migrated_site_gets_its_first_summary_next_morning(self):  # covers: AC-8, AC-15
+		from frappe_books.patches import add_low_stock_daily_setting
+
+		self.item(2, 10)
+		frappe.db.delete("Singles", {"doctype": SETTINGS})
+		with (
+			patch.object(events, "utc_now", return_value=datetime(2031, 5, 6, 7, 0)),
+			patch.object(events, "site_zone", return_value=self.ZONE),
+		):
+			add_low_stock_daily_setting.execute()
+		stored = frappe.db.get_singles_dict(SETTINGS)
+		self.assertEqual((stored.low_stock_daily, str(stored.last_low_stock_nudge_on)), ("1", "2031-05-06"))
+
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 8, 0)), [])
+		self.assertEqual(len(self.run_at(datetime(2031, 5, 7, 5, 0))), 2)

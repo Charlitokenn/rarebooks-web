@@ -1,17 +1,18 @@
-"""The events that push (spec 0026): a payment received (AC-5), low stock (AC-6), the subscription (AC-7)."""
+"""The events that push (spec 0026): a payment (AC-5), low stock (AC-6, AC-15), the subscription (AC-7)."""
 
 import functools
+from datetime import UTC, date, datetime
 
 import frappe
 from frappe import _
-from frappe.query_builder.functions import Sum
-from frappe.utils import fmt_money, formatdate
+from frappe.query_builder.functions import Coalesce, Sum
+from frappe.utils import fmt_money, formatdate, getdate
 
 from frappe_books.accounting.money import as_decimal, company_currency
 from frappe_books.inventory.stock import format_quantity
 from frappe_books.notifications import fcm
 from frappe_books.notifications.sending import SETTINGS, event_enabled, notify, send_now
-from frappe_books.subscription.clock import LOCKED_PHASES, current_clock
+from frappe_books.subscription.clock import LOCKED_PHASES, current_clock, is_locked, site_zone, utc_now
 
 ITEM = "Books Item"
 LEDGER = "Books Stock Ledger Entry"
@@ -20,6 +21,10 @@ SUBSCRIPTION_PHASES = ("prompt", "renew_soon", "grace", *LOCKED_PHASES)
 # Leaving these counts as a first run: nothing was pushed for them (AC-7).
 UNCOUNTED_PHASES = ("", "unmanaged", "exempt")
 READ_ONLY = "read-only"
+# The daily low stock summary goes out at the first hourly run at or after this site hour (AC-15).
+SUMMARY_HOUR = 8
+SUMMARY_LISTED = 3
+SUMMARY_NAME_LENGTH = 40
 # A deadlock rolls back the whole transaction, and a lock timeout means the user's own write is stuck too,
 # so neither may be swallowed: the user's action must fail and be retried, not report a save that isn't there.
 TRANSACTION_ERRORS = (frappe.QueryDeadlockError, frappe.QueryTimeoutError)
@@ -163,19 +168,101 @@ def _set_notified(item: str, value: int):
 def _push_low_stock(item: str, total, unit: str | None, level):
 	if not event_enabled("low_stock"):
 		return
-	quantity, reorder_level = format_quantity(total), format_quantity(level)
+	notify(lambda lang: _low_stock_message(item, total, unit, level, f"low-stock:{item}", lang))
 
-	def build(lang: str) -> dict:
-		return {
-			"title": _("Low stock: {0}", lang=lang).format(item),
-			"body": _("{0} {1} left (reorder level {2})", lang=lang).format(
-				quantity, unit or "", reorder_level
-			),
-			"link": f"/books/edit/Item/{item}",
-			"tag": f"low-stock:{item}",
-		}
 
-	notify(build)
+def _low_stock_message(item: str, total, unit: str | None, level, tag: str, lang: str) -> dict:
+	return {
+		"title": _("Low stock: {0}", lang=lang).format(item),
+		"body": _("{0} {1} left (reorder level {2})", lang=lang).format(
+			format_quantity(total), unit or "", format_quantity(level)
+		),
+		"link": f"/books/edit/Item/{item}",
+		"tag": tag,
+	}
+
+
+# The daily low stock summary (AC-15)
+
+
+def notify_low_stock_daily():
+	"""Hourly job: once per site day, at the first run at or after 08:00, one push for the items still low.
+
+	Sent here, like the subscription push, and the day is stored only once a push reached a device, so a
+	run with no devices or with every send refused leaves the next hour to try again.
+	"""
+	today = _summary_due()
+	if not today:
+		return
+	items = _low_items()
+	if not items:
+		return
+	if send_now(lambda lang: _summary_message(items, lang)).sent > 0:
+		frappe.db.set_single_value(SETTINGS, "last_low_stock_nudge_on", today)
+
+
+def site_now() -> datetime:
+	"""Now in the site's time zone (UTC when System Settings has no valid zone)."""
+	return utc_now().replace(tzinfo=UTC).astimezone(site_zone())
+
+
+def _summary_due() -> date | None:
+	"""The site date to send for, or None when today's summary is not due (or already sent)."""
+	if not fcm.is_configured() or not event_enabled("low_stock_daily") or is_locked():
+		return None
+	now = site_now()
+	if now.hour < SUMMARY_HOUR:
+		return None
+	last = frappe.db.get_singles_dict(SETTINGS).get("last_low_stock_nudge_on")
+	if last and getdate(last) >= now.date():
+		return None
+	return now.date()
+
+
+def _low_items() -> list[dict]:
+	"""Tracked items at or below their level, most urgent first (AC-15).
+
+	A plain read: the job holds no item lock and ignores `low_stock_notified`, which isn't kept while push is
+	off. An item with no ledger row has a total of 0, as in AC-6.
+	"""
+	item = frappe.qb.DocType(ITEM)
+	sle = frappe.qb.DocType(LEDGER)
+	total = Coalesce(Sum(sle.quantity), 0)
+	rows = (
+		frappe.qb.from_(item)
+		.left_join(sle)
+		.on(sle.item == item.name)
+		.select(item.name, item.unit, item.reorder_level, total.as_("total"))
+		.where((item.track_item == 1) & (item.reorder_level > 0))
+		.groupby(item.name, item.unit, item.reorder_level)
+		.having(total <= item.reorder_level)
+		.run(as_dict=True)
+	)
+	for row in rows:
+		row.total, row.reorder_level = as_decimal(row.total), as_decimal(row.reorder_level)
+	return sorted(rows, key=lambda row: (row.total / row.reorder_level, row.name))
+
+
+def _summary_message(items: list[dict], lang: str) -> dict:
+	if len(items) == 1:
+		row = items[0]
+		return _low_stock_message(row.name, row.total, row.unit, row.reorder_level, "low-stock:daily", lang)
+
+	# Item names and units are the shop's own words; only the count line is translated.
+	entries = [
+		" ".join(
+			part for part in (row.name[:SUMMARY_NAME_LENGTH], format_quantity(row.total), row.unit) if part
+		)
+		for row in items[:SUMMARY_LISTED]
+	]
+	if len(items) > SUMMARY_LISTED:
+		entries.append(_("+{0} more", lang=lang).format(len(items) - SUMMARY_LISTED))
+	return {
+		"title": _("Low stock items: {0}", lang=lang).format(len(items)),
+		"body": ", ".join(entries),
+		"link": "/books/report/StockBalance",
+		"tag": "low-stock:daily",
+	}
 
 
 # Subscription (AC-7, AC-13)
@@ -194,7 +281,7 @@ def notify_subscription_phase():
 
 	if _pushes(last, phase) and event_enabled("subscription") and not _already_subscribing(clock, phase):
 		status = clock.status()
-		if not send_now(lambda lang: _subscription_message(phase, status, lang)):
+		if not send_now(lambda lang: _subscription_message(phase, status, lang)).ok:
 			# Google refused every send: nothing went out, so the next run tries again.
 			return
 	frappe.db.set_single_value(SETTINGS, "last_subscription_phase", phase)

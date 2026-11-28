@@ -73,8 +73,12 @@ doc_events = {
 }
 
 scheduler_events = {
-	# Push notifications (spec 0026 AC-7): hourly, so a phase change pushes the same morning.
-	"hourly": ["frappe_books.notifications.notify_subscription_phase"],
+	# Push notifications (spec 0026 AC-7, AC-15): hourly, so a phase change pushes the same morning and the
+	# daily low stock summary goes out at the first run at or after 08:00 site time.
+	"hourly": [
+		"frappe_books.notifications.notify_subscription_phase",
+		"frappe_books.notifications.notify_low_stock_daily",
+	],
 	"daily": [
 		"frappe_books.commerce.loyalty.expire_programs_and_points",
 		"frappe_books.notifications.delete_stale_devices",
