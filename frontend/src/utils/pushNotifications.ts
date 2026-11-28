@@ -185,19 +185,25 @@ async function register() {
   storeToken(token);
 }
 
-/** Removes the browser subscription first: a locked site can't delete the row, but pushes stop (AC-13). */
+/** Drops the row and the browser subscription together: a locked site keeps the row, but pushes stop (AC-4, AC-13). */
 async function stopPush() {
   const token = readStoredToken();
   removeStoredToken();
   version.value += 1;
-  await removeSubscription();
-  if (token) {
-    try {
-      await call(UNREGISTER_METHOD, { token });
-    } catch (error) {
-      // FCM answers UNREGISTERED for the token now, which deletes the row later.
-      logPushError(error);
-    }
+  // The row delete goes first and both run together, so a slow call to Google can't hold it back
+  // past the sign out limit and leave this user's pushes on for the next person (AC-4).
+  await Promise.allSettled([unregister(token), removeSubscription()]);
+}
+
+async function unregister(token: string | null) {
+  if (!token) {
+    return;
+  }
+  try {
+    await call(UNREGISTER_METHOD, { token });
+  } catch (error) {
+    // A locked site keeps the row; the removed subscription makes FCM answer UNREGISTERED later (AC-13).
+    logPushError(error);
   }
 }
 

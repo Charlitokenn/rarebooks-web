@@ -1,5 +1,7 @@
 """The events that push (spec 0026): a payment received (AC-5), low stock (AC-6), the subscription (AC-7)."""
 
+import functools
+
 import frappe
 from frappe import _
 from frappe.query_builder.functions import Sum
@@ -18,11 +20,37 @@ SUBSCRIPTION_PHASES = ("prompt", "renew_soon", "grace", *LOCKED_PHASES)
 # Leaving these counts as a first run: nothing was pushed for them (AC-7).
 UNCOUNTED_PHASES = ("", "unmanaged", "exempt")
 READ_ONLY = "read-only"
+# A deadlock rolls back the whole transaction, and a lock timeout means the user's own write is stuck too,
+# so neither may be swallowed: the user's action must fail and be retried, not report a save that isn't there.
+TRANSACTION_ERRORS = (frappe.QueryDeadlockError, frappe.QueryTimeoutError)
+
+
+def never_blocks_the_action(event):
+	"""Run an event hook inside the user's transaction without ever failing it (spec 0026 AC-10).
+
+	Any error undoes only the hook's own writes (a savepoint) and is logged once; the payment, stock
+	transaction, item save or POS sale goes on. Nothing here touches the Firebase key, so the log holds none.
+	"""
+
+	@functools.wraps(event)
+	def guarded(*args, **kwargs):
+		savepoint = "books_push_event"
+		frappe.db.savepoint(savepoint)
+		try:
+			return event(*args, **kwargs)
+		except TRANSACTION_ERRORS:
+			raise
+		except Exception:
+			frappe.db.rollback(save_point=savepoint)
+			frappe.log_error(title=f"Books push: {event.__name__} failed")
+
+	return guarded
 
 
 # Payments (AC-5)
 
 
+@never_blocks_the_action
 def payment_submitted(payment):
 	"""Books Payment `on_submit`: a Receive payment outside a POS sale pushes once."""
 	if payment.payment_type != "Receive" or payment.amended_from or payment.flags.books_counter_payment:
@@ -30,6 +58,7 @@ def payment_submitted(payment):
 	_push_payment(payment.party, payment.amount, f"/books/edit/Payment/{payment.name}", payment.name)
 
 
+@never_blocks_the_action
 def pos_sale_paid(invoice, amounts: list):
 	"""After `pay_at_counter`: one push for the sale, with the total of its tendered rows."""
 	if not amounts:
@@ -58,17 +87,30 @@ def _push_payment(party: str, amount, link: str, name: str):
 # Low stock (AC-6)
 
 
+@never_blocks_the_action
 def check_low_stock(item_names):
 	"""After a stock transaction posts or cancels, or an item's level changes: push on the drop only.
 
-	Each item row is locked first, so two transactions at once can't both see the flag clear.
+	Each checked item row is locked first, so two transactions at once can't both see the flag clear.
+	An item with no reorder level and no flag to clear is skipped by a plain read, taking no lock.
 	"""
 	if not fcm.is_configured():
 		return
-	for item in sorted({name for name in item_names if name}):
+	names = sorted({name for name in item_names if name})
+	if not names:
+		return
+	watched = frappe.get_all(
+		ITEM,
+		filters={"name": ["in", names], "track_item": 1},
+		or_filters={"reorder_level": [">", 0], "low_stock_notified": 1},
+		pluck="name",
+		order_by="name asc",
+	)
+	for item in watched:
 		_check_item(item)
 
 
+@never_blocks_the_action
 def item_saved(item):
 	"""Books Item `on_update`: a changed level or tracking clears the flag and checks at once."""
 	if not (item.has_value_changed("reorder_level") or item.has_value_changed("track_item")):

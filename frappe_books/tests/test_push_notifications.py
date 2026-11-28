@@ -498,6 +498,14 @@ class IntegrationTestPaymentPushes(PushEventsBase):
 
 		self.assertEqual(len(queue.calls), 1)
 
+	def test_a_failure_while_building_the_push_never_fails_the_payment(self):  # covers: AC-10
+		frappe.db.delete("Error Log")
+		with push_on(), patch.object(sending, "recipients", side_effect=ValueError("boom")):
+			payment = self.make_payment()
+			payment.submit()
+		self.assertEqual(frappe.db.get_value("Books Payment", payment.name, "docstatus"), 1)
+		self.assertEqual(frappe.db.count("Error Log", {"method": ["like", "Books push%"]}), 1)
+
 	def test_nothing_without_keys(self):  # covers: AC-1
 		queue, enqueue = queued_pushes()
 		with push_off(), enqueue:
@@ -750,6 +758,22 @@ class IntegrationTestLowStockPushes(PushEventsBase):
 			notifications.check_low_stock([service])
 		self.assertEqual(queue.calls, [])
 		self.assertFalse(frappe.db.get_value("Books Item", service, "low_stock_notified"))
+
+	def test_a_failing_low_stock_check_never_fails_the_stock_transaction(self):  # covers: AC-10
+		with push_on():
+			self.move(12)
+			self.set_level(10)
+			with patch.object(events, "_stock_on_hand", side_effect=ValueError("boom")):
+				movement = self.move(-3)
+		self.assertEqual(movement.docstatus, 1)
+		# The check's partial writes are undone with it.
+		self.assertFalse(frappe.db.get_value("Books Item", self.item, "low_stock_notified"))
+
+	def test_an_item_without_a_level_takes_no_lock(self):  # covers: AC-6
+		with push_on(), patch.object(events.frappe.db, "get_value", wraps=frappe.db.get_value) as get_value:
+			self.move(5)
+		locked = [call for call in get_value.call_args_list if call.kwargs.get("for_update")]
+		self.assertEqual(locked, [])
 
 	def test_the_switch_keeps_the_flag_but_sends_nothing(self):  # covers: AC-6, AC-8
 		frappe.db.set_single_value(SETTINGS, "low_stock", 0)

@@ -390,3 +390,24 @@ test('device labels fall back for an unknown browser and system', () => {
   assert.equal(getDeviceLabel('curl/8.0'), 'Browser on an unknown system');
   assert.ok(getDeviceLabel('x'.repeat(500)).length <= 140);
 });
+
+test('sign out deletes the row even when Firebase never answers', async () => {
+  permission = 'granted';
+  storage.set(TOKEN_KEY, 'token-1');
+  stubFirebase(async () => ({
+    app: { getApps: () => [], initializeApp: (config) => ({ config }) },
+    messaging: {
+      getMessaging: (app) => ({ app }),
+      getToken: async () => 'token-1',
+      deleteToken: () => new Promise(() => {}),
+    },
+  }));
+  const requests = stubFrappe(() => ({ message: { deleted: true } }));
+
+  await stopPushForSignOut();
+
+  assert.deepEqual(
+    requests.map(({ path, body }) => [path, body]),
+    [[UNREGISTER, { token: 'token-1' }]]
+  );
+});
