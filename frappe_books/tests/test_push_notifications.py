@@ -416,7 +416,25 @@ class IntegrationTestNotificationSettings(IntegrationTestCase):
 		frappe.clear_document_cache(SETTINGS, SETTINGS)
 
 		settings = frappe.get_doc(SETTINGS)
-		self.assertEqual((settings.payment_received, settings.low_stock, settings.subscription), (1, 1, 1))
+		self.assertEqual(
+			(settings.payment_received, settings.low_stock, settings.low_stock_daily, settings.subscription),
+			(1, 1, 1, 1),
+		)
+
+	def test_the_daily_reminder_counts_as_on_until_switched_off(self):  # covers: AC-8, AC-15
+		frappe.db.delete("Singles", {"doctype": SETTINGS})
+		self.assertTrue(sending.event_enabled("low_stock_daily"))
+		frappe.db.set_single_value(SETTINGS, "low_stock_daily", 0)
+		self.assertFalse(sending.event_enabled("low_stock_daily"))
+
+	def test_four_switches_and_a_hidden_day(self):  # covers: AC-8, AC-15
+		meta = frappe.get_meta(SETTINGS)
+		checks = [field.label for field in meta.fields if field.fieldtype == "Check"]
+		self.assertEqual(
+			checks, ["Payment received", "Low stock", "Daily low stock reminder", "Subscription"]
+		)
+		day = meta.get_field("last_low_stock_nudge_on")
+		self.assertEqual((day.fieldtype, day.hidden, day.read_only), ("Date", 1, 1))
 
 	def test_the_patch_turns_every_event_on(self):  # covers: AC-8
 		from frappe_books.patches import add_notification_settings
@@ -658,6 +676,45 @@ class IntegrationTestSendJob(PushEventsBase):
 			notifications.send_job(messages)
 		send.assert_not_called()
 		self.assertEqual(frappe.db.count("Error Log"), 1)
+
+
+class IntegrationTestSendReport(PushEventsBase):
+	def message(self, device):
+		return {"device": device.name, "title": "t", "body": "b", "link": "/books/", "tag": "x"}
+
+	def send_job(self, outcomes, token_error=None):
+		messages = [self.message(self.manager_device), self.message(self.other_device)]
+		by_token = dict(zip((self.manager_device.token, self.other_device.token), outcomes, strict=True))
+		with (
+			push_on(),
+			patch.object(fcm, "access_token", return_value="ya29.test", side_effect=token_error),
+			patch.object(fcm, "send", side_effect=lambda token, *args: by_token[token]),
+		):
+			return notifications.send_job(messages)
+
+	def test_counts_the_pushes_sent_and_refused(self):  # covers: AC-10, AC-15
+		report = self.send_job([fcm.SENT, fcm.Outcome(fcm.FAILED, 503, "UNAVAILABLE")])
+		self.assertEqual((report.sent, report.failed, report.ok), (1, 1, True))
+
+	def test_every_send_refused_is_not_ok(self):  # covers: AC-7, AC-10
+		failed = fcm.Outcome(fcm.FAILED, 503, "UNAVAILABLE")
+		report = self.send_job([failed, failed])
+		self.assertEqual((report.sent, report.failed, report.ok), (0, 2, False))
+
+	def test_a_bad_key_counts_every_message_as_refused(self):  # covers: AC-10
+		report = self.send_job([fcm.SENT, fcm.SENT], token_error=fcm.FcmError(400, "invalid_grant"))
+		self.assertEqual((report.sent, report.failed, report.ok), (0, 2, False))
+
+	def test_dead_devices_are_neither_sent_nor_refused(self):  # covers: AC-10, AC-15
+		dead = fcm.Outcome(fcm.DEAD, 404, "UNREGISTERED")
+		report = self.send_job([dead, dead])
+		self.assertEqual((report.sent, report.failed, report.ok), (0, 0, True))
+
+	def test_nothing_to_send_reports_nothing(self):  # covers: AC-1, AC-10
+		with push_on():
+			self.assertEqual(notifications.send_job([]), sending.SendReport(0, 0))
+		with push_off():
+			self.assertEqual(sending.send_now(lambda lang: {}), sending.SendReport(0, 0))
 
 
 class IntegrationTestLowStockPushes(PushEventsBase):
@@ -911,7 +968,7 @@ class IntegrationTestLowStockSummary(PushEventsBase):
 	def run_at(self, utc):
 		def send(token, title, body, link, tag):
 			self.sent.append((title, body, link, tag))
-			return self.outcome
+			return self.outcome() if callable(self.outcome) else self.outcome
 
 		with (
 			push_on(),
@@ -1024,3 +1081,59 @@ class IntegrationTestLowStockSummary(PushEventsBase):
 
 		self.assertEqual(self.run_at(datetime(2031, 5, 6, 8, 0)), [])
 		self.assertEqual(len(self.run_at(datetime(2031, 5, 7, 5, 0))), 2)
+
+	def test_equal_urgency_falls_back_to_the_name(self):  # covers: AC-15
+		second = self.item(2, 10, name=unique_name("Tie B"))
+		first = self.item(1, 5, name=unique_name("Tie A"))
+		body = self.run_at(datetime(2031, 5, 6, 5, 0))[0][1]
+		self.assertEqual(body, f"{first} 1 Unit, {second} 2 Unit")
+
+	def test_exactly_three_items_add_no_more_line(self):  # covers: AC-15
+		for stock in (1, 2, 3):
+			self.item(stock, 10)
+		title, body, _link, _tag = self.run_at(datetime(2031, 5, 6, 5, 0))[0]
+		self.assertEqual(title, "Low stock items: 3")
+		self.assertNotIn("more", body)
+		self.assertEqual(body.count(", "), 2)
+
+	def test_stock_at_the_level_counts_as_low(self):  # covers: AC-15
+		item = self.item(10, 10)
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0))[0][0], f"Low stock: {item}")
+
+	def test_untracked_or_unleveled_items_are_left_out(self):  # covers: AC-15
+		untracked = self.item(1, 10)
+		frappe.db.set_value("Books Item", untracked, "track_item", 0)
+		self.item(1, 0)
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+
+	def test_the_flag_of_the_instant_push_is_ignored(self):  # covers: AC-6, AC-15
+		item = self.item(2, 10)
+		frappe.db.set_value("Books Item", item, "low_stock_notified", 1)
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0))[0][0], f"Low stock: {item}")
+		# The summary reads only; the flag stays as the instant push left it.
+		self.assertEqual(frappe.db.get_value("Books Item", item, "low_stock_notified"), 1)
+
+	def test_a_partial_success_records_the_day(self):  # covers: AC-15
+		self.item(2, 10)
+		outcomes = iter([fcm.SENT, fcm.Outcome(fcm.FAILED, 503, "UNAVAILABLE")])
+		self.outcome = lambda: next(outcomes)
+		self.assertEqual(len(self.run_at(datetime(2031, 5, 6, 5, 0))), 2)
+		self.assertEqual(str(self.stored_day()), "2031-05-06")
+
+	def test_only_dead_devices_record_nothing_and_drop_the_rows(self):  # covers: AC-10, AC-15
+		self.item(2, 10)
+		self.outcome = fcm.Outcome(fcm.DEAD, 404, "UNREGISTERED")
+		self.run_at(datetime(2031, 5, 6, 5, 0))
+		self.assertIsNone(self.stored_day())
+		self.assertFalse(frappe.db.exists(DEVICE, self.manager_device.name))
+
+	def test_the_site_time_zone_sets_the_hour(self):  # covers: AC-15
+		self.item(2, 10)
+		self.ZONE = ZoneInfo("UTC")
+		# 05:00 UTC is 08:00 in Dar es Salaam but still 05:00 on a UTC site.
+		self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+		self.assertEqual(len(self.run_at(datetime(2031, 5, 6, 8, 0))), 2)
+
+	def test_the_job_runs_hourly(self):  # covers: AC-15
+		hourly = frappe.get_hooks("scheduler_events", app_name="frappe_books")["hourly"]
+		self.assertIn("frappe_books.notifications.notify_low_stock_daily", hourly)
