@@ -89,6 +89,10 @@ The smaller calls made while writing:
 
 `/check verify` sent the `prompt` push on a real site and it read "Subscribe by 26-11-2026" on 28-11-2026. The `prompt` phase runs from day 22 to day 25, so the trial end (day 21) is always in the past when the push goes out. What the owner must beat is the lock on day 26. The push now names `lock_starts_on` with the banner's framing ("before your books turn read only"), so the push and the banner point at the same day. The title changed too, since "Your trial ends soon" was already false. A PayPal subscription set to start after the trial hides the banner's prompt (spec 0008 AC-21); the push follows the same rule, so nobody who already subscribed is told to subscribe.
 
+### Amend: the tap messages the page (2026-11-28)
+
+On a real Android phone, tapping a push with /books already open left the tab where it was. The app and the installed app usually sit at `/books`, which is outside the service worker's `/books/` scope, so the worker does not control that tab, and `client.navigate()` throws ("This service worker is not the client's active service worker"). The worker now posts the link to the tab and focuses it, and the page routes itself. That works whether or not the worker controls the tab, and moves screens without reloading the app. The other route, widening the worker's scope to `/books` with a `Service-Worker-Allowed` header, was not taken: it would change what the worker controls for its offline cache as well, for a problem the message solves on its own. Confirmed on the phone after the fix.
+
 ## References
 
 **Project sources** (verifiable, in this repo):
