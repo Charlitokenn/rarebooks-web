@@ -1,10 +1,11 @@
 import json
+import logging
 from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from frappe_books.analytics import SETTINGS, boot_block, person_id
+from frappe_books.analytics import SETTINGS, analytics_logger, boot_block, person_id
 from frappe_books.boot import extend_bootinfo
 from frappe_books.tests.subscription import make_user
 
@@ -104,6 +105,12 @@ class IntegrationTestAnalytics(IntegrationTestCase):
 		frappe.set_user(CASHIER)
 		with analytics_config(), patch("frappe_books.analytics.regional_code", side_effect=RuntimeError):
 			self.assertIsNone(boot_block())
+
+	# covers: AC-1
+	def test_the_failure_warning_is_kept_when_frappe_logs_only_errors(self):
+		logger = frappe.logger("frappe_books.analytics")
+		logger.setLevel(logging.ERROR)
+		self.assertTrue(analytics_logger().isEnabledFor(logging.WARNING))
 
 	# covers: AC-10
 	def test_saving_the_settings_drops_every_cached_boot(self):

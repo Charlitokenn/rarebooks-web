@@ -7,6 +7,7 @@ the site and user, so no email ever reaches PostHog; the salt never leaves the s
 
 import hashlib
 import hmac
+import logging
 
 import frappe
 
@@ -27,9 +28,7 @@ def boot_block() -> dict | None:
 	try:
 		return _build_block()
 	except Exception:
-		frappe.logger("frappe_books.analytics").warning(
-			"Usage analytics is off: its boot block could not be built", exc_info=True
-		)
+		analytics_logger().warning("Usage analytics is off: its boot block could not be built", exc_info=True)
 		return None
 
 
@@ -65,3 +64,12 @@ def person_id(salt: str, site: str, user: str) -> str:
 	"""The same user on the same site always gets the same id, and the id never shows the email (AC-2)."""
 	digest = hmac.new(salt.encode(), f"{site}:{user}".encode(), hashlib.sha256).hexdigest()
 	return digest[:ID_LENGTH]
+
+
+def analytics_logger() -> logging.Logger:
+	"""The analytics log, at WARNING at least: Frappe sets its loggers to ERROR in production, which would drop
+	the warning a failed boot block writes."""
+	logger = frappe.logger("frappe_books.analytics")
+	if not logger.isEnabledFor(logging.WARNING):
+		logger.setLevel(logging.WARNING)
+	return logger
