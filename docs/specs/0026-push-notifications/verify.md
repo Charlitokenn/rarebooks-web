@@ -10,7 +10,7 @@ Set up first: a Firebase test project, its three keys in the test site's config 
 - [x] Pick it, allow → toast "Notifications are on for this device."; the entry now reads "Turn off notifications"; one Books Push Device row with this user, a label like "Chrome on Windows", and `last_seen` now → AC-2, AC-3
 - [x] On a fresh browser profile pick it and block the prompt → orange toast that stays: "Notifications are blocked. Allow them for this site in your browser settings." → AC-2
 - [x] On an iPhone in Safari (not from the Home Screen) pick the entry → toast "Add RareBooks to your Home Screen first, then turn on notifications from there." → AC-2
-- [ ] Same phone, /books opened from the Home Screen → turning on works and a push arrives → AC-2
+- [ ] Same phone, /books opened from the Home Screen → turning on works and a push arrives → AC-2 _(not yet run on a real iPhone; covered by emulated browser tests only. Verify was closed without it on 2026-11-28, by the engineer's choice.)_
 - [ ] Reload /books twice within an hour → `last_seen` does not change; set it back two hours in the database and reload → it moves to now → AC-3
 - [ ] Sign in as the second Manager on the same browser and turn on → the same row now belongs to the second Manager (one row, not two) → AC-3
 - [x] Register 11 devices for one user (bench console) → only 10 rows remain, the oldest `last_seen` gone → AC-3
@@ -38,8 +38,8 @@ Set up first: a Firebase test project, its three keys in the test site's config 
 - [ ] Revoke the service account key in Google, submit a payment → the payment stays submitted, one Error Log entry with only HTTP status and error code (no token, no key) → AC-10, AC-12
 - [x] Uninstall the browser that holds a registered token, submit a payment → its row is deleted after the send (FCM `UNREGISTERED`) → AC-10
 - [x] Use a service account from another Firebase project → `SENDER_ID_MISMATCH` logged, rows kept → AC-10
-- [ ] With /books open and visible, a push arrives → one system notification, no in app duplicate → AC-11
-- [ ] Tap a push with /books open in another tab → that tab focuses and moves to the link; with no /books tab open → a new window opens at the link → AC-11
+- [x] With /books open and visible, a push arrives → one system notification, no in app duplicate → AC-11
+- [x] Tap a push with /books open in another tab → that tab focuses and moves to the link; with no /books tab open → a new window opens at the link → AC-11
 - [x] View the page source, the boot and the Error Log → the service account JSON (its `private_key`) appears nowhere → AC-12
 - [x] On a locked site pick "Turn on notifications" → the usual lock notice, no row, no browser subscription; "Turn off" and sign out still remove the browser subscription → AC-13
 - [x] Set a row's `last_seen` to 91 days ago and run `delete_stale_devices` → gone; 89 days → kept → AC-14
