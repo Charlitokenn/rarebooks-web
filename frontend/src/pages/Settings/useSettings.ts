@@ -8,6 +8,7 @@ import { getSchema } from 'src/frappe/registry';
 import { fyo } from 'src/initFyo';
 import { getErrorMessage } from 'src/utils';
 import { shortcutsKey } from 'src/utils/injectionKeys';
+import { hasPush } from 'src/utils/pushNotifications';
 import { showDialog } from 'src/utils/interactive';
 import { UIGroupedFields } from 'src/utils/types';
 import { computed, inject, ref, shallowRef } from 'vue';
@@ -19,6 +20,7 @@ const SETTINGS_SCHEMAS = [
   ModelNameEnum.POSSettings,
   ModelNameEnum.PrintSettings,
   ModelNameEnum.SystemSettings,
+  ModelNameEnum.NotificationSettings,
 ];
 const SHORTCUT_CONTEXT = 'Settings';
 
@@ -152,6 +154,11 @@ function isEnabled(name: ModelNameEnum): boolean {
     return !!fyo.singles.InventorySettings?.enable_point_of_sale;
   }
 
+  // Shown only when push is on, to the Managers who could load it (spec 0026 AC-8).
+  if (name === ModelNameEnum.NotificationSettings) {
+    return hasPush() && !!fyo.singles.NotificationSettings;
+  }
+
   return true;
 }
 
@@ -163,6 +170,7 @@ function getTab(name: ModelNameEnum): SettingsTab {
     [ModelNameEnum.POSSettings]: [t`POS Settings`, 'lucide-store'],
     [ModelNameEnum.PrintSettings]: [t`Print`, 'lucide-printer'],
     [ModelNameEnum.SystemSettings]: [t`System`, 'lucide-monitor-cog'],
+    [ModelNameEnum.NotificationSettings]: [t`Notifications`, 'lucide-bell'],
   };
   const [label, icon] = tabs[name] ?? [name, 'lucide-settings'];
   return { value: name, label, icon };

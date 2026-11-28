@@ -2,13 +2,7 @@
   <FrappeUIProvider>
     <div
       id="books-app"
-      class="
-        h-screen
-        flex flex-col
-        overflow-hidden
-        bg-surface-base
-        antialiased
-      "
+      class="h-screen flex flex-col overflow-hidden bg-surface-base antialiased"
       :dir="languageDirection"
     >
       <div
@@ -57,6 +51,11 @@ import { fyo } from 'src/initFyo';
 import { Search } from 'src/utils/search';
 import { Shortcuts } from 'src/utils/shortcuts';
 import { setSubscriptionStatus } from 'src/utils/subscription';
+import {
+  hasPush,
+  refreshPushRegistration,
+  setPush,
+} from 'src/utils/pushNotifications';
 import { setSupportChat } from 'src/utils/supportChat';
 import { deskTheme, getColorScheme } from 'src/utils/theme';
 import { isMobile } from 'src/utils/viewport';
@@ -144,10 +143,14 @@ export default defineComponent({
       fyo.user = boot.user.name;
       setSubscriptionStatus(books.subscription);
       setSupportChat(books.support_chat);
+      setPush(books.push);
 
       registerFrappeModels(frappeModels);
       registerFrappeModels(await getRegionalFrappeModels(books.country_code));
-      fyo.store.permissions = { doctypes: getSchemaDoctypes(), user: boot.user };
+      fyo.store.permissions = {
+        doctypes: getSchemaDoctypes(),
+        user: boot.user,
+      };
       await loadFrappeDocTypes();
       // Amounts load in the currency and precision the system settings set.
       const systemSettings = ModelNameEnum.SystemSettings;
@@ -155,7 +158,10 @@ export default defineComponent({
         (await getFrappeDoc(systemSettings, systemSettings)) as SystemSettings
       );
       const singles = getSingleSchemaNames().filter(
-        (name) => name !== ModelNameEnum.SetupWizard && name !== systemSettings
+        (name) =>
+          name !== ModelNameEnum.SetupWizard &&
+          name !== systemSettings &&
+          isStartupSingle(name)
       );
       await Promise.all(singles.map((name) => getFrappeDoc(name, name)));
       this.needsSetup = !fyo.singles.AccountingSettings?.setup_complete;
@@ -164,6 +170,8 @@ export default defineComponent({
         this.searcher.initialize();
       }
       this.loading = false;
+      // A rotated FCM token replaces the old row (spec 0026 AC-3); never blocks the start.
+      void refreshPushRegistration();
     },
     async completeSetup(wizard: FrappeDoc) {
       await wizard.sync();
@@ -177,6 +185,14 @@ export default defineComponent({
     },
   },
 });
+
+/** Notification Settings loads only with push on, for those who may read it (spec 0026 AC-8). */
+function isStartupSingle(name: string): boolean {
+  if (name === ModelNameEnum.NotificationSettings) {
+    return hasPush() && fyo.can(name, 'read');
+  }
+  return true;
+}
 </script>
 
 <style>

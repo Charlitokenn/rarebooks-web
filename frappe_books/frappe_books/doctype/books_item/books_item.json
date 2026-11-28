@@ -27,6 +27,8 @@
   "hsn_code",
   "barcode",
   "track_item",
+  "reorder_level",
+  "low_stock_notified",
   "has_batch",
   "batch_series",
   "has_serial_number",
@@ -164,6 +166,25 @@
   {
    "default": "0",
    "depends_on": "track_item",
+   "description": "A push goes to managers when stock across all locations drops to this. 0 means no alert.",
+   "fieldname": "reorder_level",
+   "fieldtype": "Float",
+   "label": "Reorder level",
+   "non_negative": 1,
+   "placeholder": "Reorder level"
+  },
+  {
+   "default": "0",
+   "fieldname": "low_stock_notified",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Low Stock Notified",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "track_item",
    "fieldname": "has_batch",
    "fieldtype": "Check",
    "label": "Has Batch",
@@ -204,7 +225,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-30 12:00:00.000000",
+ "modified": "2026-11-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Books",
  "name": "Books Item",

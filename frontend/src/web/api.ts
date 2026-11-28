@@ -16,6 +16,7 @@ import {
 } from 'fyo/utils/errors';
 import type { BootUserPermissions } from 'fyo/utils/permissions';
 import { subscriptionStatus } from 'src/utils/refs';
+import type { PushBoot } from 'src/utils/pushNotifications';
 import type { SupportChat } from 'src/utils/supportChat';
 import {
   fetchLockStatus,
@@ -254,6 +255,8 @@ declare global {
           subscription?: SubscriptionStatus;
           /** The signed tawk.to visitor, or null when the chat is off (spec 0009). */
           support_chat?: SupportChat | null;
+          /** The public Firebase config, or null when push is off (spec 0026). */
+          push?: PushBoot | null;
           /** The number format Frappe's importer reads for this user (spec 0025 AC-17). */
           number_format?: string;
         };

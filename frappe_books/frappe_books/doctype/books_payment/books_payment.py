@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+from frappe_books import notifications
 from frappe_books.accounting.payment import PaymentController
 
 
@@ -41,4 +42,7 @@ class BooksPayment(PaymentController):
 		writeoff: DF.Currency
 	# end: auto-generated types
 
-	pass
+	def on_submit(self):
+		super().on_submit()
+		# Queued after the commit, so a failed send never blocks the submit (spec 0026 AC-5, AC-10).
+		notifications.payment_submitted(self)

@@ -9,6 +9,7 @@ from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt
 
+from frappe_books import notifications
 from frappe_books.accounting.accounts import latest_ledger_account, validate_account
 from frappe_books.permissions import check_preview_permission
 from frappe_books.regional import validate_hsn_codes
@@ -90,6 +91,10 @@ class BooksItem(Document):
 			frappe.throw(_("Barcode must contain exactly 12 digits."))
 		self.validate_unit_conversions()
 		self.validate_series()
+
+	def on_update(self):
+		# A new level is checked at once, so one set above current stock alerts on this save (spec 0026 AC-6).
+		notifications.item_saved(self)
 
 	def validate_stock_settings(self):
 		if self.track_item and self.item_type != "Product":

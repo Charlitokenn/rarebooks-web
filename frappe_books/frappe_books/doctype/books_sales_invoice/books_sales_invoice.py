@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
+from frappe_books import notifications
 from frappe_books.accounting import settlement
 from frappe_books.accounting.invoice import PostingInvoiceController
 from frappe_books.accounting.money import as_decimal, rounded
@@ -191,12 +192,16 @@ class BooksSalesInvoice(PostingInvoiceController):
 		amounts = counter_payment_amounts(rows, settlement.due(self))
 		names = [self.make_counter_payment(row, amount) for row, amount in amounts]
 		settlement.reload_balance(self)
+		# One push for the sale, not one per tendered row (spec 0026 AC-5).
+		notifications.pos_sale_paid(self, [amount for _row, amount in amounts])
 		return names
 
 	def make_counter_payment(self, row, amount):
 		# The sale takes its money, so it needs no right to make payments.
 		payment = map_invoice_payment(self.doctype, self.name, ignore_permissions=True)
 		payment.flags.ignore_permissions = True
+		# The sale pushes once for all its counter payments (spec 0026 AC-5).
+		payment.flags.books_counter_payment = True
 		payment.update(
 			{
 				"payment_method": row.payment_method,

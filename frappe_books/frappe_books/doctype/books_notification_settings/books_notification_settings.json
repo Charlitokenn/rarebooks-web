@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "creation": "2026-11-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2026-11-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Frappe Books",
+ "owner": "Administrator",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "issingle": 1,
+ "description": "Which push notification events the shop sends (spec 0026 AC-8).",
+ "name": "Books Notification Settings",
+ "field_order": [
+  "events_section",
+  "payment_received",
+  "low_stock",
+  "subscription",
+  "last_subscription_phase"
+ ],
+ "fields": [
+  {
+   "fieldname": "events_section",
+   "fieldtype": "Section Break",
+   "label": "Push Notifications"
+  },
+  {
+   "default": "1",
+   "description": "When a customer pays, including each POS sale.",
+   "fieldname": "payment_received",
+   "fieldtype": "Check",
+   "label": "Payment received"
+  },
+  {
+   "default": "1",
+   "description": "When a tracked item reaches its reorder level.",
+   "fieldname": "low_stock",
+   "fieldtype": "Check",
+   "label": "Low stock"
+  },
+  {
+   "default": "1",
+   "description": "When the trial or the subscription is about to end, and when the site turns read only.",
+   "fieldname": "subscription",
+   "fieldtype": "Check",
+   "label": "Subscription"
+  },
+  {
+   "fieldname": "last_subscription_phase",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Last Subscription Phase",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Books Manager",
+   "write": 1
+  }
+ ],
+ "track_changes": 1
+}

@@ -36,6 +36,7 @@ export enum ModelNameEnum {
   PricingRuleDetail = 'PricingRuleDetail',
   PrintFormat = 'PrintFormat',
   PrintSettings = 'PrintSettings',
+  NotificationSettings = 'NotificationSettings',
   PurchaseInvoice = 'PurchaseInvoice',
   PurchaseInvoiceItem = 'PurchaseInvoiceItem',
   SalesInvoice = 'SalesInvoice',

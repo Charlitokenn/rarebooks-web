@@ -46,6 +46,7 @@ await build({
       export { getGetStartedConfig } from './src/utils/getStartedConfig';
       export { docsPathRef, subscriptionStatus } from './src/utils/refs';
       export * as supportChat from './src/utils/supportChat';
+      export * as pushNotifications from './src/utils/pushNotifications';
       export { deskTheme, getColorScheme } from './src/utils/theme';
       export { default as ListView } from './src/pages/ListView/ListView.vue';
       export { default as POS } from './src/pages/POS/POS.vue';
@@ -225,6 +226,7 @@ export const {
   docsPathRef,
   subscriptionStatus,
   supportChat,
+  pushNotifications,
   deskTheme,
   getColorScheme,
   ListView,

@@ -45,6 +45,7 @@ test('the Item form shows the fields, labels, placeholders and sections it showe
     'hsn_code | HSN/SAC | HSN/SAC Code | Inventory',
     'barcode | Barcode | Barcode | Inventory',
     'track_item | Track Inventory |  | Inventory',
+    'reorder_level | Reorder level | Reorder level | Inventory',
     'has_batch | Has Batch |  | Inventory',
     'batch_series | Batch Series |  | Inventory',
     'has_serial_number | Has Serial Number |  | Inventory',

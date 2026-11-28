@@ -26,6 +26,8 @@ export class Item extends FrappeDoc {
   static override presentation = {
     label: 'Item',
     nameField: { label: 'Item Name', placeholder: 'Item Name' },
+    // Set and cleared by the server's low stock check (spec 0026 AC-6).
+    omitFields: ['low_stock_notified'],
     quickEditFields: [
       'rate',
       'unit',

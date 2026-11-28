@@ -23,6 +23,85 @@ self.addEventListener("fetch", (event) => {
 	}
 });
 
+// Push notifications (spec 0026 AC-11). FCM sends data only messages, so this worker shows each one;
+// the page registers no Firebase onMessage handler, so an open /books tab never doubles it.
+self.addEventListener("push", (event) => {
+	const message = readPush(event);
+	if (!message) return;
+	event.waitUntil(
+		self.registration.showNotification(message.title, {
+			body: message.body,
+			tag: message.tag || undefined,
+			icon: ICON,
+			data: { link: message.link },
+		}),
+	);
+});
+
+self.addEventListener("notificationclick", (event) => {
+	event.notification.close();
+	const link = bookLink(event.notification.data && event.notification.data.link);
+	if (!link) return;
+	event.waitUntil(openBooks(link));
+});
+
+const ICON = `data:image/svg+xml,${encodeURIComponent(`__ICON__`)}`;
+
+/** The FCM data of a push: `{ data: { title, body, link, tag } }`, or those keys at the top. */
+function readPush(event) {
+	if (!event.data) return null;
+	let payload;
+	try {
+		payload = event.data.json();
+	} catch {
+		return null;
+	}
+	const data = (payload && (payload.data || payload)) || {};
+	const title = typeof data.title === "string" ? data.title.trim() : "";
+	const link = bookLink(data.link);
+	// A push with no title or a link outside /books shows nothing.
+	if (!title || !link) return null;
+	return {
+		title,
+		body: typeof data.body === "string" ? data.body : "",
+		tag: typeof data.tag === "string" ? data.tag : "",
+		link,
+	};
+}
+
+/** A same origin path under /books/, else null. */
+function bookLink(value) {
+	if (typeof value !== "string" || !value) return null;
+	let url;
+	try {
+		url = new URL(value, self.location.origin);
+	} catch {
+		return null;
+	}
+	if (url.origin !== self.location.origin || !url.pathname.startsWith("/books/")) return null;
+	return url.href;
+}
+
+/** Focus an open /books tab and move it to the link, or open a new window there. */
+async function openBooks(link) {
+	const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+	const books = windows.find((client) => {
+		const { pathname } = new URL(client.url);
+		return pathname === "/books" || pathname.startsWith("/books/");
+	});
+	if (books) {
+		const focused = await books.focus();
+		try {
+			await (focused || books).navigate(link);
+		} catch {
+			// An uncontrolled tab can't be navigated by the worker; open the link instead.
+			await self.clients.openWindow(link);
+		}
+		return;
+	}
+	await self.clients.openWindow(link);
+}
+
 async function removeOldCaches() {
 	const names = await caches.keys();
 	const old = names.filter((name) => name.startsWith("books-assets-") && name !== CACHE);

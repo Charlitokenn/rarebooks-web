@@ -24,6 +24,7 @@ import { PriceList } from './baseModels/PriceList/PriceList';
 import { PricingRule } from './baseModels/PricingRule/PricingRule';
 import { PrintFormat } from './baseModels/PrintFormat';
 import { PrintSettings } from './baseModels/PrintSettings/PrintSettings';
+import { NotificationSettings } from './baseModels/NotificationSettings/NotificationSettings';
 import { SetupWizard } from './baseModels/SetupWizard/SetupWizard';
 import { SystemSettings } from './baseModels/SystemSettings/SystemSettings';
 import { ItemGroup } from './baseModels/ItemGroup/ItemGroup';
@@ -58,6 +59,7 @@ export const frappeModels: Record<string, FrappeModel> = {
   Defaults,
   NumberSeries,
   PrintSettings,
+  NotificationSettings,
   Account,
   AccountingSettings,
   AccountingLedgerEntry,

@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from frappe_books import notifications
 from frappe_books.accounting.accounts import validate_item_usage, validate_party_role
 from frappe_books.accounting.returns import set_quantity_signs
 from frappe_books.inventory import invoice_transfer, stock_posting
@@ -46,9 +47,15 @@ class StockTransactionController(StatusMixin, SeriesNamingMixin, Document):
 
 	def on_submit(self):
 		stock_posting.post(self)
+		self.check_low_stock()
 
 	def on_cancel(self):
 		stock_posting.cancel(self)
+		self.check_low_stock()
+
+	def check_low_stock(self):
+		"""Push when a tracked item drops to its reorder level (spec 0026 AC-6)."""
+		notifications.check_low_stock(row["item"] for row in self.transfer_rows())
 
 	def on_trash(self):
 		stock_posting.delete(self)

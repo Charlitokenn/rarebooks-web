@@ -954,6 +954,14 @@
     "csv_key": "track_item"
    },
    {
+    "key": "reorder_level",
+    "label": "Reorder level",
+    "required": false,
+    "table": null,
+    "table_label": null,
+    "csv_key": "reorder_level"
+   },
+   {
     "key": "has_batch",
     "label": "Has Batch",
     "required": false,

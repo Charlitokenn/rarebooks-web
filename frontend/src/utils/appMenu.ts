@@ -2,6 +2,12 @@ import { t } from 'fyo';
 import type { DropdownOptions } from 'frappe-ui';
 import { call } from 'src/web/api';
 import { openDocs } from './docs';
+import {
+  getPushState,
+  stopPushForSignOut,
+  turnOffPush,
+  turnOnPush,
+} from './pushNotifications';
 import { docsPathRef } from './refs';
 import { endSupportChat, hasSupportChat, openSupportChat } from './supportChat';
 import { deskTheme, setDeskTheme, type DeskTheme } from './theme';
@@ -26,6 +32,7 @@ export function getAppMenuItems(openShortcuts?: () => void): DropdownOptions {
         },
       ]
     : [];
+  const notifications = getNotificationItems();
 
   return [
     {
@@ -38,6 +45,7 @@ export function getAppMenuItems(openShortcuts?: () => void): DropdownOptions {
           onClick: openDocumentation,
         },
         ...supportChat,
+        ...notifications,
         ...shortcuts,
       ],
     },
@@ -61,6 +69,34 @@ export function getAppMenuItems(openShortcuts?: () => void): DropdownOptions {
   ];
 }
 
+type MenuEntry = { label: string; icon: string; onClick: () => void };
+
+/** Push notifications for this device, beside the support chat (spec 0026 AC-2, AC-4). */
+function getNotificationItems(): MenuEntry[] {
+  const state = getPushState();
+  if (state === 'hidden') {
+    return [];
+  }
+
+  if (state === 'on') {
+    return [
+      {
+        label: t`Turn off notifications`,
+        icon: 'lucide-bell-off',
+        onClick: () => void turnOffPush(),
+      },
+    ];
+  }
+
+  return [
+    {
+      label: t`Turn on notifications`,
+      icon: 'lucide-bell',
+      onClick: () => void turnOnPush(),
+    },
+  ];
+}
+
 function getThemeItems(): DropdownOptions {
   const themes: [DeskTheme, string][] = [
     ['Light', t`Light`],
@@ -79,6 +115,8 @@ export function openDocumentation() {
 }
 
 async function logOut() {
+  // The next user on this browser must not get this user's notifications (spec 0026 AC-4).
+  await stopPushForSignOut();
   // The next user on this browser must not see this user's chat (spec 0009 AC-9).
   await endSupportChat();
   await call('logout');

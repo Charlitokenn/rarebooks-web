@@ -1,7 +1,7 @@
 # 0026. Push notifications through Firebase Cloud Messaging
 
 **Date**: 2026-11-28
-**Status**: Proposed
+**Status**: In Progress
 
 Decision history (context, options and reasoning) lives in [rationale.md](rationale.md).
 

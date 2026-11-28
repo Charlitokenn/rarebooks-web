@@ -73,7 +73,20 @@ doc_events = {
 }
 
 scheduler_events = {
-	"daily": ["frappe_books.commerce.loyalty.expire_programs_and_points"],
+	# Push notifications (spec 0026 AC-7): hourly, so a phase change pushes the same morning.
+	"hourly": ["frappe_books.notifications.notify_subscription_phase"],
+	"daily": [
+		"frappe_books.commerce.loyalty.expire_programs_and_points",
+		"frappe_books.notifications.delete_stale_devices",
+	],
+}
+
+# A user reads and deletes only their own push devices, whatever their role (spec 0026 AC-3).
+permission_query_conditions = {
+	"Books Push Device": "frappe_books.notifications.get_permission_query_conditions",
+}
+has_permission = {
+	"Books Push Device": "frappe_books.notifications.has_permission",
 }
 
 export_python_type_annotations = True
