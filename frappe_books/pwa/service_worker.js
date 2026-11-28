@@ -82,24 +82,24 @@ function bookLink(value) {
 	return url.href;
 }
 
-/** Focus an open /books tab and move it to the link, or open a new window there. */
+// The page moves itself on this message (src/utils/pushNotifications.ts, listenForPushClicks).
+const OPEN_MESSAGE = "books-push-open";
+
+/** Focus an open /books tab and tell it to move to the link, or open a new window there. */
 async function openBooks(link) {
 	const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
 	const books = windows.find((client) => {
 		const { pathname } = new URL(client.url);
 		return pathname === "/books" || pathname.startsWith("/books/");
 	});
-	if (books) {
-		const focused = await books.focus();
-		try {
-			await (focused || books).navigate(link);
-		} catch {
-			// An uncontrolled tab can't be navigated by the worker; open the link instead.
-			await self.clients.openWindow(link);
-		}
+	if (!books) {
+		await self.clients.openWindow(link);
 		return;
 	}
-	await self.clients.openWindow(link);
+	// Not `navigate()`: the app usually sits at /books, outside this worker's /books/ scope, and a worker may
+	// only navigate pages it controls. A message reaches every /books tab, and the page routes in place.
+	books.postMessage({ type: OPEN_MESSAGE, link });
+	await books.focus();
 }
 
 async function removeOldCaches() {

@@ -5,6 +5,7 @@ import type { FirebaseOptions } from 'firebase/app';
 import type * as FirebaseMessaging from 'firebase/messaging';
 import type { Messaging } from 'firebase/messaging';
 import { handleErrorWithDialog } from 'src/errorHandling';
+import router from 'src/router';
 import { fyo } from 'src/initFyo';
 import { showToast } from 'src/utils/interactive';
 import { subscriptionStatus } from 'src/utils/refs';
@@ -25,6 +26,9 @@ export interface PushBoot {
 export type PushState = 'hidden' | 'needs_install' | 'off' | 'on';
 
 export const TOKEN_KEY_PREFIX = 'books_push_token:';
+/** The service worker posts this when a notification is tapped while /books is open (AC-11). */
+export const OPEN_MESSAGE = 'books-push-open';
+const BASE = '/books';
 const REGISTER_METHOD = 'frappe_books.notifications.register_device';
 const UNREGISTER_METHOD = 'frappe_books.notifications.unregister_device';
 const SERVICE_WORKER = '/books/sw.js';
@@ -59,6 +63,50 @@ export function setPush(value: PushBoot | null | undefined) {
   push = value ?? null;
   messaging = null;
   version.value += 1;
+}
+
+/**
+ * Moves this /books tab to a tapped notification's link. The worker posts it rather than navigating,
+ * since it can't navigate a /books page outside its /books/ scope (AC-11).
+ */
+export function listenForPushClicks() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const path = getPushRoute(event.data);
+    if (path) {
+      void router.push(path);
+    }
+  });
+}
+
+/** The app route of a worker's open message, or null for anything else or a link outside /books. */
+export function getPushRoute(data: unknown): string | null {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+
+  const { type, link } = data as { type?: unknown; link?: unknown };
+  if (type !== OPEN_MESSAGE || typeof link !== 'string') {
+    return null;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(link, window.location.origin);
+  } catch {
+    return null;
+  }
+
+  if (
+    url.origin !== window.location.origin ||
+    !url.pathname.startsWith(`${BASE}/`)
+  ) {
+    return null;
+  }
+  return url.pathname.slice(BASE.length) + url.search + url.hash;
 }
 
 /** Push is set up on this site for this user, so the Settings dialog shows its tab (AC-8). */

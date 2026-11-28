@@ -1,4 +1,5 @@
 import { listenForInstallPrompt, registerServiceWorker } from './pwa';
+import { listenForPushClicks } from 'src/utils/pushNotifications';
 import { useTranslations } from './translations';
 
 async function start() {
@@ -19,4 +20,6 @@ if (location.pathname === '/books') {
 
 listenForInstallPrompt();
 registerServiceWorker();
+// A tapped push moves an open /books tab to its link (spec 0026 AC-11).
+listenForPushClicks();
 void start();

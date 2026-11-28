@@ -306,6 +306,53 @@ test('without the Firebase keys there is no entry (AC-1)', async ({ page }) => {
   await expect(menuItem(page, 'Turn on notifications')).toHaveCount(0);
 });
 
+test('a tapped push moves an open /books tab the worker does not control (AC-11)', async ({
+  page,
+  context,
+}) => {
+  // /books sits outside the worker's /books/ scope, so the worker can't navigate it and messages it instead.
+  await open(page, '/books');
+  await page.evaluate(() =>
+    navigator.serviceWorker.register('/books/sw.js', { scope: '/books/' })
+  );
+  const worker =
+    context.serviceWorkers()[0] ??
+    (await context.waitForEvent('serviceworker'));
+  expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(
+    false
+  );
+  const origin = new URL(page.url()).origin;
+
+  // The worker's own click step. Outside a real tap the browser refuses its final focus(), which is fine here.
+  const tap = (link: string) =>
+    worker.evaluate(
+      (url) =>
+        (self as unknown as { openBooks: (url: string) => Promise<void> })
+          .openBooks(url)
+          .catch(() => undefined),
+      link
+    );
+
+  await tap(`${origin}/books/list/SalesInvoice`);
+  await expect(page).toHaveURL(/\/books\/list\/SalesInvoice$/);
+
+  // A link outside /books is ignored by the page.
+  await worker.evaluate(async () => {
+    const windows = await self.clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    });
+    windows.forEach((client) =>
+      client.postMessage({
+        type: 'books-push-open',
+        link: 'https://evil.test/books/',
+      })
+    );
+  });
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/\/books\/list\/SalesInvoice$/);
+});
+
 // The old headless mode refuses every notification; the new one (channel `chromium`) shows them.
 // A click can't be made from a test (the worker may focus a window only inside a real click).
 test('the service worker shows a push only for a /books link (AC-11)', async ({

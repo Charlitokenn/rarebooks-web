@@ -11,7 +11,9 @@ import {
 
 const {
   TOKEN_KEY_PREFIX,
+  OPEN_MESSAGE,
   getDeviceLabel,
+  getPushRoute,
   getPushState,
   hasPush,
   refreshPushRegistration,
@@ -410,4 +412,27 @@ test('sign out deletes the row even when Firebase never answers', async () => {
     requests.map(({ path, body }) => [path, body]),
     [[UNREGISTER, { token: 'token-1' }]]
   );
+});
+
+test('a tapped push becomes an app route only for a /books link on this site', () => {
+  globalThis.window.location = {
+    origin: 'http://books.localhost',
+    hostname: 'books.localhost',
+  };
+  const open = (link) => getPushRoute({ type: OPEN_MESSAGE, link });
+
+  assert.equal(
+    open('http://books.localhost/books/edit/SalesInvoice/SINV-1'),
+    '/edit/SalesInvoice/SINV-1'
+  );
+  assert.equal(
+    open('/books/edit/Payment/PAY-1?x=1#top'),
+    '/edit/Payment/PAY-1?x=1#top'
+  );
+  assert.equal(open('https://evil.test/books/edit/Payment/PAY-1'), null);
+  assert.equal(open('/app/user'), null);
+  assert.equal(open('/booksx/edit'), null);
+  assert.equal(getPushRoute({ type: 'other', link: '/books/' }), null);
+  assert.equal(getPushRoute({ type: OPEN_MESSAGE }), null);
+  assert.equal(getPushRoute('books-push-open'), null);
 });
