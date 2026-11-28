@@ -10,6 +10,7 @@ import time
 import frappe
 import jwt
 import requests
+from frappe.utils import cint
 
 CONFIG_KEYS = ("books_fcm_service_account", "books_fcm_web_config", "books_fcm_vapid_key")
 SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
@@ -74,17 +75,22 @@ def access_token() -> str:
 
 	account = _service_account()
 	now = int(time.time())
-	assertion = jwt.encode(
-		{
-			"iss": account["client_email"],
-			"scope": SCOPE,
-			"aud": TOKEN_URL,
-			"iat": now,
-			"exp": now + 3600,
-		},
-		account["private_key"],
-		algorithm="RS256",
-	)
+	try:
+		assertion = jwt.encode(
+			{
+				"iss": account["client_email"],
+				"scope": SCOPE,
+				"aud": TOKEN_URL,
+				"iat": now,
+				"exp": now + 3600,
+			},
+			account["private_key"],
+			algorithm="RS256",
+		)
+	except (jwt.PyJWTError, ValueError, TypeError):
+		# A key that is present but unreadable fails like any bad key. `from None` keeps the original
+		# error, which saw the key, out of the log (spec 0026 AC-10, AC-12).
+		raise FcmError(None, "bad_service_account") from None
 	try:
 		response = requests.post(
 			TOKEN_URL,
@@ -101,7 +107,8 @@ def access_token() -> str:
 	token = body.get("access_token")
 	if not token:
 		raise FcmError(response.status_code, "no_access_token")
-	expires_in = int(body.get("expires_in") or 3600)
+	# An odd `expires_in` must not escape as a ValueError; an hour is what Google grants.
+	expires_in = cint(body.get("expires_in")) or 3600
 	frappe.cache.set_value(TOKEN_CACHE_KEY, token, expires_in_sec=max(expires_in - TOKEN_MARGIN_SECONDS, 60))
 	return token
 

@@ -178,6 +178,13 @@ class UnitTestFcm(IntegrationTestCase):
 		self.assertEqual(len(logs), 1)
 		self.assertNotIn("PRIVATE KEY", json.dumps(logs))
 
+	def test_an_odd_expiry_from_google_still_caches_the_token_for_an_hour(self):  # covers: AC-10
+		account = {**TEST_SERVICE_ACCOUNT, "private_key": rsa_pem()}
+		answer = response(200, {"access_token": "ya29.odd", "expires_in": "soon"})
+		with push_on(account), patch.object(fcm.requests, "post", return_value=answer):
+			self.assertEqual(fcm.access_token(), "ya29.odd")
+		self.assertEqual(frappe.cache.get_value(fcm.TOKEN_CACHE_KEY), "ya29.odd")
+
 	def test_a_broken_service_account_fails_the_send_without_raising(self):  # covers: AC-10
 		with patch.dict(frappe.conf, {**test_push_config(), "books_fcm_service_account": "{}"}):
 			with patch.object(fcm.requests, "post") as post:
