@@ -57,6 +57,7 @@ import {
   setPush,
 } from 'src/utils/pushNotifications';
 import { setSupportChat } from 'src/utils/supportChat';
+import { startAnalytics } from 'src/utils/analytics';
 import { deskTheme, getColorScheme } from 'src/utils/theme';
 import { isMobile } from 'src/utils/viewport';
 import { useKeys } from 'src/utils/vueUtils';
@@ -172,6 +173,8 @@ export default defineComponent({
       this.loading = false;
       // A rotated FCM token replaces the old row (spec 0026 AC-3); never blocks the start.
       void refreshPushRegistration();
+      // Loaded after the app is up, and never when the server left it off (spec 0027 AC-3).
+      void startAnalytics(books.analytics, fyo.store.appVersion);
     },
     async completeSetup(wizard: FrappeDoc) {
       await wizard.sync();

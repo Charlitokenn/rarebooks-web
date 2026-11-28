@@ -371,6 +371,7 @@ import { showDialog } from 'src/utils/interactive';
 import { docsPathMap } from 'src/utils/docs';
 import { docsPathRef } from 'src/utils/refs';
 import { selectTextFile } from 'src/utils/ui';
+import { track } from 'src/utils/analytics';
 import { defineComponent } from 'vue';
 
 type ImportWizardData = {
@@ -764,6 +765,12 @@ export default defineComponent({
     },
     async setResults(dataImport: DataImport, file: ImportFile): Promise<void> {
       const { success: imported, failed } = await dataImport.getLogs();
+      // Counts only, never a row's values (spec 0027 AC-7).
+      track('import_finished', {
+        schema_name: this.importType,
+        row_count: imported.length + failed.length,
+        failed_count: failed.length,
+      });
       const failedRows = failed.map(({ rows }) => getGridRows(file, rows));
       this.success = imported.map(({ docname }) => docname ?? '');
       this.failed = failed.map(({ message }, index) => ({

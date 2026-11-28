@@ -23,6 +23,7 @@ import {
   getPaymentShortcuts,
   validatePOSCheckout,
 } from './pos';
+import { track } from 'src/utils/analytics';
 
 const PAY_POS_INVOICE =
   'frappe_books.frappe_books.doctype.books_sales_invoice.books_sales_invoice.pay_pos_invoice';
@@ -227,6 +228,8 @@ async function submitSale(sale: SalesInvoice, tenders: Tender[]) {
   await validatePOSCheckout(sale);
   await sale.sync();
   await sale.submit();
+  // How many tenders, never the amounts (spec 0027 AC-7).
+  track('pos_sale_completed', { payment_method_count: tenders.length });
 }
 
 /** Pays a sale submitted earlier and returns the payment names. */

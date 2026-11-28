@@ -16,6 +16,7 @@ import {
 } from 'fyo/utils/errors';
 import type { BootUserPermissions } from 'fyo/utils/permissions';
 import { subscriptionStatus } from 'src/utils/refs';
+import type { AnalyticsBoot } from 'src/utils/analytics';
 import type { PushBoot } from 'src/utils/pushNotifications';
 import type { SupportChat } from 'src/utils/supportChat';
 import {
@@ -106,12 +107,24 @@ export function getServerError(
 ): Error {
   // Before the status map, so a 403 SiteLockedError never reads as ForbiddenError.
   if (isLockErrorType(excType)) {
-    return getLockError(excType, lockStatus);
+    return withServerDetails(
+      getLockError(excType, lockStatus),
+      excType,
+      status
+    );
   }
 
   const ServerError =
     errorClassByType[excType ?? ''] ?? errorClassByStatus[status ?? 0];
-  return ServerError ? new ServerError(message, false) : new Error(message);
+  const error = ServerError
+    ? new ServerError(message, false)
+    : new Error(message);
+  return withServerDetails(error, excType, status);
+}
+
+/** Analytics reports a server error by these, never by its message (spec 0027 AC-9). */
+function withServerDetails(error: Error, excType?: string, status?: number) {
+  return Object.assign(error, { excType, status });
 }
 
 /**
@@ -257,6 +270,8 @@ declare global {
           support_chat?: SupportChat | null;
           /** The public Firebase config, or null when push is off (spec 0026). */
           push?: PushBoot | null;
+          /** The PostHog settings, or null when analytics is off (spec 0027 AC-1). */
+          analytics?: AnalyticsBoot | null;
           /** The number format Frappe's importer reads for this user (spec 0025 AC-17). */
           number_format?: string;
         };

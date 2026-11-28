@@ -11,6 +11,7 @@
   "hide_get_started",
   "allow_filter_bypass",
   "remove_filter",
+  "share_usage_analytics",
   "number_display_section_break_7",
   "locale",
   "display_precision",
@@ -50,6 +51,13 @@
    "fieldname": "remove_filter",
    "fieldtype": "Check",
    "label": "Remove Filter"
+  },
+  {
+   "default": "1",
+   "description": "Sends RareBooks which screens are opened, which kinds of records are created, submitted or cancelled, and app errors, under a random id. Never names, emails, customers or amounts.",
+   "fieldname": "share_usage_analytics",
+   "fieldtype": "Check",
+   "label": "Share usage analytics with RareBooks"
   },
   {
    "fieldname": "number_display_section_break_7",
@@ -96,7 +104,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-30 12:00:00.000000",
+ "modified": "2026-11-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Books",
  "name": "Books System Settings",

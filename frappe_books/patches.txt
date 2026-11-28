@@ -10,6 +10,7 @@ frappe_books.patches.start_subscription_trial
 frappe_books.patches.rename_desktop_icon_to_rarebooks
 frappe_books.patches.add_notification_settings
 frappe_books.patches.add_low_stock_daily_setting
+frappe_books.patches.turn_on_usage_analytics
 
 [post_fixture_sync]
 # Patches added in this section will be executed after fixtures and customizations

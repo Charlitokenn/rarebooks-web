@@ -279,7 +279,9 @@ test('the System tab offers sample dates and takes custom formats and locales', 
   ]);
   assert.equal(field('currency').readOnly, true);
   assert.equal(field('display_precision').maxvalue, 9);
-  assert.deepEqual(fieldnames('SystemSettings').slice(4, 8), [
+  // The opt out sits with the other switches, before the number section (spec 0027 AC-10).
+  assert.equal(fieldnames('SystemSettings')[4], 'share_usage_analytics');
+  assert.deepEqual(fieldnames('SystemSettings').slice(5, 9), [
     'locale',
     'display_precision',
     'currency',

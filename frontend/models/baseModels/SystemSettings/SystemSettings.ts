@@ -46,6 +46,7 @@ export class SystemSettings extends FrappeDoc {
   declare hide_get_started?: boolean;
   declare allow_filter_bypass?: boolean;
   declare remove_filter?: boolean;
+  declare share_usage_analytics?: boolean;
 
   // The server checks it too; mirrored to show the message at the field.
   validations: ValidationMap = {

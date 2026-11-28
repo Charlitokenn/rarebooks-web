@@ -1,6 +1,11 @@
 import { t } from 'fyo';
 import type { FrappeDoc } from 'src/frappe/document';
-import { BaseError, ConflictError } from 'fyo/utils/errors';
+import {
+  BaseError,
+  ConflictError,
+  ValidationError,
+} from 'fyo/utils/errors';
+import { captureError } from 'src/utils/analytics';
 import { showDialog } from 'src/utils/interactive';
 import { fyo } from './initFyo';
 import { getErrorMessage } from './utils';
@@ -23,6 +28,11 @@ export async function handleError(
 
   if (shouldNotStore(error)) {
     return;
+  }
+
+  // A validation message is the user's to fix, not a bug to report (spec 0027 AC-9).
+  if (!(error instanceof ValidationError)) {
+    captureError(error);
   }
 
   if (notifyUser) {

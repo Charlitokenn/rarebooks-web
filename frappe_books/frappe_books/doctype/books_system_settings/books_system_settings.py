@@ -34,6 +34,7 @@ class BooksSystemSettings(Document):
 		internal_precision: DF.Int
 		locale: DF.Autocomplete
 		remove_filter: DF.Check
+		share_usage_analytics: DF.Check
 	# end: auto-generated types
 
 	_DOCTYPE_NAME = "Books System Settings"
@@ -49,6 +50,8 @@ class BooksSystemSettings(Document):
 		return get_display_precision()
 
 	def on_update(self):
+		# Each user's next page load reads the opt out again, through a fresh boot (spec 0027 AC-10).
+		frappe.cache.delete_key("bootinfo")
 		# Only a changed format goes, so other saves need no right to System Settings.
 		# The first save (app install) has nothing to change: Frappe keeps its formats.
 		if not self.get_doc_before_save():

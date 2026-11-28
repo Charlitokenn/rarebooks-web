@@ -153,6 +153,7 @@ import {
 import { showSidebar } from 'src/utils/refs';
 import { getFormRoute, openSettings, routeTo } from 'src/utils/ui';
 import { isMobile } from 'src/utils/viewport';
+import { track } from 'src/utils/analytics';
 import { defineComponent } from 'vue';
 import MobilePrintTemplatePicker from './MobilePrintTemplatePicker.vue';
 import { usePDFShare } from './pdfShare';
@@ -263,6 +264,8 @@ export default defineComponent({
     },
   },
   async activated() {
+    // Kept alive, so each opening counts, not only the first mount (spec 0027 AC-7).
+    track('print_opened', { schema_name: this.schemaName });
     await this.initialize();
   },
   unmounted() {
@@ -407,6 +410,8 @@ export default defineComponent({
       if (!this.templateName) {
         return;
       }
+
+      track('print_opened', { schema_name: this.schemaName });
 
       const opened = openPrintView(this.doctype, this.name, this.templateName);
       showToast(

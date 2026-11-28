@@ -17,6 +17,7 @@ import POS from 'src/pages/POS/POS.vue';
 import type { HistoryState, RouteLocationNormalized } from 'vue-router';
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 import { isDesktopOnly } from './mobile/availability';
+import { trackPageview } from './utils/analytics';
 import { historyState, settingsDialog } from './utils/refs';
 import { isMobile } from './utils/viewport';
 
@@ -193,10 +194,12 @@ router.beforeEach((to, from) => {
   }
 });
 
-router.afterEach(() => {
+router.afterEach((to, from, failure) => {
   const state = history.state as HistoryState;
   historyState.forward = !!state.forward;
   historyState.back = !!state.back;
+  // By route template only, never the record's name (spec 0027 AC-5).
+  trackPageview(to, from, failure);
 });
 
 /** Opens over the current page, or over the dashboard on a cold load. */

@@ -22,6 +22,7 @@ import type {
   TreeViewSettings,
   ValidationMap,
 } from 'fyo/model/types';
+import { track } from 'src/utils/analytics';
 import { validateOptions } from './validation';
 import {
   ConflictError,
@@ -795,8 +796,13 @@ export class FrappeDoc extends Observable<DocValue | FrappeDoc[]> {
 
   async _sync(): Promise<FrappeDoc> {
     await this.trigger('beforeSync');
-    const doc = this.notInserted ? await this._insert() : await this._update();
+    // Read before the insert, so a deduped sync counts once (spec 0027 AC-7).
+    const isNew = this.notInserted;
+    const doc = isNew ? await this._insert() : await this._update();
     this._notInserted = false;
+    if (isNew) {
+      this._trackAction('doc_created');
+    }
     await this._notifyAfterAction('sync');
     return doc;
   }
@@ -881,7 +887,16 @@ export class FrappeDoc extends Observable<DocValue | FrappeDoc[]> {
 
     const document = this.getMethodDocument();
     await this._setSaved(await api.runDocMethod('submit', document), 'submit');
+    this._trackAction('doc_submitted');
     await this._notifyAfterAction('submit');
+  }
+
+  /** Only the schema name, never the doc's name or values; none for settings and rows (spec 0027 AC-7). */
+  _trackAction(event: 'doc_created' | 'doc_submitted' | 'doc_cancelled') {
+    if (this.schema.isSingle || this.schema.isChild) {
+      return;
+    }
+    track(event, { schema_name: this.schemaName });
   }
 
   /**
@@ -902,6 +917,7 @@ export class FrappeDoc extends Observable<DocValue | FrappeDoc[]> {
     await this._syncValues(this.toDocValues(cancelled));
     this._notInserted = false;
     this._rememberSavedRows();
+    this._trackAction('doc_cancelled');
     this.fyo.observer.trigger(`cancel:${this.schemaName}`, this.name);
   }
 
