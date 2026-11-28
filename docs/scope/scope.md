@@ -477,9 +477,9 @@ PostHog in the /books app and the control site, joined to the marketing site's P
 spec: [0027](../specs/0027-product-analytics-posthog/index.md) · code in `frappe_books/analytics.py`, `frontend/src/utils/analytics.ts`, `rarebooks_control` (`providers/posthog.py`, `analytics.py`) and `rarebooks-site` (`src/pages/api/onboarding/signup.ts`, `src/pages/privacy.astro`)
 - [x] Design it (spec): `/architect product analytics with PostHog`
 - [ ] Build it: `/develop product analytics with PostHog`
-  - [ ] The /books thread: boot block with the hash id, lazy `posthog-js`, route template pageviews and `before_send` (AC-1 to AC-6, AC-19)
-  - [ ] /books thickened: the opt out field, doc and POS, import and print events with the early queue, errors and silent failure (AC-7 to AC-11)
-  - [ ] Control site: `providers/posthog.py`, `queue_event` after commit, every lifecycle event and the daily date job (AC-12 to AC-16)
+  - [x] The /books thread: boot block with the hash id, lazy `posthog-js`, route template pageviews and `before_send` (AC-1 to AC-6, AC-19)
+  - [x] /books thickened: the opt out field, doc and POS, import and print events with the early queue, errors and silent failure (AC-7 to AC-11)
+  - [x] Control site: `providers/posthog.py`, `queue_event` after commit, every lifecycle event and the daily date job (AC-12 to AC-16)
   - [ ] Funnel and rollout: the Books Signup field, the Worker cookie read, the privacy line and the config keys (AC-17 to AC-19)
 - [ ] Verify it: `/check verify product analytics with PostHog`
 - [ ] Test it: `/test product analytics with PostHog`

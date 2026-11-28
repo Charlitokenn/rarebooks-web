@@ -1,7 +1,7 @@
 # 0027. Product analytics with PostHog in /books and the control site
 
 **Date**: 2026-11-28
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
