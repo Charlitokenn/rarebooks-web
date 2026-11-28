@@ -40,6 +40,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 25 | Docs and blog restyle | Slice 12 | in-progress |
 | 26 | Bulk import from the control site | Slice 13 | in-progress |
 | 27 | Push notifications | Slice 14 | done |
+| 28 | Product analytics with PostHog | Slice 15 | in-progress |
 
 ## Already built
 
@@ -467,6 +468,23 @@ code in `frappe_books/notifications/`, `frontend/src/utils/pushNotifications.ts`
 - [x] Test it: `/test push notifications`
 - [x] Review it (fresh model): `/check review push notifications`
 - [x] Document it: `/document push notifications`
+
+## Slice 15: Product analytics
+
+### 28. Product analytics with PostHog · in-progress
+PostHog in the /books app and the control site, joined to the marketing site's PostHog (spec 0022). /books sends pageviews by route template, generic doc events and frontend errors under a keyed hash id; the control site sends the lifecycle (sign up, trial, checkout, payment, lapse, removal) from Python after commit. No email, person's name, record name or shop amount leaves a site; shops can opt out; self hosted installs send nothing.
+**Done when:** a shop user's screens, doc events and errors reach the PostHog EU project with no record names; each lifecycle moment on the control site sends its event once and never touches billing when PostHog is down; a marketing sign up click joins that shop's lifecycle; a Books Manager can turn it off; and the privacy page says what is sent.
+spec: [0027](../specs/0027-product-analytics-posthog/index.md) · code in `frappe_books/analytics.py`, `frontend/src/utils/analytics.ts`, `rarebooks_control` (`providers/posthog.py`, `analytics.py`) and `rarebooks-site` (`src/pages/api/onboarding/signup.ts`, `src/pages/privacy.astro`)
+- [x] Design it (spec): `/architect product analytics with PostHog`
+- [ ] Build it: `/develop product analytics with PostHog`
+  - [ ] The /books thread: boot block with the hash id, lazy `posthog-js`, route template pageviews and `before_send` (AC-1 to AC-6, AC-19)
+  - [ ] /books thickened: the opt out field, doc and POS, import and print events with the early queue, errors and silent failure (AC-7 to AC-11)
+  - [ ] Control site: `providers/posthog.py`, `queue_event` after commit, every lifecycle event and the daily date job (AC-12 to AC-16)
+  - [ ] Funnel and rollout: the Books Signup field, the Worker cookie read, the privacy line and the config keys (AC-17 to AC-19)
+- [ ] Verify it: `/check verify product analytics with PostHog`
+- [ ] Test it: `/test product analytics with PostHog`
+- [ ] Review it (fresh model): `/check review product analytics with PostHog`
+- [ ] Document it: `/document product analytics with PostHog`
 
 ## Deferred
 
