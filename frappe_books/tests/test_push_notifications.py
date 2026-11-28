@@ -9,7 +9,7 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from frappe.tests import IntegrationTestCase
-from frappe.utils import add_to_date, now_datetime
+from frappe.utils import add_to_date, formatdate, now_datetime
 
 from frappe_books import notifications
 from frappe_books.boot import extend_bootinfo
@@ -586,21 +586,21 @@ class IntegrationTestSubscriptionPushes(PushEventsBase):
 		)
 		self.token = patch.object(fcm, "access_token", return_value="ya29.test")
 
-	def run_at(self, phase, **status):
-		clock = MagicMock(phase=phase)
+	def run_at(self, phase, subscription_starts_on=None, **status):
+		clock = MagicMock(phase=phase, subscription_starts_on=subscription_starts_on)
 		clock.status.return_value = {"phase": phase, **status}
 		with push_on(), self.send, self.token, patch.object(events, "current_clock", return_value=clock):
 			events.notify_subscription_phase()
 		return frappe.db.get_single_value(SETTINGS, "last_subscription_phase")
 
 	def test_first_run_stores_the_phase_and_sends_nothing(self):  # covers: AC-7
-		self.assertEqual(self.run_at("prompt", trial_ends_on="2031-01-21"), "prompt")
+		self.assertEqual(self.run_at("prompt", lock_starts_on="2031-01-26"), "prompt")
 		self.assertEqual(self.sent, [])
 
 	def test_each_phase_pushes_once(self):  # covers: AC-7
 		self.run_at("trial")
-		self.run_at("prompt", trial_ends_on="2031-01-21")
-		self.run_at("prompt", trial_ends_on="2031-01-21")
+		self.run_at("prompt", lock_starts_on="2031-01-26")
+		self.run_at("prompt", lock_starts_on="2031-01-26")
 		self.run_at("active")
 		self.run_at("renew_soon", paid_until="2031-03-01")
 		self.run_at("grace", grace_ends_on="2031-03-08")
@@ -609,7 +609,7 @@ class IntegrationTestSubscriptionPushes(PushEventsBase):
 		# Two Manager devices each time; the Cashier device gets none.
 		self.assertEqual(
 			titles,
-			["Your trial ends soon"] * 2 + ["Renewal due"] * 2 + ["Payment overdue"] * 2,
+			["Your books turn read only soon"] * 2 + ["Renewal due"] * 2 + ["Payment overdue"] * 2,
 		)
 		self.assertTrue(all(link == "/books/subscription" for _t, _b, link, _tag in self.sent))
 		self.assertEqual(self.sent[0][3], "subscription:prompt")
@@ -634,4 +634,27 @@ class IntegrationTestSubscriptionPushes(PushEventsBase):
 	def test_a_failed_send_stores_nothing_so_the_next_run_retries(self):  # covers: AC-7, AC-10
 		self.run_at("trial")
 		self.send = patch.object(fcm, "send", return_value=fcm.Outcome(fcm.FAILED, 503, "UNAVAILABLE"))
-		self.assertEqual(self.run_at("prompt", trial_ends_on="2031-01-21"), "trial")
+		self.assertEqual(self.run_at("prompt", lock_starts_on="2031-01-26"), "trial")
+
+	def test_the_prompt_push_names_the_lock_date(self):  # covers: AC-7
+		self.run_at("trial")
+		# A first run that only sees `prompt` on day 25 still names day 26, never the past trial end.
+		self.run_at("prompt", trial_ends_on="2031-01-21", lock_starts_on="2031-01-26")
+
+		title, body, _link, _tag = self.sent[0]
+		self.assertEqual(title, "Your books turn read only soon")
+		self.assertIn(formatdate("2031-01-26"), body)
+		self.assertNotIn(formatdate("2031-01-21"), body)
+		self.assertTrue(body.startswith("Subscribe before "))
+
+	def test_paypal_set_to_start_gets_no_prompt_push_ever(self):  # covers: AC-7
+		self.run_at("trial")
+		# Day 22: the PayPal charge is due today.
+		stored = self.run_at("prompt", subscription_starts_on="2031-01-22", lock_starts_on="2031-01-26")
+		self.assertEqual((stored, self.sent), ("prompt", []))
+		# Day 23: the charge is overdue and the clock no longer says it starts; the phase is already stored.
+		self.run_at("prompt", lock_starts_on="2031-01-26")
+		self.assertEqual(self.sent, [])
+		# The lock still pushes as usual.
+		self.run_at("locked")
+		self.assertEqual({title for title, *_rest in self.sent}, {"RareBooks is now read only"})

@@ -150,12 +150,21 @@ def notify_subscription_phase():
 	if phase == last:
 		return
 
-	if _pushes(last, phase) and event_enabled("subscription"):
+	if _pushes(last, phase) and event_enabled("subscription") and not _already_subscribing(clock, phase):
 		status = clock.status()
 		if not send_now(lambda lang: _subscription_message(phase, status, lang)):
 			# Google refused every send: nothing went out, so the next run tries again.
 			return
 	frappe.db.set_single_value(SETTINGS, "last_subscription_phase", phase)
+
+
+def _already_subscribing(clock, phase: str) -> bool:
+	"""A PayPal subscription set to start after the trial: no `prompt` push, as the banner (spec 0026 AC-7).
+
+	The clock knows this only on day 22, the charge day. The phase is still stored, so the skip is final and a
+	late first charge on day 23 sends nothing either.
+	"""
+	return phase == "prompt" and bool(clock.subscription_starts_on)
 
 
 def _pushes(last: str, phase: str) -> bool:
@@ -170,9 +179,10 @@ def _tag(phase: str) -> str:
 
 def _subscription_message(phase: str, status: dict, lang: str) -> dict:
 	if phase == "prompt":
-		title = _("Your trial ends soon", lang=lang)
-		body = _("Subscribe by {0} to keep making changes.", lang=lang).format(
-			_date(status.get("trial_ends_on"))
+		# The trial ended the day before `prompt` starts; what the owner must beat is the lock (spec 0026 AC-7).
+		title = _("Your books turn read only soon", lang=lang)
+		body = _("Subscribe before {0} to keep making changes.", lang=lang).format(
+			_date(status.get("lock_starts_on"))
 		)
 	elif phase == "renew_soon":
 		title = _("Renewal due", lang=lang)
