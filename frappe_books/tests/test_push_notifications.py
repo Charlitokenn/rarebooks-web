@@ -1023,6 +1023,23 @@ class IntegrationTestLowStockSummary(PushEventsBase):
 		body = self.run_at(datetime(2031, 5, 6, 5, 0))[0][1]
 		self.assertEqual(body, f"{long_name[:40]} 1 Unit, {other} 3 Unit")
 
+	def test_a_cut_that_ends_on_a_space_leaves_no_double_space(self):  # covers: AC-15
+		# The 40th character is a space, so the cut name would end in one.
+		name = unique_name("Cement bag fifty kilograms grey portlan d")
+		self.assertEqual(name[39], " ")
+		self.item(1, 10, name=name)
+		other = self.item(3, 10)
+		body = self.run_at(datetime(2031, 5, 6, 5, 0))[0][1]
+		self.assertEqual(body, f"{name[:39]} 1 Unit, {other} 3 Unit")
+		self.assertNotIn("  ", body)
+
+	def test_no_devices_skip_the_ledger_read(self):  # covers: AC-15
+		self.item(2, 10)
+		frappe.db.delete(DEVICE)
+		with patch.object(events, "_low_items", wraps=events._low_items) as low_items:
+			self.assertEqual(self.run_at(datetime(2031, 5, 6, 5, 0)), [])
+		low_items.assert_not_called()
+
 	def test_an_item_that_dropped_while_push_was_off_is_listed(self):  # covers: AC-15
 		item = self.item(2, 10)
 		self.assertFalse(frappe.db.get_value("Books Item", item, "low_stock_notified"))

@@ -11,7 +11,7 @@ from frappe.utils import fmt_money, formatdate, getdate
 from frappe_books.accounting.money import as_decimal, company_currency
 from frappe_books.inventory.stock import format_quantity
 from frappe_books.notifications import fcm
-from frappe_books.notifications.sending import SETTINGS, event_enabled, notify, send_now
+from frappe_books.notifications.sending import SETTINGS, event_enabled, notify, recipients, send_now
 from frappe_books.subscription.clock import LOCKED_PHASES, current_clock, is_locked, site_zone, utc_now
 
 ITEM = "Books Item"
@@ -192,7 +192,8 @@ def notify_low_stock_daily():
 	run with no devices or with every send refused leaves the next hour to try again.
 	"""
 	today = _summary_due()
-	if not today:
+	# No device to reach: skip the ledger total, which would otherwise run every hour until midnight.
+	if not today or not recipients():
 		return
 	items = _low_items()
 	if not items:
@@ -251,7 +252,9 @@ def _summary_message(items: list[dict], lang: str) -> dict:
 	# Item names and units are the shop's own words; only the count line is translated.
 	entries = [
 		" ".join(
-			part for part in (row.name[:SUMMARY_NAME_LENGTH], format_quantity(row.total), row.unit) if part
+			part
+			for part in (row.name[:SUMMARY_NAME_LENGTH].rstrip(), format_quantity(row.total), row.unit)
+			if part
 		)
 		for row in items[:SUMMARY_LISTED]
 	]
