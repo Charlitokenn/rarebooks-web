@@ -27,9 +27,9 @@ Set up first: a Firebase test project, its three keys in the test site's config 
 - [x] Set the level above current stock and save the item → a push on that save; set it to 0 → the flag clears and nothing is sent → AC-6
 - [x] Two cashiers ship the same item at the same moment across the level → one push → AC-6
 - [ ] Move stock between locations only → no push (total unchanged) → AC-6
-- [ ] Put a hosted site in `trial`, run `notify_subscription_phase`, then move it to `prompt` and run again → one "Your books turn read only soon" naming the lock date (`lock_starts_on`, day 26, never a past date) in the site's date format; with a PayPal subscription set to start after the trial (`subscription_starts_on`), no push and the phase is still stored → AC-7
-- [ ] A first run that only sees `prompt` late (day 25) → the push still names the lock day (`lock_starts_on`), never the past trial end → AC-7
-- [ ] A PayPal subscription set to start after the trial (`set_hosted_phase('waiting')`, then `'overdue'`) → no `prompt` push on day 22 or day 23, phase stored as `prompt`; moving to `locked` still pushes → AC-7
+- [x] Put a hosted site in `trial`, run `notify_subscription_phase`, then move it to `prompt` and run again → one "Your books turn read only soon" naming the lock date (`lock_starts_on`, day 26, never a past date) in the site's date format; with a PayPal subscription set to start after the trial (`subscription_starts_on`), no push and the phase is still stored → AC-7
+- [x] A first run that only sees `prompt` late (day 25) → the push still names the lock day (`lock_starts_on`), never the past trial end → AC-7
+- [x] A PayPal subscription set to start after the trial (`set_hosted_phase('waiting')`, then `'overdue'`) → no `prompt` push on day 22 or day 23, phase stored as `prompt`; moving to `locked` still pushes → AC-7
 - [x] Repeat for `renew_soon` ("Renewal due"), `grace` ("Payment overdue") and `locked` ("RareBooks is now read only") → one push each, tapping opens /books/subscription → AC-7
 - [x] Move `locked` to `lapsed` → no new push → AC-7
 - [ ] Self hosted (`unmanaged`) or exempt site → no subscription push ever; a first run stores the phase only → AC-7
