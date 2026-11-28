@@ -2,7 +2,7 @@
 
 ## Overview
 
-Push notifications to phones and computers through Firebase Cloud Messaging (FCM) HTTP v1, with one Firebase project shared by every hosted site. Books Managers and System Managers get a push for a received payment (one per POS sale), an item dropping to its reorder level, and the subscription nearing or reaching its end. Governing spec: [docs/specs/0026-push-notifications/index.md](../../docs/specs/0026-push-notifications/index.md).
+Push notifications to phones and computers through Firebase Cloud Messaging (FCM) HTTP v1, with one Firebase project shared by every hosted site. Books Managers and System Managers get a push for a received payment (one per POS sale), an item dropping to its reorder level (plus one daily reminder while items stay low), and the subscription nearing or reaching its end. Governing spec: [docs/specs/0026-push-notifications/index.md](../../docs/specs/0026-push-notifications/index.md).
 
 ## Key files
 
@@ -10,8 +10,8 @@ Push notifications to phones and computers through Firebase Cloud Messaging (FCM
 |---|---|
 | `fcm.py` | The only module that talks to Google: the service account JWT, the OAuth token exchange (cached per site in Redis), and `send` returning `sent`, `dead` or `failed` (an `Outcome` carrying the HTTP status and FCM error code) |
 | `devices.py` | Books Push Device: `register_device` and `unregister_device` (whitelisted), the `books.push` boot block, the own row permission hooks, the 10 device cap, and the daily 90 day cleanup |
-| `sending.py` | Recipients (enabled Books Manager and System Manager users, by language), `notify` (queues `send_job` after commit), `send_now` (inside a scheduled job), `send_job`, `event_enabled`, and `store_default_events` |
-| `events.py` | The four event hooks (payment, POS sale, low stock, item save) behind `never_blocks_the_action`, and the hourly `notify_subscription_phase` job |
+| `sending.py` | Recipients (enabled Books Manager and System Manager users, by language), `notify` (queues `send_job` after commit), `send_now` (inside a scheduled job), `send_job` (both return a `SendReport` of pushes sent and refused), `event_enabled`, and `store_default_events` |
+| `events.py` | The four event hooks (payment, POS sale, low stock, item save) behind `never_blocks_the_action`, and the hourly `notify_subscription_phase` and `notify_low_stock_daily` jobs |
 | `../pwa/service_worker.js` | Shows each push (`push`) and opens its link on a tap (`notificationclick`) |
 | `../tests/test_push_notifications.py`, `../tests/push.py` | Python tests, and `turn_push_on` / `turn_push_off` for the browser tests |
 
@@ -21,10 +21,11 @@ Push notifications to phones and computers through Firebase Cloud Messaging (FCM
 - `books_fcm_service_account` holds a private key. It is read only in `fcm.py`, and it never reaches a response, the boot, a log or the Error Log. Failures carry only the HTTP status and FCM's error code, and signing errors are raised `from None` so the error that saw the key is not chained.
 - Every failure inside `fcm.py` becomes `FcmError`. `send_job` logs once per job and never raises; nothing is retried.
 - Event hooks run inside the user's transaction under a savepoint (`never_blocks_the_action`): any error undoes only the push work and is logged once, so the payment, stock transaction, item save or POS sale still saves. A deadlock or lock timeout is re-raised, since the whole transaction is already gone.
-- Payment and low stock pushes are queued with `enqueue_after_commit=True` on the `short` queue (timeout 120 s). Subscription pushes send inside the hourly scheduled job, because a locked site leaves only scheduled jobs writable.
+- Payment and low stock pushes are queued with `enqueue_after_commit=True` on the `short` queue (timeout 120 s). Subscription pushes and the daily low stock summary send inside their hourly scheduled jobs, because a locked site leaves only scheduled jobs writable.
 - The low stock check locks the item row, then reads the ledger total with a locking read: MariaDB runs REPEATABLE READ, so a plain read could miss a sale another transaction just committed. Items with no reorder level and no flag set are skipped with a plain read and take no lock.
+- The daily low stock summary (AC-15) reads the ledger with a plain grouped query and ignores `low_stock_notified`, so it takes no lock and never contends with the instant check. It runs only when some recipient has a device, and records `last_low_stock_nudge_on` only when `SendReport.sent` is above 0; the subscription job retries on `not SendReport.ok` instead.
 - `last_subscription_phase` and `low_stock_notified` are written with `set_single_value` / `set_value(..., update_modified=False)`, never through a document save.
-- Frappe fills a single's defaults only while none of its values is stored. The hourly job stores `last_subscription_phase` on every site, so the three event switches are stored as on at install (`setup.bootstrap`) and by the migration patch (`store_default_events`).
+- Frappe fills a single's defaults only while none of its values is stored. The hourly job stores `last_subscription_phase` on every site, so every event switch in `EVENTS` is stored as on at install (`setup.bootstrap`) and by the migration patches (`store_default_events`). A new switch goes in `EVENTS` and gets its own patch.
 - New user facing strings are `_()` with `{0}` placeholders, rendered per recipient with `lang=`; their English text is the translation key.
 
 ## Gotchas

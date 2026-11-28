@@ -39,7 +39,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 24 | Dashboard greeting | Slice 11 | done |
 | 25 | Docs and blog restyle | Slice 12 | in-progress |
 | 26 | Bulk import from the control site | Slice 13 | in-progress |
-| 27 | Push notifications | Slice 14 | in-progress |
+| 27 | Push notifications | Slice 14 | done |
 
 ## Already built
 
@@ -450,7 +450,7 @@ spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_
 
 ## Slice 14: Push notifications
 
-### 27. Push notifications · in-progress
+### 27. Push notifications · done
 Push notifications on phones and computers for three events: a payment received, an item reaching its reorder level, and the subscription nearing or reaching its end. Each user turns them on per device from the app menu; Books Managers receive them; a shop switches whole events off in Settings. Sent straight to Firebase Cloud Messaging with one Firebase project for every hosted site; off on any site without the Firebase keys.
 **Done when:** a Manager who turned notifications on gets a push for a customer payment (one per POS sale), for an item crossing its reorder level (once until restocked), and for the trial ending, renewal due, grace and read only phases, in their own language, and tapping it opens the right /books screen; a user can turn it off per device and sign out stops it on that browser; a failed send never blocks a submit; and the service account key never leaves the server.
 spec: [0026](../specs/0026-push-notifications/index.md)
