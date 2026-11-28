@@ -13,6 +13,7 @@ const {
   TOKEN_KEY_PREFIX,
   getDeviceLabel,
   getPushState,
+  hasPush,
   refreshPushRegistration,
   setPush,
   stopPushForSignOut,
@@ -310,4 +311,82 @@ test('device labels name the browser and the system', () => {
     ),
     'Firefox on Linux'
   );
+});
+
+test('the entry reads on only with both the permission and the stored token', () => {
+  permission = 'granted';
+  assert.equal(getPushState(), 'off');
+  storage.set(TOKEN_KEY, 'token-1');
+  assert.equal(getPushState(), 'on');
+  permission = 'denied';
+  assert.equal(getPushState(), 'off');
+});
+
+test('the stored token belongs to one user only', () => {
+  permission = 'granted';
+  storage.set(TOKEN_KEY_PREFIX + 'someone@books.test', 'their-token');
+  assert.equal(getPushState(), 'off');
+});
+
+test('an iPad outside the Home Screen is told to add RareBooks first', () => {
+  stubBrowser({
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15',
+    supportsPush: false,
+  });
+  navigator.maxTouchPoints = 5;
+  assert.equal(getPushState(), 'needs_install');
+
+  navigator.maxTouchPoints = 0;
+  assert.equal(getPushState(), 'hidden');
+});
+
+test('an iPhone opened from the Home Screen without push support shows no entry', () => {
+  stubBrowser({
+    userAgent: IPHONE_SAFARI,
+    supportsPush: false,
+    standalone: true,
+  });
+  assert.equal(getPushState(), 'hidden');
+});
+
+test('start up does nothing when the permission was revoked', async () => {
+  permission = 'denied';
+  storage.set(TOKEN_KEY, 'token-1');
+  const requests = stubFrappe(() => ({ message: {} }));
+
+  await refreshPushRegistration();
+
+  assert.deepEqual(requests, []);
+  assert.deepEqual(firebaseCalls, []);
+});
+
+test('sign out goes on after two seconds when the server never answers', async () => {
+  permission = 'granted';
+  storage.set(TOKEN_KEY, 'token-1');
+  stubFrappe(() => new Promise(() => {}));
+
+  const started = Date.now();
+  await stopPushForSignOut();
+
+  assert.ok(Date.now() - started < 3_000);
+  assert.equal(unsubscribed, true);
+});
+
+test('sign out with push never turned on here asks nothing', async () => {
+  const requests = stubFrappe(() => ({ message: {} }));
+  await stopPushForSignOut();
+  assert.deepEqual(requests, []);
+  assert.deepEqual(firebaseCalls, []);
+});
+
+test('the Settings tab shows only while push is set up', () => {
+  assert.equal(hasPush(), true);
+  setPush(null);
+  assert.equal(hasPush(), false);
+});
+
+test('device labels fall back for an unknown browser and system', () => {
+  assert.equal(getDeviceLabel('curl/8.0'), 'Browser on an unknown system');
+  assert.ok(getDeviceLabel('x'.repeat(500)).length <= 140);
 });

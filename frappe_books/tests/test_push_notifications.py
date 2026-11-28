@@ -1,5 +1,6 @@
 """Push notifications through Firebase Cloud Messaging (spec 0026)."""
 
+import hashlib
 import json
 from unittest.mock import MagicMock, patch
 
@@ -34,6 +35,18 @@ BOOKS_USER = "push-user@books.test"
 
 def push_on(service_account=None):
 	return patch.dict(frappe.conf, test_push_config(service_account))
+
+
+def rsa_pem():
+	key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+	return key.private_bytes(
+		serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+	).decode()
+
+
+def push_off():
+	"""No Firebase keys, whatever the site config holds."""
+	return patch.dict(frappe.conf, dict.fromkeys(fcm.CONFIG_KEYS))
 
 
 def add_device(user, token=None, last_seen=None):
@@ -143,6 +156,35 @@ class UnitTestFcm(IntegrationTestCase):
 		self.assertNotIn("notification", message)
 		self.assertEqual(message["webpush"]["headers"], {"Urgency": "high", "TTL": "86400"})
 
+	def test_a_refused_token_exchange_is_an_error_with_only_its_code(self):  # covers: AC-10, AC-12
+		account = {**TEST_SERVICE_ACCOUNT, "private_key": rsa_pem()}
+		refused = response(400, {"error": "invalid_grant"})
+		with push_on(account), patch.object(fcm.requests, "post", return_value=refused):
+			with self.assertRaises(fcm.FcmError) as raised:
+				fcm.access_token()
+		self.assertEqual((raised.exception.status, raised.exception.code), (400, "invalid_grant"))
+		self.assertNotIn("PRIVATE KEY", str(raised.exception))
+		self.assertIsNone(frappe.cache.get_value(fcm.TOKEN_CACHE_KEY))
+
+	def test_an_unreadable_private_key_fails_the_job_once_without_raising(self):  # covers: AC-10, AC-12
+		# A key that is present but can't be parsed must fail like any other bad key: one tidy Error Log, no crash.
+		frappe.db.delete("Error Log")
+		device = add_device(ensure_user(MANAGER, "Books Manager"))
+		messages = [{"device": device.name, "title": "t", "body": "b", "link": "/books/", "tag": "x"}]
+		with push_on(), patch.object(fcm.requests, "post") as post:
+			sending.send_job(messages)
+		post.assert_not_called()
+		logs = frappe.get_all("Error Log", fields=["method", "error"])
+		self.assertEqual(len(logs), 1)
+		self.assertNotIn("PRIVATE KEY", json.dumps(logs))
+
+	def test_a_broken_service_account_fails_the_send_without_raising(self):  # covers: AC-10
+		with patch.dict(frappe.conf, {**test_push_config(), "books_fcm_service_account": "{}"}):
+			with patch.object(fcm.requests, "post") as post:
+				outcome = fcm.send("tok", "t", "b", "/books/", "x")
+		self.assertEqual((outcome, outcome.code), (fcm.FAILED, "bad_service_account"))
+		post.assert_not_called()
+
 	def test_outcomes_follow_fcm_errors(self):  # covers: AC-10
 		cases = [
 			(fcm_error(404, "NOT_FOUND", "UNREGISTERED"), fcm.DEAD),
@@ -219,9 +261,9 @@ class IntegrationTestPushDevices(IntegrationTestCase):
 		self.assertFalse(frappe.db.exists(DEVICE, oldest.name))
 
 	def test_off_without_keys(self):  # covers: AC-1
-		with self.assertRaises(frappe.PermissionError):
+		with push_off(), self.assertRaises(frappe.PermissionError):
 			self.register(MANAGER, "token-a")
-		with self.set_user(MANAGER), self.assertRaises(frappe.PermissionError):
+		with push_off(), self.set_user(MANAGER), self.assertRaises(frappe.PermissionError):
 			devices.unregister_device("token-a")
 
 	def test_a_placeholder_email_may_not_register(self):  # covers: AC-2
@@ -261,13 +303,58 @@ class IntegrationTestPushDevices(IntegrationTestCase):
 	def test_boot_carries_only_the_public_config(self):  # covers: AC-1, AC-12
 		bootinfo = frappe._dict()
 		with self.set_user(MANAGER):
-			extend_bootinfo(bootinfo)
+			with push_off():
+				extend_bootinfo(bootinfo)
 			self.assertIsNone(bootinfo.books["push"])
 			with push_on():
 				extend_bootinfo(bootinfo)
 
 		self.assertEqual(bootinfo.books["push"], {"web_config": TEST_WEB_CONFIG, "vapid_key": TEST_VAPID_KEY})
 		self.assertNotIn("PRIVATE KEY", json.dumps(bootinfo, default=str))
+
+	def test_a_register_after_an_hour_updates_last_seen(self):  # covers: AC-3
+		with push_on():
+			name = self.register(MANAGER, "token-a")["name"]
+			old = add_to_date(now_datetime(), hours=-2)
+			frappe.db.set_value(DEVICE, name, "last_seen", old)
+			self.register(MANAGER, "token-a")
+		self.assertGreater(frappe.db.get_value(DEVICE, name, "last_seen"), old)
+
+	def test_the_row_keeps_a_hash_of_the_token_and_the_session_user(self):  # covers: AC-3, AC-12
+		with push_on():
+			name = self.register(MANAGER, "token-a", device_label="x" * 300)["name"]
+		row = frappe.get_doc(DEVICE, name)
+		self.assertEqual(row.token_hash, hashlib.sha256(b"token-a").hexdigest())
+		self.assertEqual(row.user, MANAGER)
+		# The label is cut to 140 characters, the field's length.
+		self.assertEqual(len(row.device_label), 140)
+
+	def test_an_empty_or_oversized_token_is_refused(self):  # covers: AC-3
+		with push_on():
+			for token in ("", "   ", "t" * 5000):
+				with self.assertRaises(frappe.ValidationError):
+					self.register(MANAGER, token)
+		self.assertEqual(frappe.db.count(DEVICE), 0)
+
+	def test_a_user_cannot_delete_another_users_row_through_the_api(self):  # covers: AC-3
+		theirs = add_device(MANAGER, "theirs")
+		with self.set_user(BOOKS_USER), self.assertRaises(frappe.PermissionError):
+			frappe.delete_doc(DEVICE, theirs.name)
+		self.assertTrue(frappe.db.exists(DEVICE, theirs.name))
+		self.assertFalse(frappe.has_permission(DEVICE, "read", doc=theirs, user=BOOKS_USER))
+
+	def test_nobody_creates_or_edits_rows_through_the_api(self):  # covers: AC-3
+		mine = add_device(BOOKS_USER, "mine")
+		self.assertFalse(frappe.has_permission(DEVICE, "create", user=BOOKS_USER))
+		self.assertFalse(frappe.has_permission(DEVICE, "write", doc=mine, user=BOOKS_USER))
+
+	def test_a_broken_web_config_turns_push_off_in_the_boot(self):  # covers: AC-1
+		with (
+			push_on(),
+			patch.dict(frappe.conf, {"books_fcm_web_config": "{not json"}),
+			self.set_user(MANAGER),
+		):
+			self.assertIsNone(devices.boot_block())
 
 	def test_stale_devices_go_after_ninety_days(self):  # covers: AC-14
 		stale = add_device(MANAGER, "stale", last_seen=add_to_date(now_datetime(), days=-91))
@@ -388,7 +475,7 @@ class IntegrationTestPaymentPushes(PushEventsBase):
 
 	def test_nothing_without_keys(self):  # covers: AC-1
 		queue, enqueue = queued_pushes()
-		with enqueue:
+		with push_off(), enqueue:
 			self.make_payment().submit()
 		self.assertEqual(queue.calls, [])
 
@@ -423,6 +510,37 @@ class IntegrationTestPaymentPushes(PushEventsBase):
 		self.assertIn("180", message["body"])
 		self.assertEqual(message["link"], f"/books/edit/SalesInvoice/{invoice.name}")
 		self.assertEqual(message["tag"], f"payment:{invoice.name}")
+
+	def test_paying_a_pos_invoice_later_pushes_that_calls_total(self):  # covers: AC-5
+		from frappe_books.frappe_books.doctype.books_pos_opening_shift.test_books_pos_opening_shift import (
+			start_pos_shift,
+		)
+		from frappe_books.frappe_books.doctype.books_sales_invoice.books_sales_invoice import pay_pos_invoice
+
+		start_pos_shift()
+		frappe.db.set_single_value("Books Accounting Settings", "enable_partial_payment", 1)
+		invoice = make_invoice(
+			"Books Sales Invoice",
+			self.party.name,
+			self.receivable.name,
+			self.item.name,
+			self.income.name,
+			is_pos=1,
+		)
+		invoice.submit()
+		queue, enqueue = queued_pushes()
+		with push_on(), enqueue:
+			pay_pos_invoice(invoice.name, [{"payment_method": "Cash", "amount": 50}])
+
+		self.assertEqual(len(queue.calls), 1)
+		self.assertIn("50", queue.messages[0]["body"])
+		self.assertEqual(queue.messages[0]["link"], f"/books/edit/SalesInvoice/{invoice.name}")
+
+	def test_a_system_manager_without_a_books_role_gets_pushes(self):  # covers: AC-5
+		admin = ensure_user("push-sysadmin@books.test", "System Manager")
+		device = add_device(admin)
+		names = [name for names in sending.recipients().values() for name in names]
+		self.assertIn(device.name, names)
 
 	def test_each_push_is_in_its_recipients_language(self):  # covers: AC-9
 		frappe.db.set_value("User", OTHER_MANAGER, "language", "fr")
@@ -576,6 +694,38 @@ class IntegrationTestLowStockPushes(PushEventsBase):
 			self.move(-1)
 		self.assertEqual(len(queue.calls), 1)
 
+	def test_moving_stock_between_locations_sends_nothing(self):  # covers: AC-6
+		from frappe_books.frappe_books.doctype.books_stock_movement.test_books_stock_movement import (
+			movement_values,
+		)
+
+		shop = frappe.get_doc({"doctype": "Books Location", "name": unique_name("Shop")}).insert().name
+		queue, enqueue = queued_pushes()
+		with push_on(), enqueue:
+			self.move(12)
+			self.set_level(10)
+			row = {
+				"item": self.item,
+				"quantity": 5,
+				"rate": 10,
+				"from_location": "Stores",
+				"to_location": shop,
+			}
+			frappe.get_doc(movement_values("MaterialTransfer", [row])).insert().submit()
+		# Stores drops to 7, but the total across locations stays 12.
+		self.assertEqual(queue.calls, [])
+		self.assertFalse(frappe.db.get_value("Books Item", self.item, "low_stock_notified"))
+
+	def test_an_untracked_item_is_never_checked(self):  # covers: AC-6
+		income = make_account("Push Service Income", root_type="Income")
+		expense = make_account("Push Service Expense", root_type="Expense")
+		service = make_item(income.name, expense.name, item_type="Service").name
+		queue, enqueue = queued_pushes()
+		with push_on(), enqueue:
+			notifications.check_low_stock([service])
+		self.assertEqual(queue.calls, [])
+		self.assertFalse(frappe.db.get_value("Books Item", service, "low_stock_notified"))
+
 	def test_the_switch_keeps_the_flag_but_sends_nothing(self):  # covers: AC-6, AC-8
 		frappe.db.set_single_value(SETTINGS, "low_stock", 0)
 		queue, enqueue = queued_pushes()
@@ -635,6 +785,16 @@ class IntegrationTestSubscriptionPushes(PushEventsBase):
 		self.assertEqual({title for title, *_rest in self.sent}, {"RareBooks is now read only"})
 		self.assertEqual(len(self.sent), 2)
 		self.assertEqual(self.sent[0][3], "subscription:read-only")
+
+	def test_a_switched_off_event_stores_the_phase_without_a_push(self):  # covers: AC-7, AC-8
+		frappe.db.set_single_value(SETTINGS, "subscription", 0)
+		self.run_at("trial")
+		self.assertEqual(self.run_at("grace", grace_ends_on="2031-03-08"), "grace")
+		self.assertEqual(self.sent, [])
+		# Turning it back on resends nothing missed.
+		frappe.db.set_single_value(SETTINGS, "subscription", 1)
+		self.run_at("grace", grace_ends_on="2031-03-08")
+		self.assertEqual(self.sent, [])
 
 	def test_unmanaged_and_exempt_never_push(self):  # covers: AC-7
 		self.run_at("unmanaged")
