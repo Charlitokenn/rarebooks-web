@@ -39,6 +39,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 24 | Dashboard greeting | Slice 11 | done |
 | 25 | Docs and blog restyle | Slice 12 | in-progress |
 | 26 | Bulk import from the control site | Slice 13 | in-progress |
+| 27 | Push notifications | Slice 14 | in-progress |
 
 ## Already built
 
@@ -447,6 +448,23 @@ spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_
 - [x] Review it (fresh model): `/check review bulk import from the control site`
 - [ ] Document it: `/document bulk import from the control site`
 
+## Slice 14: Push notifications
+
+### 27. Push notifications · in-progress
+Push notifications on phones and computers for three events: a payment received, an item reaching its reorder level, and the subscription nearing or reaching its end. Each user turns them on per device from the app menu; Books Managers receive them; a shop switches whole events off in Settings. Sent straight to Firebase Cloud Messaging with one Firebase project for every hosted site; off on any site without the Firebase keys.
+**Done when:** a Manager who turned notifications on gets a push for a customer payment (one per POS sale), for an item crossing its reorder level (once until restocked), and for the trial ending, renewal due, grace and read only phases, in their own language, and tapping it opens the right /books screen; a user can turn it off per device and sign out stops it on that browser; a failed send never blocks a submit; and the service account key never leaves the server.
+spec: [0026](../specs/0026-push-notifications/index.md)
+- [x] Design it (spec): `/architect push notifications`
+- [ ] Build it: `/develop push notifications`
+  - [ ] The thread, a payment push end to end: `fcm.py`, Books Push Device and the register calls, the boot block, Books Notification Settings and its Settings tab, `notify` and `send_job`, the payment and POS sale hooks (AC-1, AC-3, AC-5, AC-8, AC-9, AC-10, AC-12)
+  - [ ] The device side: the `firebase` module, the app menu entry, start up re register, sign out, and the service worker `push` and `notificationclick` handlers (AC-2, AC-3, AC-4, AC-11, AC-13)
+  - [ ] Low stock: the Books Item fields and the locked check after stock posting and on item save (AC-6)
+  - [ ] Subscription and cleanup: the hourly phase job, the locked site case, stale device removal, and the Playwright pass (AC-7, AC-13, AC-14)
+- [ ] Verify it: `/check verify push notifications`
+- [ ] Test it: `/test push notifications`
+- [ ] Review it (fresh model): `/check review push notifications`
+- [ ] Document it: `/document push notifications`
+
 ## Deferred
 
 - Bulk import: an Update existing mode, an email to the site owner after an import, a workbook of several types sent in order, and an asynchronous dry run if 2,000 rows proves too small (from spec 0025)
@@ -461,6 +479,8 @@ spec [0025](../specs/0025-bulk-import-control-site/index.md) · code in `frappe_
 - Repoint the `docs.frappe.io` link in `rarebooks-site`'s `point-of-sale.mdx` (from spec 0015)
 
 - Support chat: load tawk.to at app start for proactive chat if the team wants to reach out first; a widget per language keyed by the user's Frappe language (from spec 0009)
+
+- Push notifications: invoice overdue (needs a due date on Sales Invoice) and a POS shift close sales summary (from spec 0026)
 
 - Fiscal (TRA VFD/EFD) receipts for Tanzanian payments (from spec 0008; self serve signup moved to feature 13)
 
