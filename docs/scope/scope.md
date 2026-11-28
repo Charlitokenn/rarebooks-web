@@ -466,7 +466,7 @@ code in `frappe_books/notifications/`, `frontend/src/utils/pushNotifications.ts`
 - [x] Verify it: `/check verify push notifications` (real iPhone step still to try)
 - [x] Test it: `/test push notifications`
 - [x] Review it (fresh model): `/check review push notifications`
-- [ ] Document it: `/document push notifications`
+- [x] Document it: `/document push notifications`
 
 ## Deferred
 
