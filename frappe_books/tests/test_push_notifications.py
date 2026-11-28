@@ -178,6 +178,24 @@ class UnitTestFcm(IntegrationTestCase):
 		self.assertEqual(len(logs), 1)
 		self.assertNotIn("PRIVATE KEY", json.dumps(logs))
 
+	def test_a_token_exchange_that_times_out_is_an_error(self):  # covers: AC-10
+		account = {**TEST_SERVICE_ACCOUNT, "private_key": rsa_pem()}
+		with push_on(account), patch.object(fcm.requests, "post", side_effect=requests.Timeout):
+			with self.assertRaises(fcm.FcmError) as raised:
+				fcm.access_token()
+		self.assertEqual((raised.exception.status, raised.exception.code), (None, "timeout"))
+
+	def test_an_answer_without_a_token_is_an_error_and_caches_nothing(self):  # covers: AC-10
+		account = {**TEST_SERVICE_ACCOUNT, "private_key": rsa_pem()}
+		with (
+			push_on(account),
+			patch.object(fcm.requests, "post", return_value=response(200, {"expires_in": 3599})),
+		):
+			with self.assertRaises(fcm.FcmError) as raised:
+				fcm.access_token()
+		self.assertEqual(raised.exception.code, "no_access_token")
+		self.assertIsNone(frappe.cache.get_value(fcm.TOKEN_CACHE_KEY))
+
 	def test_an_odd_expiry_from_google_still_caches_the_token_for_an_hour(self):  # covers: AC-10
 		account = {**TEST_SERVICE_ACCOUNT, "private_key": rsa_pem()}
 		answer = response(200, {"access_token": "ya29.odd", "expires_in": "soon"})
