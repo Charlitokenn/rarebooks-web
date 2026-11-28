@@ -85,6 +85,10 @@ The smaller calls made while writing:
 - **Delete devices unseen for 90 days** (runner up: keep forever). Every open /books refreshes `last_seen`, so 90 days means the device is gone.
 - **Device label from the user agent, cut down on the client** (runner up: no label). Lets a future device list name devices without storing the full user agent.
 
+### Amend: the `prompt` push date (2026-11-28)
+
+`/check verify` sent the `prompt` push on a real site and it read "Subscribe by 26-11-2026" on 28-11-2026. The `prompt` phase runs from day 22 to day 25, so the trial end (day 21) is always in the past when the push goes out. What the owner must beat is the lock on day 26. The push now names `lock_starts_on` with the banner's framing ("before your books turn read only"), so the push and the banner point at the same day. The title changed too, since "Your trial ends soon" was already false. A PayPal subscription set to start after the trial hides the banner's prompt (spec 0008 AC-21); the push follows the same rule, so nobody who already subscribed is told to subscribe.
+
 ## References
 
 **Project sources** (verifiable, in this repo):

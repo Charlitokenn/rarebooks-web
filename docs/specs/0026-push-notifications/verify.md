@@ -27,7 +27,7 @@ Set up first: a Firebase test project, its three keys in the test site's config 
 - [x] Set the level above current stock and save the item → a push on that save; set it to 0 → the flag clears and nothing is sent → AC-6
 - [x] Two cashiers ship the same item at the same moment across the level → one push → AC-6
 - [ ] Move stock between locations only → no push (total unchanged) → AC-6
-- [ ] Put a hosted site in `trial`, run `notify_subscription_phase`, then move it to `prompt` and run again → one "Your trial ends soon" with the trial end date in the site's date format → AC-7
+- [ ] Put a hosted site in `trial`, run `notify_subscription_phase`, then move it to `prompt` and run again → one "Your books turn read only soon" naming the lock date (`lock_starts_on`, day 26, never a past date) in the site's date format; with a PayPal subscription set to start after the trial (`subscription_starts_on`), no push and the phase is still stored → AC-7
 - [x] Repeat for `renew_soon` ("Renewal due"), `grace` ("Payment overdue") and `locked` ("RareBooks is now read only") → one push each, tapping opens /books/subscription → AC-7
 - [x] Move `locked` to `lapsed` → no new push → AC-7
 - [ ] Self hosted (`unmanaged`) or exempt site → no subscription push ever; a first run stores the phase only → AC-7
