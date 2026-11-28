@@ -463,9 +463,9 @@ code in `frappe_books/notifications/`, `frontend/src/utils/pushNotifications.ts`
   - [x] Subscription and cleanup: the hourly phase job, the locked site case, stale device removal, and the Playwright pass (AC-7, AC-13, AC-14)
   - [x] The verify amend: the trial push names the lock date (`lock_starts_on`) with the new text, and skips a site whose PayPal subscription is set to start after the trial (AC-7, build plan step 11)
   - [x] The daily low stock summary: the 08:00 hourly job, its own switch and the patch, one push for all low items (AC-8, AC-15, build plan step 12)
-- [ ] Verify it: `/check verify push notifications` (real iPhone step still to try)
+- [x] Verify it: `/check verify push notifications` (real iPhone step still to try)
 - [x] Test it: `/test push notifications`
-- [ ] Review it (fresh model): `/check review push notifications`
+- [x] Review it (fresh model): `/check review push notifications`
 - [ ] Document it: `/document push notifications`
 
 ## Deferred
