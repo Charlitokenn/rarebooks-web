@@ -20,7 +20,8 @@ The server side of Books: 68 `books_*` DocTypes with their controllers, plus pla
 | `meta.py` | `get_books_meta`: all model meta in one request for the frontend |
 | `search.py` | Frappe's SQLite search index (`BooksSearch`) behind the search palette |
 | `setup.py`, `setup_service.py`, `coa.py`, `data/` | Install, setup wizard, charts of accounts, country info |
-| `www/books.py`, `pwa/` | Serves `/books` and its service worker |
+| `www/books.py`, `pwa/` | Serves `/books`, its service worker and the web app manifest. The manifest is served uncached at `/books/manifest.webmanifest` (`ManifestPage`), since `/assets` is cached immutable for a year and an installed phone would never see a new name or scope |
+| `demo/shop.py` | `seed(currency)`: the made up Kilima Hardware shop the marketing homepage screenshots come from (spec 0019 AC-15). Refuses any site that is not local, in developer mode and without `books_control_url` |
 | `tests/accounting.py` | `before_tests` helpers plus `make_account`, `make_party`, `make_item`, `make_invoice`, and `insert_sales_invoice` (writes a submitted invoice and its rows straight to the database) |
 
 ## Commands
