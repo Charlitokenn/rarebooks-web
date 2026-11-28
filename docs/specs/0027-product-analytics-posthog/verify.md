@@ -31,6 +31,9 @@ On a hosted test site with `books_control_url`, `books_posthog_key` and `books_p
 - [ ] `cd rarebooks-site && node --test tests/onboarding/posthog-id.test.ts` → 3 pass → AC-17
 - [ ] Every suite with no PostHog keys set → no new failures → AC-19
 
+- [ ] Send a real control batch (for example from `apply_clickpesa`) to `https://eu.i.posthog.com/i/v1/analytics/events` with a well formed token that matches no project → HTTP 200 with `"result":"ok"` per event, and no `missing_required_headers` (PostHog stores nothing for that token) → AC-12
+- [ ] With `frappe.logger("rarebooks_control.analytics")` at ERROR, as Frappe sets it in production, send an event PostHog refuses (a number as `distinct_id`) → exactly one `PostHog send of … answered HTTP 400` line in `logs/rarebooks_control.analytics.log`, with no key in it → AC-13
+
 ## Value sourcing (one step per source)
 
 - [ ] `key`: change `books_posthog_key` in bench config, reload → the boot carries the new key → AC-1
