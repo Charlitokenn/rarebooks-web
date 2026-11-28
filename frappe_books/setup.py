@@ -3,6 +3,7 @@
 import frappe
 from frappe.permissions import add_permission, update_permission_property
 
+from frappe_books.notifications.sending import store_default_events
 from frappe_books.printing import default_print_format, set_default_print_format
 from frappe_books.series import NUMBER_SERIES
 from frappe_books.setup_service import complete_frappe_setup
@@ -50,6 +51,8 @@ def bootstrap():
 	grant_core_permissions()
 	set_default_print_formats()
 	start_trial()
+	# Patches don't run on a new site, so its push event switches are stored on here (spec 0026 AC-8).
+	store_default_events()
 
 
 def before_tests():

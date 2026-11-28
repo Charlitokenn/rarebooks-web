@@ -17,6 +17,22 @@ JOB_TIMEOUT = 120
 MessageBuilder = Callable[[str], dict]
 
 
+EVENTS = ("payment_received", "low_stock", "subscription")
+
+
+def store_default_events():
+	"""Store every event switch as on, keeping any value already set (spec 0026 AC-8).
+
+	Frappe fills a single's defaults only while none of its values is stored, and the hourly job stores
+	`last_subscription_phase` on every site. Without this, the Settings tab would show unset switches off
+	(and a save would turn them off) while the server still sends.
+	"""
+	stored = frappe.db.get_singles_dict(SETTINGS)
+	for fieldname in EVENTS:
+		if stored.get(fieldname) is None:
+			frappe.db.set_single_value(SETTINGS, fieldname, 1)
+
+
 def event_enabled(fieldname: str) -> bool:
 	"""A Books Notification Settings checkbox; an unset value counts as on (AC-8)."""
 	value = frappe.db.get_singles_dict(SETTINGS).get(fieldname)

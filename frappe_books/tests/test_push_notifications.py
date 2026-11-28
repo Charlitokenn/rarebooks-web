@@ -292,6 +292,18 @@ class IntegrationTestNotificationSettings(IntegrationTestCase):
 		self.assertFalse(frappe.has_permission(SETTINGS, "read", user=BOOKS_USER))
 		self.assertTrue(frappe.has_permission(SETTINGS, "write", user=MANAGER))
 
+	def test_a_new_site_shows_every_event_on_after_the_hourly_job(self):  # covers: AC-8
+		from frappe_books.setup import bootstrap
+
+		frappe.db.delete("Singles", {"doctype": SETTINGS})
+		bootstrap()
+		# The job stores the phase on every site; Frappe then stops filling defaults for the switches.
+		notifications.notify_subscription_phase()
+		frappe.clear_document_cache(SETTINGS, SETTINGS)
+
+		settings = frappe.get_doc(SETTINGS)
+		self.assertEqual((settings.payment_received, settings.low_stock, settings.subscription), (1, 1, 1))
+
 	def test_the_patch_turns_every_event_on(self):  # covers: AC-8
 		from frappe_books.patches import add_notification_settings
 
